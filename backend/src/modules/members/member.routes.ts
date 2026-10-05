@@ -5,12 +5,13 @@ import type { MemberListQuery, MemberStatus } from './member.types.js';
 
 function parseListQuery(query: Record<string, unknown>): MemberListQuery {
   const { search, status } = query;
-  if (status !== undefined && status !== 'active' && status !== 'inactive') {
+  // An empty value (`?status=`) comes from a cleared filter and means "no filter".
+  if (status !== undefined && status !== '' && status !== 'active' && status !== 'inactive') {
     throw new ValidationError({ status: 'Status must be "active" or "inactive"' });
   }
   return {
     search: typeof search === 'string' ? search : '',
-    status: status as MemberStatus | undefined,
+    status: status === '' ? undefined : (status as MemberStatus | undefined),
   };
 }
 

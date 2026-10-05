@@ -10,9 +10,25 @@ export interface MemberServiceDeps {
 }
 
 const DNI_QUERY = /^[\d.\s-]+$/;
+const MEMBER_NUMBER_QUERY = /^\d{1,4}$/;
+const MIN_DNI_DIGITS_WITHOUT_SEPARATORS = 5;
 
 function fold(value: string): string {
   return value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+}
+
+// A bare 1-4 digit query is a member number (exact, leading zeros ignored: "7" = "0007"). Longer bare
+// numbers and separated ones ("30.1") search DNIs, so a short number never matches every DNI containing it.
+function matchesNumber(member: Member, query: string): boolean {
+  return MEMBER_NUMBER_QUERY.test(query) && Number(query) === Number(member.memberNumber);
+}
+
+function matchesDni(member: Member, query: string): boolean {
+  if (!DNI_QUERY.test(query)) return false;
+  const digits = query.replace(/\D/g, '');
+  const bare = /^\d+$/.test(query);
+  if (digits === '' || (bare && digits.length < MIN_DNI_DIGITS_WITHOUT_SEPARATORS)) return false;
+  return member.dni.includes(digits);
 }
 
 function matchesSearch(member: Member, search: string): boolean {
@@ -20,11 +36,11 @@ function matchesSearch(member: Member, search: string): boolean {
   if (!query) return true;
   const first = fold(member.firstName);
   const last = fold(member.lastName);
-  const digits = DNI_QUERY.test(query) ? query.replace(/\D/g, '') : '';
   return (
     `${first} ${last}`.includes(query) ||
     `${last} ${first}`.includes(query) ||
-    (digits !== '' && member.dni.includes(digits))
+    matchesNumber(member, query) ||
+    matchesDni(member, query)
   );
 }
 

@@ -81,6 +81,14 @@ describe('members API', () => {
     expect(body.fieldErrors.status).toBeTruthy();
   });
 
+  it('treats an empty status filter as no filter', async () => {
+    const { send } = await startApi();
+    await send('POST', '/api/members', adultInput);
+    const response = await send('GET', '/api/members?status=');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toHaveLength(1);
+  });
+
   it('updates a member with 200', async () => {
     const { send } = await startApi();
     const created = await (await send('POST', '/api/members', adultInput)).json();

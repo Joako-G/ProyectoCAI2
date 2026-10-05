@@ -174,3 +174,230 @@ a:hover {
   font-size: 11.5px;
   color: var(--color-text-muted);
 }
+
+/* Utilities and shared controls */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.button {
+  border-radius: var(--radius-md);
+  font: 600 12.5px var(--font-sans);
+  cursor: pointer;
+}
+
+.button--primary {
+  padding: 10px 16px;
+  border: 0;
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.button--primary:hover {
+  background: var(--color-accent-hover);
+}
+
+.button--secondary {
+  padding: 9px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #f3f2ef;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.button--secondary:hover {
+  background: #e9e7e2;
+}
+
+.button:focus-visible,
+.segmented__option:has(input:focus-visible),
+.members-toolbar__search-field:focus-within {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.status-chip {
+  display: inline-block;
+  padding: 4px 9px;
+  border-radius: 4px;
+  font: 600 10.5px var(--font-mono);
+}
+
+.status-chip--active {
+  background: #e3f1ea;
+  color: var(--color-success);
+}
+
+.status-chip--inactive {
+  background: #ececec;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+/* Members list */
+
+.members-page {
+  overflow: hidden;
+}
+
+.members-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.members-toolbar__search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.members-toolbar__search-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  background: #f7f6f3;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+}
+
+.members-toolbar__search-label {
+  font-size: 11px;
+  letter-spacing: 0;
+}
+
+.members-toolbar__search-field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  outline: none;
+  font: 400 13px var(--font-sans);
+  color: var(--color-text);
+}
+
+.segmented {
+  display: flex;
+  gap: 6px;
+}
+
+.segmented__option {
+  position: relative;
+  padding: 9px 14px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-sm);
+  background: #f3f2ef;
+  font: 500 12px var(--font-sans);
+  cursor: pointer;
+}
+
+.segmented__option:hover {
+  background: #e9e7e2;
+}
+
+.segmented__option:has(input:checked) {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+.segmented__option input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.members-page__summary {
+  padding: 10px 20px;
+  background: #faf9f7;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+}
+
+.members-page__notice {
+  margin: 0;
+  padding: 36px 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.members-page__notice--error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-error);
+}
+
+.members-page__notice--error p {
+  margin: 0;
+}
+
+.members-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.members-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 500;
+}
+
+.members-table td {
+  padding: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: 12px;
+}
+
+.members-table th:first-child,
+.members-table td:first-child {
+  padding-left: 20px;
+}
+
+.members-table tbody tr:hover {
+  background: #f2f6fb;
+}
+
+.members-table__number {
+  font: 600 12.5px var(--font-mono);
+}
+
+.members-table__mono {
+  font-family: var(--font-mono);
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.members-table__person {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.members-table__name {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.members-table__meta {
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.45);
+}

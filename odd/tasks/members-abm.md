@@ -36,7 +36,7 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
 - [x] T2 — Members domain + repository. Member types, validation (required fields, DNI format and uniqueness, valid birthDate, category enum, guardian required for minors), service (create with auto memberNumber, update, deactivate with date/reason, reactivate), `MemberRepository` interface and JSON implementation. Route: delegated direct writer. Acceptance: rule tests written first and passing.
 - [x] T3 — Members HTTP API. Routes/controller under `/api/members`: list (search by name/DNI, filter by status), get by id, create, update, deactivate, reactivate. Errors map to 400 (validation), 404 (not found), 409 (duplicate DNI). Synthetic seed data. Vite dev proxy `/api` → backend. Route: delegated direct writer. Acceptance: API tests against an ephemeral-port server pass; manual smoke check.
 - [x] T4 — Frontend design base. Add Vitest + Testing Library to the frontend. Design tokens, fonts, and the app shell (sidebar + header) matching the beta. Route: delegated direct writer. Acceptance: shell renders; tests, build and typecheck pass.
-- [ ] T5 — Members list screen. Table (number, name + category + age, DNI, member since, status chip), search, filter tabs (All / Active / Inactive), "Alta de socio" action, loading/empty/error states. Route: delegated direct writer. Acceptance: component tests pass; works against the real API in the browser.
+- [x] T5 — Members list screen. Table (number, name + category + age, DNI, member since, status chip), search, filter tabs (All / Active / Inactive), "Alta de socio" action, loading/empty/error states. Route: delegated direct writer. Acceptance: component tests pass; works against the real API in the browser.
 - [ ] T6 — Create/edit form, detail, deactivate/reactivate. Shared form with client validation mirroring the backend, guardian fields shown for minors, member detail view, confirmation dialog with reason for deactivation, reactivation. Route: delegated direct writer. Acceptance: component tests pass; full ABM flow verified in the browser.
 
 ## Applicable checks
@@ -139,5 +139,33 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
   - `R3-corrupt-number-test-inline-cleanup`: in `member.service.test.ts:510`, the corrupt-number test still cleans up inline. Move it to the tracked/afterEach cleanup.
   - `R3-non-array-store-shape`: in `json-member.repository.ts:6`, a `members.json` whose top level is not an array is not rejected or handled.
 
+- Re-review of the same branch plus docs commit `5567736`. The user granted consent; lineage `review-ab2e3b564ae3acad`, 3,033 lines, reliability lens. Result: approved and acknowledged; the reviewed boundary is now `5567736`. New non-blocking findings:
+  - WARNING `R3-member-number-search-unsupported`: the header promises "Búsqueda por N° de socio, DNI o nombre", but `matchesSearch` in `member.service.ts:18` only matches name and DNI. Fix it in T5: backend search by member number, with tests.
+  - SUGGESTION `R3-empty-status-query-400`: `?status=` (empty) returns 400 in `member.routes.ts:8`. Treat an empty value as no filter; fix it in T5 together with the filter tabs.
+
+- T5 (2026-10-05, route: delegated direct writer, because it touches 2+ non-trivial files).
+  - Backend:
+    - Search matches member numbers. A bare 1–4 digit query is an exact member number, ignoring leading zeros. DNI substring search needs 5 or more bare digits, or separators. User-accepted for now, may be revised later.
+    - `?status=` (empty) means no filter.
+    - Both review findings are closed.
+  - Frontend, under `features/members/`:
+    - members API client;
+    - `useMembersList` container hook;
+    - `MembersPage`, `MembersToolbar`, `MembersTable` (container and presentational components);
+    - formatting helpers.
+    - Search is submit-based (Enter or "Buscar"); a debounced live search may come later.
+    - Status filter is a radio group.
+    - "Alta de socio" has an optional `onCreate`, unwired until T6.
+  - User decision: DNI is shown as plain digits, with no thousands dots. The parent removed `formatDni`. RED: the table test could not find cell "30123456". GREEN: 43/43.
+  - TDD evidence (writer):
+    - RED: 5 backend search failures; `?status=` returned 400 instead of 200; the 5 new frontend files failed to resolve imports.
+    - GREEN: backend 124/124 and frontend 44/44, which became 43 after `formatDni` was removed.
+  - Checks:
+    - `pnpm -r typecheck`: pass.
+    - `pnpm -r build`: pass (writer).
+    - API smoke check through the Vite proxy against seeded scratch data: list 8, `search=7` returns 0007, `status=` returns all 8, `status=inactive` returns 0007.
+  - About 1,130 authored lines, over the ~400 advisory budget. The cohesive unit is the list screen with its client, container, components, CSS and about 410 lines of tests.
+
 ## Next step
-T5 (members list) on `feat/members-abm-05-list`, branched from `feat/members-abm-04-ui-shell`.
+1. Run the Gentle-AI STATUS for the T5 commit and follow its transition.
+2. Then T6 (create/edit form, detail, deactivate/reactivate) on `feat/members-abm-06-form`.

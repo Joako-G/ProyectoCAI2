@@ -481,7 +481,7 @@ describe('list', () => {
 
   it('searches by dni digits, ignoring dots', async () => {
     expect(await names({ search: '30.222' })).toEqual(['Ríos Ana']);
-    expect(await names({ search: '333' })).toEqual(['Álvarez Bruno']);
+    expect(await names({ search: '33333' })).toEqual(['Álvarez Bruno']);
   });
 
   it.each(['55.812', '55 812', '55-812'])('matches dni with separators in %j', async (search) => {
@@ -495,6 +495,41 @@ describe('list', () => {
 
     expect(await names({ search: 'Rocío 2' })).toEqual([]);
     expect(await names({ search: 'Rocío' })).toEqual(['Vega Rocío']);
+  });
+
+  describe('member number search', () => {
+    // Member numbers are 0001..0003 here, DNIs are 3011xxxx..3033xxxx.
+    it.each(['2', '02', '0002', '  0002 '])('finds a member by number %j', async (search) => {
+      expect(await names({ search })).toContain('Ríos Ana');
+    });
+
+    it('matches the number exactly, not as a prefix or substring', async () => {
+      expect(await names({ search: '0002' })).toEqual(['Ríos Ana']);
+      expect(await names({ search: '000' })).toEqual([]);
+    });
+
+    it('does not treat separators as a member number', async () => {
+      expect(await names({ search: '0.002' })).toEqual([]);
+    });
+
+    it('does not match long digit strings against member numbers', async () => {
+      expect(await names({ search: '00000002' })).toEqual([]);
+    });
+
+    it('does not match short bare numbers against dni digits', async () => {
+      expect(await names({ search: '333' })).toEqual([]);
+      expect(await names({ search: '3' })).toEqual(['Álvarez Bruno']);
+    });
+
+    it('matches dni digits from 5 digits on, or when separators are used', async () => {
+      expect(await names({ search: '33333' })).toEqual(['Álvarez Bruno']);
+      expect(await names({ search: '30.3' })).toEqual(['Álvarez Bruno']);
+    });
+
+    it('combines member number search with status', async () => {
+      expect(await names({ search: '3', status: 'active' })).toEqual([]);
+      expect(await names({ search: '3', status: 'inactive' })).toEqual(['Álvarez Bruno']);
+    });
   });
 
   it('combines search and status', async () => {
