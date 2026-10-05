@@ -231,9 +231,12 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
   - WARNING `R3-tab-escapes-parked-dialog-when-no-enabled-controls`: fixed by the parent. When there are no enabled controls (the reactivate dialog while busy), Tab is prevented and focus stays on the dialog. RED: the new ReactivateDialog test failed on `toContainElement`; the first RED attempt failed on a wrong selector and was discarded. GREEN: 119/119 twice. Typecheck passes.
   - SUGGESTION `R3-reintentar-stale-notice-untested`: still pending.
 
+- Whole-branch review (since `3f7c2ed`, 78 files, 6,838 lines). The user granted consent; lineage `review-7706fbf357304f60`. START failed with `lens_context_budget_exceeded` (`not_started`). `assess --base-ref dc205ab --committed-only` for `1bf80d1`: medium, 33 lines, `review_due: false` (`under_budget`).
+- 2026-10-05: The user completed the browser click-through of the full ABM flow; it works.
+- Delivery change (user decision, 2026-10-05): the feature-branch chain is replaced by one PR into `manu`, because every commit was already reviewed by Gentle-AI. The user accepts the size exception (about 6,800 lines). The branch `feat/members-abm` on the remote holds the whole linear chain.
+
 ## Next step
-1. The user does a browser click-through of the full ABM flow.
+1. Open the PR `feat/members-abm` → `manu` and let the team review it.
 2. Pending SUGGESTIONs:
    - `R3-reintentar-stale-notice-untested`;
    - `R3-corrupt-number-test-inline-cleanup`.
-3. Delivery (push/PR) only when the user authorizes it.
