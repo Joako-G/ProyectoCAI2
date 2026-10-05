@@ -3,6 +3,9 @@ import { randomBytes, scryptSync, timingSafeEqual, randomUUID } from 'node:crypt
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import demoUsers from './database/demo-users.json';
+import { apiNotFound, errorHandler } from './middlewares/error-handler.js';
+import { createMembersRouter } from './modules/members/member.routes.js';
+import type { MemberService } from './modules/members/member.service.js';
 
 interface DemoUser {
   id: string;
@@ -42,11 +45,17 @@ class UserRepository {
   replace(users: DemoUser[]): void { this.save(users); this.users = users; }
 }
 
-export function createApp(options: { storePath?: string; persist?: (users: DemoUser[]) => void } = {}) {
+export interface AppDependencies {
+  memberService?: MemberService;
+  storePath?: string;
+  persist?: (users: DemoUser[]) => void;
+}
+
+export function createApp(options: AppDependencies) {
 const repository = new UserRepository(options.storePath ?? defaultStorePath, options.persist);
 const app = express();
 
-app.use(express.json());
+app.use(express.json({ limit: '100kb' }));
 
 app.get('/health', (_request, response) => {
   response.json({ status: 'ok' });
@@ -120,15 +129,11 @@ app.delete('/users/:id', (request, response) => {
   response.json(safeUser(updated));
 });
 
+if (options.memberService) app.use('/api/members', createMembersRouter(options.memberService));
+app.use('/api', apiNotFound);
+app.use(errorHandler);
 return app;
 }
-
-let defaultApp: express.Express | undefined;
-export const app = express();
-app.use((request, response, next) => {
-  defaultApp ??= createApp();
-  defaultApp(request, response, next);
-});
 
 function safeUser({ id, name, email, role, active }: DemoUser) { return { id, name, email, role, active }; }
 function validName(value: unknown): value is string { return typeof value === 'string' && value.trim().length >= 2 && value.trim().length <= 100; }

@@ -1,5 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import './app.css';
+import { MembersView } from './features/members/components/MembersView';
+import { AppShell } from './layouts/AppShell';
 
 interface LoginUser {
   id: string;
@@ -19,7 +21,7 @@ export function App() {
   const [password, setPassword] = useState('');
   const [state, setState] = useState<LoginState>('idle');
   const [user, setUser] = useState<LoginUser | null>(null);
-  const [view, setView] = useState<'welcome' | 'users'>('welcome');
+  const [view, setView] = useState<'welcome' | 'users' | 'members'>('members');
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState('');
@@ -104,6 +106,13 @@ export function App() {
     }
   }
 
+  if (view === 'members') {
+    return <AppShell title="Socios" subtitle="Búsqueda por N° de socio, DNI o nombre">
+      <button className="secondary-button" onClick={() => setView('welcome')}>User administration</button>
+      <MembersView />
+    </AppShell>;
+  }
+
   return (
     <main className={view === 'users' && state === 'success' ? 'login-shell users-mode' : 'login-shell'}>
       <aside className="brand-panel" aria-label="Club Social">
@@ -142,7 +151,7 @@ export function App() {
               <p className="demo-note"><span aria-hidden="true">✦</span> Demo access · Use your test account</p>
             </form>
           )}
-          {state === 'success' && <button className="secondary-button" onClick={() => setView('users')}>Manage users</button>}
+          {state === 'success' && <><button className="secondary-button" onClick={() => setView('users')}>Manage users</button><button className="secondary-button" onClick={() => setView('members')}>Manage members</button></>}
         </div>
         <footer className="form-footer">© 2026 Club Social <span>•</span> Better together</footer>
       </section>}

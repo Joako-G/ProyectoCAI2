@@ -6,3 +6,5 @@ backend/data/users.json
 .env.*
 !.env.example
 !.env.*.example
+backend/data/*
+!backend/data/members.seed.json

@@ -26,3 +26,12 @@ The current-state requirements describe manual receipts, physical cards, and mon
 ## Engram portability and safety
 
 `.engram/config.json` names this project `club-socios`. One curated project-scoped observation was saved locally, but native sync output was **not** committed: the generated manifest named the local account and its compressed chunk embedded an absolute local path. Sharing those artifacts would leak personal machine metadata. Do not run `engram sync --all` or `engram export` from the parent workspace: that would mix obsolete or personal memories into the team handoff. If a later reviewed native export is added, the colleague can run `engram sync --status` and `engram sync --import` from the checkout with matching project, then confirm the observation in their own local Engram database. Inspect the manifest and decompress/review every chunk and its provenance before sharing or importing. Import changes a local Engram database, not this Git repository.
+
+## Shared JSON store
+
+`backend/src/database/json-store.ts` provides `createJsonStore<T>(filePath, defaultValue)`, returning `read()` and `update(fn)`. A missing file yields the default value, writes are atomic (temp file + rename) and serialized per file, and invalid JSON on disk throws instead of being overwritten.
+
+- Each module owns its own file (for example `members.json`, `users.json`); do not share one file between modules.
+- It is demo-only: not for production, real data, or multi-process use.
+- Domain code depends on a repository interface; only the JSON repository implementation may import this helper.
+- Run its tests with `pnpm --filter @club-socios/backend test`.

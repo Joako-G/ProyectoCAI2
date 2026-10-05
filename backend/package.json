@@ -4,9 +4,10 @@
   "version": "0.0.0",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
     "start": "node dist/server.js",
-    "test": "pnpm run build && node --test"
+    "seed": "tsc -p tsconfig.json && node dist/scripts/seed.js",
+    "test": "pnpm run build && node --test tests/auth.test.mjs tests/users.test.mjs && vitest run tests/config/paths.test.ts tests/json-store.test.ts tests/members"
   },
   "dependencies": {
     "express": "5.1.0"
@@ -14,6 +15,7 @@
   "devDependencies": {
     "@types/express": "5.0.3",
     "@types/node": "24.3.1",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "vitest": "5.0.3"
   }
 }
