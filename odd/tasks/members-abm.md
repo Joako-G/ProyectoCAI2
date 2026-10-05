@@ -166,6 +166,9 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
     - API smoke check through the Vite proxy against seeded scratch data: list 8, `search=7` returns 0007, `status=` returns all 8, `status=inactive` returns 0007.
   - About 1,130 authored lines, over the ~400 advisory budget. The cohesive unit is the list screen with its client, container, components, CSS and about 410 lines of tests.
 
+- T5 review. The user granted consent; lineage `review-3824175cd505050f`, 4,163 lines, reliability lens. Result: approved and acknowledged; the reviewed boundary is now `562ef7c`. Findings:
+  - WARNING `R3-stale-response-test-vacuous`: in `MembersPage.test.tsx`, a single `await Promise.resolve()` did not let the stale response settle. Fixed in this commit: the stale resolution is wrapped in `act` and a macrotask flush. Mutation check: with the abort guard removed from `useMembersList`, the test fails (1 failed / 9 passed); with the guard restored, it passes 43/43. Typecheck passes.
+  - SUGGESTION `R3-non-array-store-shape`: still pending, see above.
+
 ## Next step
-1. Run the Gentle-AI STATUS for the T5 commit and follow its transition.
-2. Then T6 (create/edit form, detail, deactivate/reactivate) on `feat/members-abm-06-form`.
+T6 (create/edit form, detail, deactivate/reactivate) on `feat/members-abm-06-form`, branched from `feat/members-abm-05-list`.

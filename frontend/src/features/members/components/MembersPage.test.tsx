@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildMember, jsonResponse } from '../test/fixtures';
@@ -131,8 +131,11 @@ describe('MembersPage', () => {
     await user.click(screen.getByRole('radio', { name: 'Inactivos' }));
     expect(await screen.findByText('Ana Álvarez')).toBeInTheDocument();
 
-    resolveFirst(jsonResponse([lucia]));
-    await Promise.resolve();
+    // Let the stale response settle completely (json() and any state update) before asserting.
+    await act(async () => {
+      resolveFirst(jsonResponse([lucia]));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
 
     expect(screen.queryByText('Lucía Ríos')).not.toBeInTheDocument();
     expect(screen.getByText('Ana Álvarez')).toBeInTheDocument();
