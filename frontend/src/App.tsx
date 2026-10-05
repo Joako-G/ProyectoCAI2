@@ -21,7 +21,7 @@ export function App() {
   const [password, setPassword] = useState('');
   const [state, setState] = useState<LoginState>('idle');
   const [user, setUser] = useState<LoginUser | null>(null);
-  const [view, setView] = useState<'welcome' | 'users' | 'members'>('members');
+  const [view, setView] = useState<'welcome' | 'users' | 'members'>('welcome');
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState('');
@@ -32,7 +32,7 @@ export function App() {
   const [formOpen, setFormOpen] = useState(false);
 
   useEffect(() => {
-    if (view !== 'users') return;
+    if (state !== 'success' || !user || view !== 'users') return;
     let cancelled = false;
     setUsersLoading(true);
     setUsersError('');
@@ -43,7 +43,7 @@ export function App() {
       if (!cancelled) setUsersError('We could not load users. Please try again.');
     }).finally(() => { if (!cancelled) setUsersLoading(false); });
     return () => { cancelled = true; };
-  }, [view]);
+  }, [state, user, view]);
 
   function openForm(target?: ManagedUser) {
     setFormOpen(true);
@@ -100,13 +100,14 @@ export function App() {
       const result = (await response.json()) as { user: LoginUser };
       setUser(result.user);
       setPassword('');
+      setView('members');
       setState('success');
     } catch {
       setState('error');
     }
   }
 
-  if (view === 'members') {
+  if (state === 'success' && user && view === 'members') {
     return <AppShell title="Socios" subtitle="Búsqueda por N° de socio, DNI o nombre">
       <button className="secondary-button" onClick={() => setView('welcome')}>User administration</button>
       <MembersView />
