@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -43,5 +43,30 @@ describe('json member repository', () => {
     ).rejects.toThrow('boom');
 
     expect(await repository.list()).toEqual([member]);
+  });
+
+  describe('when the file does not hold a JSON array', () => {
+    const content = '{"members":[]}\n';
+
+    it('fails to list with a clear error', async () => {
+      await writeFile(file, content, 'utf8');
+
+      await expect(createJsonMemberRepository(file).list()).rejects.toThrow(/must contain a JSON array/);
+    });
+
+    it('fails to mutate and leaves the file untouched', async () => {
+      await writeFile(file, content, 'utf8');
+      let called = false;
+
+      await expect(
+        createJsonMemberRepository(file).mutate((members) => {
+          called = true;
+          return { members: [...members], result: null };
+        }),
+      ).rejects.toThrow(/must contain a JSON array/);
+
+      expect(called).toBe(false);
+      expect(await readFile(file, 'utf8')).toBe(content);
+    });
   });
 });

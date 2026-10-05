@@ -512,8 +512,20 @@ describe('list', () => {
       expect(await names({ search: '0.002' })).toEqual([]);
     });
 
-    it('does not match long digit strings against member numbers', async () => {
-      expect(await names({ search: '00000002' })).toEqual([]);
+    it('ignores leading zeros at any length when matching a member number', async () => {
+      expect(await names({ search: '00000002' })).toEqual(['Ríos Ana']);
+    });
+
+    it('finds members whose number grew past 9999, exactly', async () => {
+      await writeFile(
+        ctx.file,
+        JSON.stringify([{ ...(await ctx.repository.list())[0]!, id: 'big', firstName: 'Zed', lastName: 'Zeta', memberNumber: '10000', dni: '40999888' }]),
+        'utf8',
+      );
+
+      expect(await names({ search: '10000' })).toEqual(['Zeta Zed']);
+      expect(await names({ search: '010000' })).toEqual(['Zeta Zed']);
+      expect(await names({ search: '1000' })).toEqual([]);
     });
 
     it('does not match short bare numbers against dni digits', async () => {

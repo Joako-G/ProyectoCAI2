@@ -38,5 +38,11 @@ export function useMembersList() {
 
   const retry = useCallback(() => setAttempt((current) => current + 1), []);
 
-  return { search, status, state, setSearch, setStatus, retry };
+  // Submitting the same text again acts as a refresh: the unchanged state alone would not refetch.
+  const submitSearch = useCallback((next: string) => {
+    setSearch(next);
+    setAttempt((current) => current + 1);
+  }, []);
+
+  return { search, status, state, setSearch: submitSearch, setStatus, retry };
 }

@@ -107,6 +107,23 @@ describe('MembersPage', () => {
     );
   });
 
+  it('refetches when the same search is submitted again', async () => {
+    fetchMock.mockImplementation(async () => jsonResponse([lucia]));
+    const user = userEvent.setup();
+    render(<MembersPage today={TODAY} />);
+    await screen.findByText('Lucía Ríos');
+
+    await user.type(screen.getByRole('searchbox', { name: /Buscar socio/ }), 'x{Enter}');
+    await waitFor(() => expect(requestedUrls()).toEqual(['/api/members', '/api/members?search=x']));
+    await screen.findByText('Lucía Ríos');
+
+    await user.type(screen.getByRole('searchbox', { name: /Buscar socio/ }), '{Enter}');
+
+    await waitFor(() =>
+      expect(requestedUrls()).toEqual(['/api/members', '/api/members?search=x', '/api/members?search=x']),
+    );
+  });
+
   it('filters by status when a tab is chosen', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse([lucia, ana]));
     fetchMock.mockResolvedValueOnce(jsonResponse([ana]));

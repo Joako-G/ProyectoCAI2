@@ -10,23 +10,24 @@ export interface MemberServiceDeps {
 }
 
 const DNI_QUERY = /^[\d.\s-]+$/;
-const MEMBER_NUMBER_QUERY = /^\d{1,4}$/;
+const BARE_DIGITS_QUERY = /^\d+$/;
 const MIN_DNI_DIGITS_WITHOUT_SEPARATORS = 5;
 
 function fold(value: string): string {
   return value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 }
 
-// A bare 1-4 digit query is a member number (exact, leading zeros ignored: "7" = "0007"). Longer bare
-// numbers and separated ones ("30.1") search DNIs, so a short number never matches every DNI containing it.
+// A bare digit query of any length matches a member number by value (exact, leading zeros ignored:
+// "7" = "0007", "10000" = "10000"), so numbers past 9999 stay searchable. It additionally searches DNIs only
+// from 5 digits on, or when separated ("30.1"), so a short number never matches every DNI containing it.
 function matchesNumber(member: Member, query: string): boolean {
-  return MEMBER_NUMBER_QUERY.test(query) && Number(query) === Number(member.memberNumber);
+  return BARE_DIGITS_QUERY.test(query) && Number(query) === Number(member.memberNumber);
 }
 
 function matchesDni(member: Member, query: string): boolean {
   if (!DNI_QUERY.test(query)) return false;
   const digits = query.replace(/\D/g, '');
-  const bare = /^\d+$/.test(query);
+  const bare = BARE_DIGITS_QUERY.test(query);
   if (digits === '' || (bare && digits.length < MIN_DNI_DIGITS_WITHOUT_SEPARATORS)) return false;
   return member.dni.includes(digits);
 }

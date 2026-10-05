@@ -170,5 +170,22 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
   - WARNING `R3-stale-response-test-vacuous`: in `MembersPage.test.tsx`, a single `await Promise.resolve()` did not let the stale response settle. Fixed in this commit: the stale resolution is wrapped in `act` and a macrotask flush. Mutation check: with the abort guard removed from `useMembersList`, the test fails (1 failed / 9 passed); with the guard restored, it passes 43/43. Typecheck passes.
   - SUGGESTION `R3-non-array-store-shape`: still pending, see above.
 
+- Re-review including `e5f4eb8`. The user granted consent; lineage `review-810fd5dfe1a376fe`, 4,169 lines. Result: approved and acknowledged; the reviewed boundary is now `e5f4eb8`. Non-blocking findings:
+  - WARNING `R3-non-array-store-shape`, raised from SUGGESTION: `json-member.repository.ts:6` does not handle a `members.json` whose top level is not an array.
+  - SUGGESTION `R3-member-number-over-9999-unsearchable`: `member.service.ts:13`. Numbers are padded to 4 digits but grow past 9999. A 5-digit member number is routed to DNI search, so it cannot be found by number.
+  - SUGGESTION `R3-resubmit-same-search-no-refetch`: in `useMembersList.ts:37`, submitting the same search again does not refetch.
+
+- Findings fix (user-approved before T6; route: delegated direct writer, backend and frontend). All three findings are fixed:
+  - Non-array store: `assertMembers` makes `list()` and `mutate()` fail with a clear error, and the file is never rewritten.
+  - Member numbers: any bare digit query matches by numeric value. DNI search still needs 5+ digits or separators. The test for `00000002` now expects member 0002.
+  - Re-submitting the same search refetches: submit bumps `attempt`.
+
+  TDD evidence. RED:
+  - `list` resolved instead of rejecting; `mutate` failed with "members is not iterable" instead of the clear error;
+  - `search 10000` returned `[]`;
+  - the second `?search=x` request was missing.
+
+  GREEN: backend 127/127, frontend 44/44 (parent re-run). Typecheck passes. About 93 lines.
+
 ## Next step
 T6 (create/edit form, detail, deactivate/reactivate) on `feat/members-abm-06-form`, branched from `feat/members-abm-05-list`.
