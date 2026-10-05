@@ -65,7 +65,7 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
   - Search matches "first last", "last first" and DNI digits, accent-insensitive.
   - Phones are stored normalized.
   - Guardian error keys are `guardian.name`/`guardian.contact`.
-  - Parent-chosen rules (pending user confirmation): adulthood at 18, WhatsApp required, DNI 7–8 digits unique including inactive members, numbers never reused, category not validated against age, reactivation drops the previous deactivation record.
+  - Member rules (user-confirmed 2026-10-05): adulthood at 18, WhatsApp required, DNI 7–8 digits unique including inactive members, numbers never reused, category not validated against age, reactivation drops the previous deactivation record.
 - T2 evidence: RED = 2 test files failed with "Cannot find module ... errors.js / json-member.repository.js" while the 14 existing tests passed. GREEN = 76/76 (parent re-run 76/76). Backend typecheck, `pnpm -r build` and `pnpm -r typecheck` pass. Authored: 841 lines (src 325, tests 518), over the ~400 slice budget. One slicing pass found no cohesive split, since the tests verify the rules in the same unit. Recommend `size:exception` for slice 2.
 
 - T2 committed as `5b132dc`. Gentle-AI review (consent granted, lineage `review-912b9c3782c03dfb`, base `976b32d`, T1 follow-up + T2, 927 lines, medium, reliability lens): approved and acknowledged; reviewed boundary is now `5b132dc`. Non-blocking findings (pending):
@@ -116,6 +116,7 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
 
   Checks: `corepack pnpm -r typecheck` passes; `corepack pnpm -r build` passes; backend tests pass 113/113. The smoke check against a scratch `MEMBERS_FILE` passed: seed 8, re-seed refused with exit 1, `--force` reseeded 8, GET list returned 8, unknown id returned 404 `not_found`, bogus charset returned 415 `bad_request`. RED evidence stays unknown and is disclosed as such.
 
+  - Committed as `84cb0d4`. `gentle-ai review assess --base-ref 277270c --committed-only` returned medium risk (`executable_change`, `error-handler.ts`, 193 lines) with `review_due` false (`under_budget`). The slice stays pending from boundary `277270c` until a later commit reaches the budget.
+
 ## Next step
-1. Commit the T3 follow-up and close its Gentle-AI review.
-2. Start T4 on `feat/members-abm-04-ui-shell` only after that review closes.
+Start T4 (frontend Vitest + tokens + shell) on `feat/members-abm-04-ui-shell`, branched from `feat/members-abm-03-api`.
