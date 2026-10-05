@@ -6,6 +6,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.test.json",
     "start": "node dist/server.js",
+    "seed": "tsc -p tsconfig.json && node dist/scripts/seed.js",
     "test": "vitest run"
   },
   "dependencies": {

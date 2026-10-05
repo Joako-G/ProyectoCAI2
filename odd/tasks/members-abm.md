@@ -34,7 +34,7 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
 ## Tasks
 - [x] T1 — Backend test runner + shared JSON store. Add Vitest to the backend. Implement `backend/src/database/json-store.ts`: read with a default value, atomic write (temp file + rename), serialized writes per file. Tests cover missing file, round trip, concurrent writes without corruption. Route: delegated direct writer. Acceptance: tests, build and typecheck pass; helper documented for the teammate.
 - [x] T2 — Members domain + repository. Member types, validation (required fields, DNI format and uniqueness, valid birthDate, category enum, guardian required for minors), service (create with auto memberNumber, update, deactivate with date/reason, reactivate), `MemberRepository` interface and JSON implementation. Route: delegated direct writer. Acceptance: rule tests written first and passing.
-- [ ] T3 — Members HTTP API. Routes/controller under `/api/members`: list (search by name/DNI, filter by status), get by id, create, update, deactivate, reactivate. Errors map to 400 (validation), 404 (not found), 409 (duplicate DNI). Synthetic seed data. Vite dev proxy `/api` → backend. Route: delegated direct writer. Acceptance: API tests against an ephemeral-port server pass; manual smoke check.
+- [x] T3 — Members HTTP API. Routes/controller under `/api/members`: list (search by name/DNI, filter by status), get by id, create, update, deactivate, reactivate. Errors map to 400 (validation), 404 (not found), 409 (duplicate DNI). Synthetic seed data. Vite dev proxy `/api` → backend. Route: delegated direct writer. Acceptance: API tests against an ephemeral-port server pass; manual smoke check.
 - [ ] T4 — Frontend design base. Add Vitest + Testing Library to the frontend. Design tokens, fonts, and the app shell (sidebar + header) matching the beta. Route: delegated direct writer. Acceptance: shell renders; tests, build and typecheck pass.
 - [ ] T5 — Members list screen. Table (number, name + category + age, DNI, member since, status chip), search, filter tabs (All / Active / Inactive), "Alta de socio" action, loading/empty/error states. Route: delegated direct writer. Acceptance: component tests pass; works against the real API in the browser.
 - [ ] T6 — Create/edit form, detail, deactivate/reactivate. Shared form with client validation mirroring the backend, guardian fields shown for minors, member detail view, confirmation dialog with reason for deactivation, reactivation. Route: delegated direct writer. Acceptance: component tests pass; full ABM flow verified in the browser.
@@ -81,5 +81,18 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
   - RED evidence: "Rocío 2" matched an unrelated member; the next number was `0NaN`; 3 failures under `TZ=UTC`.
   - GREEN: 88/88 under the default TZ, UTC, Asia/Tokyo and America/Los_Angeles; the parent re-ran default and UTC, both 88/88. Typecheck and build pass. ~150 authored lines.
 
+- T2 follow-up committed as `6161321`. Gentle-AI review (consent granted, lineage `review-9e4f5ce93841b82d`, whole branch from `3f7c2ed`, 1,479 lines, medium, reliability lens): approved and acknowledged. One pending suggestion, `R3-adhoc-context-cleanup-not-guaranteed`: member service tests call cleanup inline instead of in `finally`/`afterEach`, so temp dirs leak only when a test fails.
+- T3 (delegated writer, slice 3):
+  - `createApp({ memberService })` keeps `/health`, uses `express.json({ limit: '100kb' })` and mounts `/api/members`; the auth insertion point is marked.
+  - Six routes, no delete route. Shared `errorHandler`/`apiNotFound` map errors to 400 `validation_error`/`invalid_json`, 404 `not_found`, 409 `conflict`, 413 `payload_too_large` and 500 `internal_error` (no internals leaked).
+  - Data file is `MEMBERS_FILE`, default `backend/data/members.json`; it is gitignored and only `members.seed.json` is versioned.
+  - Seed: `corepack pnpm --filter @club-socios/backend seed [--force]` loads 8 synthetic members through the service (1 inactive via `deactivate`). Vite proxies `/api` to `http://localhost:3001`. README updated.
+- T3 evidence:
+  - RED: 15 failures (`createApp is not a function`, seed module missing). GREEN: 106/106 (parent re-run 106/106).
+  - Typecheck and build pass.
+  - Smoke check: `/health` 200; `GET /api/members` 200 with 8 members; `search=rios` 1 member; invalid POST 400.
+  - ~565 authored lines (tests 253, seed JSON 80, README 28); over the advisory budget. The cohesive unit is the API with its tests.
+  - Known: backend `build` also emits `dist/scripts/seed.js` (intended; the seed runs from `dist`).
+
 ## Next step
-Commit the T2 follow-up and close its review, then start T3 on `feat/members-abm-03-api`.
+Commit T3 and close its review, then start T4 on `feat/members-abm-04-ui-shell`.
