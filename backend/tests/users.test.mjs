@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -105,4 +105,49 @@ test('DELETE deactivates and a newly loaded app reads the same persistent users'
   } finally {
     await new Promise((resolve, reject) => reloadedServer.close((error) => error ? reject(error) : resolve()));
   }
+});
+
+test('failed persistence does not expose a created user or persistence details', async () => {
+  const failingApp = createApp({
+    storePath: join(directory, 'failing-users.json'),
+    persist: () => { throw new Error('private store path'); },
+  });
+  const failingServer = failingApp.listen(0);
+  await new Promise((resolve) => failingServer.once('listening', resolve));
+  try {
+    const url = `http://127.0.0.1:${failingServer.address().port}`;
+    const createResponse = await fetch(`${url}/users`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Failure User', email: 'failure@club.test', role: 'member', password: 'ValidPass123!' }),
+    });
+    assert.equal(createResponse.status, 500);
+    assert.deepEqual(await createResponse.json(), { error: 'Unable to save users' });
+
+    const before = await (await fetch(`${url}/users`)).json();
+    const existing = before[0];
+    const patchResponse = await fetch(`${url}/users/${existing.id}`, {
+      method: 'PATCH', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'Uncommitted Name' }),
+    });
+    assert.equal(patchResponse.status, 500);
+    const deleteResponse = await fetch(`${url}/users/${existing.id}`, { method: 'DELETE' });
+    assert.equal(deleteResponse.status, 500);
+
+    const listResponse = await fetch(`${url}/users`);
+    assert.equal(listResponse.status, 200);
+    const after = await listResponse.json();
+    assert.equal(after.some((user) => user.email === 'failure@club.test'), false);
+    assert.deepEqual(after.find((user) => user.id === existing.id), existing);
+  } finally {
+    await new Promise((resolve, reject) => failingServer.close((error) => error ? reject(error) : resolve()));
+  }
+});
+
+test('malformed store fails closed without replacing its contents', async () => {
+  const malformedPath = join(directory, 'malformed-users.json');
+  const malformed = '{not valid json';
+  await writeFile(malformedPath, malformed);
+  assert.throws(() => createApp({ storePath: malformedPath }));
+  assert.equal(await readFile(malformedPath, 'utf8'), malformed);
 });

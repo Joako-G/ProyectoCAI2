@@ -1,6 +1,6 @@
 import express from 'express';
 import { randomBytes, scryptSync, timingSafeEqual, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import demoUsers from './database/demo-users.json';
 
@@ -18,7 +18,7 @@ const defaultStorePath = join(__dirname, '..', 'data', 'users.json');
 class UserRepository {
   private users: DemoUser[];
 
-  constructor(private readonly storePath: string) {
+  constructor(private readonly storePath: string, private readonly persistOverride?: (users: DemoUser[]) => void) {
     if (!existsSync(storePath)) {
       mkdirSync(dirname(storePath), { recursive: true });
       writeFileSync(storePath, `${JSON.stringify(demoUsers, null, 2)}\n`, { flag: 'wx' });
@@ -27,11 +27,23 @@ class UserRepository {
   }
 
   list(): DemoUser[] { return this.users; }
-  save(): void { writeFileSync(this.storePath, `${JSON.stringify(this.users, null, 2)}\n`); }
+  save(users: DemoUser[]): void {
+    if (this.persistOverride) { this.persistOverride(users); return; }
+    const temporaryPath = `${this.storePath}.${randomUUID()}.tmp`;
+    try {
+      writeFileSync(temporaryPath, `${JSON.stringify(users, null, 2)}\n`, { flag: 'wx' });
+      renameSync(temporaryPath, this.storePath);
+    } finally {
+      if (existsSync(temporaryPath)) {
+        try { unlinkSync(temporaryPath); } catch { /* Best-effort cleanup. */ }
+      }
+    }
+  }
+  replace(users: DemoUser[]): void { this.save(users); this.users = users; }
 }
 
-export function createApp(options: { storePath?: string } = {}) {
-const repository = new UserRepository(options.storePath ?? defaultStorePath);
+export function createApp(options: { storePath?: string; persist?: (users: DemoUser[]) => void } = {}) {
+const repository = new UserRepository(options.storePath ?? defaultStorePath, options.persist);
 const app = express();
 
 app.use(express.json());
@@ -70,8 +82,7 @@ app.post('/users', (request, response) => {
     return;
   }
   const user: DemoUser = { id: randomUUID(), name: name.trim(), email: email.trim(), role, passwordHash: hashPassword(password), active: true };
-  repository.list().push(user);
-  repository.save();
+  try { repository.replace([...repository.list(), user]); } catch { response.status(500).json({ error: 'Unable to save users' }); return; }
   response.status(201).json(safeUser(user));
 });
 
@@ -89,21 +100,24 @@ app.patch('/users/:id', (request, response) => {
   if (body.email !== undefined && repository.list().some((candidate) => candidate.id !== user.id && candidate.email.toLowerCase() === body.email.trim().toLowerCase())) {
     response.status(409).json({ error: 'Email already exists' }); return;
   }
-  if (body.name !== undefined) user.name = body.name.trim();
-  if (body.email !== undefined) user.email = body.email.trim();
-  if (body.role !== undefined) user.role = body.role;
-  if (body.active !== undefined) user.active = body.active;
-  if (body.password !== undefined) user.passwordHash = hashPassword(body.password);
-  repository.save();
-  response.json(safeUser(user));
+  const updated = { ...user };
+  if (body.name !== undefined) updated.name = body.name.trim();
+  if (body.email !== undefined) updated.email = body.email.trim();
+  if (body.role !== undefined) updated.role = body.role;
+  if (body.active !== undefined) updated.active = body.active;
+  if (body.password !== undefined) updated.passwordHash = hashPassword(body.password);
+  try { repository.replace(repository.list().map((candidate) => candidate.id === user.id ? updated : candidate)); }
+  catch { response.status(500).json({ error: 'Unable to save users' }); return; }
+  response.json(safeUser(updated));
 });
 
 app.delete('/users/:id', (request, response) => {
   const user = repository.list().find((candidate) => candidate.id === request.params.id);
   if (!user) { response.status(404).json({ error: 'User not found' }); return; }
-  user.active = false;
-  repository.save();
-  response.json(safeUser(user));
+  const updated = { ...user, active: false };
+  try { repository.replace(repository.list().map((candidate) => candidate.id === user.id ? updated : candidate)); }
+  catch { response.status(500).json({ error: 'Unable to save users' }); return; }
+  response.json(safeUser(updated));
 });
 
 return app;
