@@ -30,7 +30,22 @@ export const minorInput: MemberInput = {
 
 export async function createTestContext(now: () => Date = () => TODAY) {
   const dir = await mkdtemp(join(tmpdir(), 'members-'));
-  const repository = createJsonMemberRepository(join(dir, 'members.json'));
+  const file = join(dir, 'members.json');
+  const repository = createJsonMemberRepository(file);
   const service = createMemberService({ repository, now });
-  return { service, repository, cleanup: () => rm(dir, { recursive: true, force: true }) };
+  return { service, repository, file, cleanup: () => rm(dir, { recursive: true, force: true }) };
+}
+
+export function trackContexts() {
+  const cleanups: Array<() => Promise<void>> = [];
+  return {
+    async create(now?: () => Date) {
+      const context = await createTestContext(now);
+      cleanups.push(context.cleanup);
+      return context;
+    },
+    async cleanup() {
+      while (cleanups.length > 0) await cleanups.pop()!();
+    },
+  };
 }

@@ -22,7 +22,7 @@ async function setup() {
 describe('seedMembers', () => {
   it('loads the synthetic seed through the service', async () => {
     const { service, repository, entries } = await setup();
-    const count = await seedMembers({ service, repository, entries });
+    const count = await seedMembers({ repository, entries });
 
     const members = await service.list();
     expect(count).toBe(entries.length);
@@ -37,19 +37,39 @@ describe('seedMembers', () => {
 
   it('refuses to overwrite existing data without force', async () => {
     const { service, repository, entries } = await setup();
-    await seedMembers({ service, repository, entries });
+    await seedMembers({ repository, entries });
 
-    await expect(seedMembers({ service, repository, entries })).rejects.toThrow(/already has data/);
+    await expect(seedMembers({ repository, entries })).rejects.toThrow(/already has data/);
     expect(await service.list()).toHaveLength(8);
   });
 
   it('replaces existing data when forced', async () => {
     const { service, repository, entries } = await setup();
-    await seedMembers({ service, repository, entries });
-    await seedMembers({ service, repository, entries, force: true });
+    await seedMembers({ repository, entries });
+    await seedMembers({ repository, entries, force: true });
 
     const members = await service.list();
     expect(members).toHaveLength(8);
     expect(members.map((m) => m.memberNumber).sort()[0]).toBe('0001');
+  });
+
+  it('leaves the original file byte-for-byte unchanged when a forced seed fails', async () => {
+    const { repository, entries, file } = await setup();
+    await seedMembers({ repository, entries });
+    const before = await readFile(file, 'utf8');
+    const invalid = [...entries, { ...entries[0]! }];
+
+    await expect(seedMembers({ repository, entries: invalid, force: true })).rejects.toThrow(/DNI/);
+
+    expect(await readFile(file, 'utf8')).toBe(before);
+  });
+
+  it('does not create the file when a first seed fails', async () => {
+    const { repository, entries, file } = await setup();
+    const invalid = [...entries, { ...entries[0]! }];
+
+    await expect(seedMembers({ repository, entries: invalid })).rejects.toThrow(/DNI/);
+
+    await expect(readFile(file, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' });
   });
 });

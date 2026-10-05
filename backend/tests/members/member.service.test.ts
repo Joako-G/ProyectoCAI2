@@ -5,15 +5,16 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createJsonMemberRepository } from '../../src/modules/members/json-member.repository.js';
 import { createMemberService } from '../../src/modules/members/member.service.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../src/shared/errors.js';
-import { adultInput, createTestContext, minorInput, TODAY } from './helpers.js';
+import { adultInput, minorInput, TODAY, trackContexts } from './helpers.js';
 
-let ctx: Awaited<ReturnType<typeof createTestContext>>;
+const contexts = trackContexts();
+let ctx: Awaited<ReturnType<typeof contexts.create>>;
 
 beforeEach(async () => {
-  ctx = await createTestContext();
+  ctx = await contexts.create();
 });
 
-afterEach(() => ctx.cleanup());
+afterEach(() => contexts.cleanup());
 
 async function fieldErrors(action: Promise<unknown>): Promise<Record<string, string>> {
   const error = await action.then(
@@ -217,11 +218,10 @@ describe('create', () => {
 
   describe('minor boundary', () => {
     it('is a minor the day before the 18th birthday', async () => {
-      const dayBefore = await createTestContext(() => new Date('2026-10-04T15:00:00Z'));
+      const dayBefore = await contexts.create(() => new Date('2026-10-04T15:00:00Z'));
       const { guardian: _guardian, ...input } = minorInput;
 
       const errors = await fieldErrors(dayBefore.service.create({ ...input, birthDate: '2008-10-05', memberSince: '2020-01-01' }));
-      await dayBefore.cleanup();
 
       expect(errors).toHaveProperty('guardian.name');
     });
@@ -246,7 +246,7 @@ describe('create', () => {
 
 describe('club calendar date', () => {
   const { guardian: _guardian, ...withoutGuardian } = minorInput;
-  const at = (instant: string) => createTestContext(() => new Date(instant));
+  const at = (instant: string) => contexts.create(() => new Date(instant));
 
   it.each([
     ['2026-10-05T02:00:00Z', '2026-10-04'],
@@ -254,12 +254,10 @@ describe('club calendar date', () => {
   ])('dates a deactivation at %s as %s in Tucumán', async (instant, date) => {
     const local = await at('2026-01-01T12:00:00Z');
     const created = await local.service.create(adultInput);
-    await local.cleanup();
     const later = await at(instant);
     await later.repository.mutate(() => ({ members: [created], result: null }));
 
     const inactive = await later.service.deactivate(created.id, 'Left');
-    await later.cleanup();
 
     expect(inactive.deactivation?.date).toBe(date);
     expect(inactive.updatedAt).toBe(instant.replace('Z', '.000Z'));
@@ -272,7 +270,6 @@ describe('club calendar date', () => {
 
     const errors = await fieldErrors(before.service.create(input));
     const adult = await after.service.create(input);
-    await Promise.all([before.cleanup(), after.cleanup()]);
 
     expect(errors).toHaveProperty('guardian.name');
     expect(adult).not.toHaveProperty('guardian');
@@ -282,7 +279,6 @@ describe('club calendar date', () => {
     const late = await at('2026-10-05T02:00:00Z');
 
     const errors = await fieldErrors(late.service.create({ ...adultInput, memberSince: '2026-10-05' }));
-    await late.cleanup();
 
     expect(errors).toHaveProperty('memberSince');
   });
@@ -294,7 +290,6 @@ describe('club calendar date', () => {
 
     const errors = await fieldErrors(eve.service.create(input));
     const adult = await day.service.create(input);
-    await Promise.all([eve.cleanup(), day.cleanup()]);
 
     expect(errors).toHaveProperty('guardian.name');
     expect(adult).not.toHaveProperty('guardian');
@@ -304,12 +299,11 @@ describe('club calendar date', () => {
 describe('update', () => {
   it('changes personal fields and keeps identity, number, status and createdAt', async () => {
     const clock = { value: TODAY };
-    const local = await createTestContext(() => clock.value);
+    const local = await contexts.create(() => clock.value);
     const created = await local.service.create(adultInput);
     clock.value = new Date('2026-10-06T15:00:00Z');
 
     const updated = await local.service.update(created.id, { ...adultInput, lastName: 'Rios Pérez', dni: '31000111' });
-    await local.cleanup();
 
     expect(updated).toMatchObject({
       id: created.id,

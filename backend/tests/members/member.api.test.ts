@@ -181,6 +181,26 @@ describe('members API', () => {
     expect((await response.json()).error).toBe('invalid_json');
   });
 
+  it('returns 413 payload_too_large for a body over 100kb', async () => {
+    const { send } = await startApi();
+    const response = await send('POST', '/api/members', { ...adultInput, notes: 'x'.repeat(101 * 1024) });
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({ error: 'payload_too_large', message: 'Request body is too large' });
+  });
+
+  it('maps other client body-parser errors to their 4xx status, not 500', async () => {
+    const { baseUrl } = await startApi();
+    const response = await fetch(`${baseUrl}/api/members`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json; charset=bogus' },
+      body: JSON.stringify(adultInput),
+    });
+    expect(response.status).toBe(415);
+    const body = await response.json();
+    expect(body.error).toBe('bad_request');
+    expect(body.message).toContain('BOGUS');
+  });
+
   it('hides internals on unexpected errors', async () => {
     const error = new Error('ENOENT: C:\\secret\\members.json');
     const failing = { list: () => Promise.reject(error) } as unknown as MemberService;

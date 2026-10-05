@@ -94,5 +94,28 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
   - ~565 authored lines (tests 253, seed JSON 80, README 28); over the advisory budget. The cohesive unit is the API with its tests.
   - Known: backend `build` also emits `dist/scripts/seed.js` (intended; the seed runs from `dist`).
 
+- T3 committed as `277270c`. Gentle-AI review (consent granted, lineage `review-61d74b99a33402ac`, 550 lines, medium, reliability lens): approved and acknowledged; reviewed boundary is now `277270c`. Non-blocking findings:
+  - WARNING: forced seed not atomic.
+  - WARNING: 413 untested and missing from the README.
+  - SUGGESTION: `MEMBERS_FILE` resolution untested.
+  - SUGGESTION: other client body-parser errors return 500.
+
+  A later whole-branch candidate (since `3f7c2ed`, 2,025 lines, already reviewed piece by piece) was declined by the user for that candidate only.
+- T3 follow-up (user-approved) for those findings plus the T2 cleanup suggestion. The writer was stopped on 2026-10-05 at the user's request ("espera y guarda"), just before its build and typecheck step. Uncommitted work remains on `feat/members-abm-03-api`: `README.md`, `error-handler.ts`, `member.seed.ts`, `scripts/seed.ts`, `tests/members/{helpers,member.api,member.seed,member.service}.test.ts`, and new `backend/tests/config/`. The parent ran the backend tests (113/113) and the backend typecheck, and both passed. Not yet done:
+  - review of the diff by the parent;
+  - RED evidence (unknown, since the writer's report was never received);
+  - `pnpm -r build` and the runtime smoke check;
+  - commit and Gentle-AI review.
+
+  Resumed 2026-10-05 (session 2). The parent's diff review confirms all five findings are addressed:
+  - forced seed: builds on an in-memory scratch repository through the service, then writes the target once;
+  - 413 test and README;
+  - `paths.test.ts`;
+  - `clientError` maps exposed 4xx errors to `bad_request`;
+  - `trackContexts` with `afterEach` cleanup.
+
+  Checks: `corepack pnpm -r typecheck` passes; `corepack pnpm -r build` passes; backend tests pass 113/113. The smoke check against a scratch `MEMBERS_FILE` passed: seed 8, re-seed refused with exit 1, `--force` reseeded 8, GET list returned 8, unknown id returned 404 `not_found`, bogus charset returned 415 `bad_request`. RED evidence stays unknown and is disclosed as such.
+
 ## Next step
-Commit T3 and close its review, then start T4 on `feat/members-abm-04-ui-shell`.
+1. Commit the T3 follow-up and close its Gentle-AI review.
+2. Start T4 on `feat/members-abm-04-ui-shell` only after that review closes.

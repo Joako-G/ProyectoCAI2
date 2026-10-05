@@ -28,7 +28,7 @@ Members are stored in a JSON file (`backend/data/members.json`, or the path in `
 | POST | `/api/members/:id/deactivate` | Body `{ "reason": "..." }` |
 | POST | `/api/members/:id/reactivate` | |
 
-Errors are JSON `{ error, message }`: 400 `validation_error` (with `fieldErrors`) or `invalid_json`, 404 `not_found`, 409 `conflict`, 500 `internal_error`.
+Errors are JSON `{ error, message }`: 400 `validation_error` (with `fieldErrors`) or `invalid_json`, 404 `not_found`, 409 `conflict`, 413 `payload_too_large` (body over 100kb), other client body errors as their 4xx `bad_request` (e.g. 415), 500 `internal_error`.
 
 Load the synthetic seed (`backend/data/members.seed.json`, 8 fake members) through the service rules; it refuses if the file already has data unless `--force` is given:
 
