@@ -227,7 +227,13 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
 
   GREEN: frontend 118/118 (writer ran it twice; parent re-run). Backend 127/127. Typecheck passes.
 
+- Slice review of `dc205ab`. The whole branch (6,809 lines) again exceeded the lens budget. The slice since `53e088f` (6 files, 177 lines) got user consent; lineage `review-c38bbf5d39212050`. Result: approved and acknowledged; the reviewed boundary is now `dc205ab`. Findings:
+  - WARNING `R3-tab-escapes-parked-dialog-when-no-enabled-controls`: fixed by the parent. When there are no enabled controls (the reactivate dialog while busy), Tab is prevented and focus stays on the dialog. RED: the new ReactivateDialog test failed on `toContainElement`; the first RED attempt failed on a wrong selector and was discarded. GREEN: 119/119 twice. Typecheck passes.
+  - SUGGESTION `R3-reintentar-stale-notice-untested`: still pending.
+
 ## Next step
 1. The user does a browser click-through of the full ABM flow.
-2. Remaining SUGGESTION: `R3-corrupt-number-test-inline-cleanup`.
+2. Pending SUGGESTIONs:
+   - `R3-reintentar-stale-notice-untested`;
+   - `R3-corrupt-number-test-inline-cleanup`.
 3. Delivery (push/PR) only when the user authorizes it.

@@ -51,7 +51,12 @@ export function ModalDialog({ role = 'dialog', title, description, busy = false,
     if (event.key !== 'Tab') return;
 
     const focusable = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? []);
-    if (focusable.length === 0) return;
+    if (focusable.length === 0) {
+      // Every control is disabled (busy): keep focus parked on the dialog instead of letting Tab escape it.
+      event.preventDefault();
+      dialogRef.current?.focus();
+      return;
+    }
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
     if (document.activeElement === dialogRef.current) {

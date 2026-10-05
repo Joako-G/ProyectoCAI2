@@ -121,6 +121,10 @@ describe('DeactivateDialog busy keyboard handling', () => {
     expect(document.activeElement).toBeEnabled();
     await user.keyboard('{Escape}');
     expect(onCancelSpy).not.toHaveBeenCalled();
+    await user.tab();
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    await user.tab({ shift: true });
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
 
     rerender(renderPair(false, 'No se pudo conectar con el servidor.'));
     expect(dialog).toContainElement(document.activeElement as HTMLElement);
@@ -133,6 +137,20 @@ describe('DeactivateDialog busy keyboard handling', () => {
 });
 
 describe('ReactivateDialog', () => {
+  it('keeps Tab inside the dialog while busy, when every control is disabled', async () => {
+    const user = userEvent.setup({ delay: null });
+    const props = { memberName: 'Ana Álvarez', onConfirm: vi.fn(), onCancel: vi.fn() };
+    const { rerender } = render(<ReactivateDialog {...props} saving={false} />);
+    screen.getByRole('button', { name: 'Confirmar reactivación' }).focus();
+
+    rerender(<ReactivateDialog {...props} saving />);
+    const dialog = screen.getByRole('alertdialog');
+    await user.tab();
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    await user.tab({ shift: true });
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+  });
+
   it('asks for confirmation, warns about the previous deactivation record and confirms', async () => {
     const onConfirm = vi.fn();
     const onCancel = vi.fn();
