@@ -33,7 +33,7 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
 
 ## Tasks
 - [x] T1 — Backend test runner + shared JSON store. Add Vitest to the backend. Implement `backend/src/database/json-store.ts`: read with a default value, atomic write (temp file + rename), serialized writes per file. Tests cover missing file, round trip, concurrent writes without corruption. Route: delegated direct writer. Acceptance: tests, build and typecheck pass; helper documented for the teammate.
-- [ ] T2 — Members domain + repository. Member types, validation (required fields, DNI format and uniqueness, valid birthDate, category enum, guardian required for minors), service (create with auto memberNumber, update, deactivate with date/reason, reactivate), `MemberRepository` interface and JSON implementation. Route: delegated direct writer. Acceptance: rule tests written first and passing.
+- [x] T2 — Members domain + repository. Member types, validation (required fields, DNI format and uniqueness, valid birthDate, category enum, guardian required for minors), service (create with auto memberNumber, update, deactivate with date/reason, reactivate), `MemberRepository` interface and JSON implementation. Route: delegated direct writer. Acceptance: rule tests written first and passing.
 - [ ] T3 — Members HTTP API. Routes/controller under `/api/members`: list (search by name/DNI, filter by status), get by id, create, update, deactivate, reactivate. Errors map to 400 (validation), 404 (not found), 409 (duplicate DNI). Synthetic seed data. Vite dev proxy `/api` → backend. Route: delegated direct writer. Acceptance: API tests against an ephemeral-port server pass; manual smoke check.
 - [ ] T4 — Frontend design base. Add Vitest + Testing Library to the frontend. Design tokens, fonts, and the app shell (sidebar + header) matching the beta. Route: delegated direct writer. Acceptance: shell renders; tests, build and typecheck pass.
 - [ ] T5 — Members list screen. Table (number, name + category + age, DNI, member since, status chip), search, filter tabs (All / Active / Inactive), "Alta de socio" action, loading/empty/error states. Route: delegated direct writer. Acceptance: component tests pass; works against the real API in the browser.
@@ -58,5 +58,15 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
 
 - T1 follow-up fixed on slice 1 (delegated writer, user-approved): `writeAtomically` rejects values `JSON.stringify` cannot serialize, before any file work (RED: "promise resolved undefined instead of rejecting"; GREEN). Characterization tests (passed on first run) for rename-failure cleanup and default-value cloning. vitest pinned to `5.0.3`. Backend `typecheck` now uses `tsconfig.test.json` (src + tests, noEmit); `build` still emits only `src`. Evidence: backend tests 14/14 (parent re-run 14/14), backend typecheck passes with tests, `pnpm -r build` and `pnpm -r typecheck` pass. ~55 authored lines.
 
+- T1 follow-up committed as `34fe80e` (Gentle-AI assess vs `976b32d`: medium, under budget). A granted review of plan + T1 + follow-up (lineage `review-02af8af56334cbb0`) could not start: `invalid_request`, because T2's untracked files were present. Nothing was mutated. Lesson: do not start the next task in the same worktree while a review is pending.
+- T2 (delegated writer, slice 2): `MemberRepository { list, mutate(change) }`. The JSON implementation runs DNI check, number allocation and write inside one `store.update`. The service depends only on the interface and uses an injected clock. Error classes are in `backend/src/shared/errors.ts`. Writer assumptions, beyond those listed in the user-facing summary:
+  - `update` fully replaces personal fields; `email`/`guardian` are cleared if omitted.
+  - A partially filled guardian on an adult is validated.
+  - Search matches "first last", "last first" and DNI digits, accent-insensitive.
+  - Phones are stored normalized.
+  - Guardian error keys are `guardian.name`/`guardian.contact`.
+  - Parent-chosen rules (pending user confirmation): adulthood at 18, WhatsApp required, DNI 7–8 digits unique including inactive members, numbers never reused, category not validated against age, reactivation drops the previous deactivation record.
+- T2 evidence: RED = 2 test files failed with "Cannot find module ... errors.js / json-member.repository.js" while the 14 existing tests passed. GREEN = 76/76 (parent re-run 76/76). Backend typecheck, `pnpm -r build` and `pnpm -r typecheck` pass. Authored: 841 lines (src 325, tests 518), over the ~400 slice budget. One slicing pass found no cohesive split, since the tests verify the rules in the same unit. Recommend `size:exception` for slice 2.
+
 ## Next step
-Commit the T1 follow-up, then start T2 on `feat/members-abm-02-domain`.
+Commit T2, run the pending Gentle-AI review, then T3 on `feat/members-abm-03-api` only after that review closes.
