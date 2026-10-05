@@ -1,0 +1,18 @@
+[
+  {
+    "id": "demo-member",
+    "name": "Demo Member",
+    "email": "demo@club.test",
+    "passwordHash": "248d42a0ceb398fb0ce1c80b67afdc0a:49e63026ffecdfa306f154b27e4f5c899885b6816683f8049a2000d084aba662764cdce65d0076f536a13e3dd05787adc8c40de48051c1c6969486a90e800007",
+    "role": "member",
+    "active": true
+  },
+  {
+    "id": "demo-inactive",
+    "name": "Inactive Demo",
+    "email": "inactive@club.test",
+    "passwordHash": "55fda820963b0814407e300518300961:d5d98ec2df25be376c58b5bcc64242f50028aee051610d2a0aa3af2fb480ed5ef914f0e93ecb91f8ef97cd80286a7e5ae9029f65f1b9500749f5b063f1a52925",
+    "role": "member",
+    "active": false
+  }
+]
