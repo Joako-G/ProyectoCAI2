@@ -214,8 +214,20 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
 
   Already settled: category is not validated against age (user-confirmed rule). An adult's guardian is cleared on edit, consistent with PUT replacing the personal fields.
 
+- Slice review. The whole-branch candidate (6,652 lines) failed with `lens_context_budget_exceeded`, so the review used `assess`/STATUS with `--base-ref e5f4eb8 --committed-only`: 30 files, 2,563 lines. The user granted consent; lineage `review-bd962c7b6121f454`, reliability lens. Result: approved and acknowledged; the reviewed boundary is now `53e088f`. Non-blocking findings:
+  - WARNING `R3-dialog-keyboard-handlers-lost-after-busy`: `ModalDialog.tsx:32-51`. The Escape and Tab-trap handlers are on the dialog `div`. While busy, the focused button becomes disabled, focus drops to `body`, and keyboard handling is lost.
+  - WARNING `R3-focus-lost-after-deactivate`: `MemberDetail.tsx:44-52`. After a deactivate or reactivate, the opener button is replaced ("Dar de baja" becomes "Reactivar"), so restoring focus to the opener fails and focus is lost.
+  - SUGGESTION `R3-stale-detail-after-action-conflict`: `MemberDetailScreen.tsx:29-40`. When an action fails (for example 409/404 because the member changed elsewhere), the detail is not refreshed and stays stale.
+
+- T6 findings fix (user-approved; route: delegated direct writer):
+  - `R3-dialog-keyboard-handlers-lost-after-busy`: the dialog is focusable (`tabIndex=-1`). Focus parks on it while busy and returns to the first control afterwards; Tab from the dialog itself is trapped. RED: `toBeEnabled` failed on the focused element.
+  - `R3-focus-lost-after-deactivate`: no RED. React reuses the same button node, so focus already lands on the replacement action. Two regression tests were added (focus on "Reactivar" after deactivate, on "Dar de baja" after reactivate).
+  - `R3-stale-detail-after-action-conflict`: a 409 or 404 on deactivate/reactivate closes the dialog, shows the message as an alert, and refetches the member. A 404 on the refetch lands in the error state; 500 and network errors keep the dialog open. RED: two new MembersView tests failed.
+  - Parent follow-up: "Reintentar" also clears the stale notice. This is a one-line UI change with no dedicated test.
+
+  GREEN: frontend 118/118 (writer ran it twice; parent re-run). Backend 127/127. Typecheck passes.
+
 ## Next step
-1. Run the Gentle-AI STATUS for the T6 commit. The user intends to grant review for the candidate that includes `499542c` and T6.
-2. The user does a browser click-through of the full ABM flow.
-3. Remaining SUGGESTION: `R3-corrupt-number-test-inline-cleanup`.
-4. Then delivery (push/PR) only when the user authorizes it.
+1. The user does a browser click-through of the full ABM flow.
+2. Remaining SUGGESTION: `R3-corrupt-number-test-inline-cleanup`.
+3. Delivery (push/PR) only when the user authorizes it.

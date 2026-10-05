@@ -29,6 +29,19 @@ export function ModalDialog({ role = 'dialog', title, description, busy = false,
     };
   }, []);
 
+  // Disabling the focused control (busy) would drop focus to <body> and lose the key handlers, so park it on
+  // the dialog itself; when busy ends, hand it back to the first control.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const active = document.activeElement;
+    if (busy) {
+      if (active === document.body || (active instanceof HTMLElement && active.matches(':disabled'))) dialog.focus();
+    } else if (active === dialog) {
+      dialog.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+    }
+  }, [busy]);
+
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === 'Escape') {
       event.stopPropagation();
@@ -41,7 +54,10 @@ export function ModalDialog({ role = 'dialog', title, description, busy = false,
     if (focusable.length === 0) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
+    if (document.activeElement === dialogRef.current) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    } else if (event.shiftKey && document.activeElement === first) {
       event.preventDefault();
       last.focus();
     } else if (!event.shiftKey && document.activeElement === last) {
@@ -58,6 +74,7 @@ export function ModalDialog({ role = 'dialog', title, description, busy = false,
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
+        tabIndex={-1}
         className="modal"
         onKeyDown={handleKeyDown}
       >

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describeError, useMemberDetail } from '../hooks/useMemberDetail';
-import { deactivateMember, reactivateMember } from '../services/members-api';
+import { ApiError, deactivateMember, reactivateMember } from '../services/members-api';
 import type { Member } from '../types/member';
 import { MemberDetail } from './MemberDetail';
 import { DeactivateDialog, ReactivateDialog } from './MemberDialogs';
@@ -20,6 +20,8 @@ export function MemberDetailScreen({ id, today, onBack, onEdit }: MemberDetailSc
   const [dialog, setDialog] = useState<Dialog>(null);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string>();
+  /** Message of an action that failed because the member changed or vanished; survives the refresh. */
+  const [staleNotice, setStaleNotice] = useState<string>();
 
   function closeDialog() {
     setDialog(null);
@@ -29,11 +31,19 @@ export function MemberDetailScreen({ id, today, onBack, onEdit }: MemberDetailSc
   async function run(action: () => Promise<Member>) {
     setSaving(true);
     setActionError(undefined);
+    setStaleNotice(undefined);
     try {
       replace(await action());
       setDialog(null);
     } catch (error) {
-      setActionError(describeError(error));
+      if (error instanceof ApiError && (error.status === 409 || error.status === 404)) {
+        // The member changed or was removed elsewhere: drop the dialog and reload the real state.
+        setStaleNotice(error.message);
+        setDialog(null);
+        retry();
+      } else {
+        setActionError(describeError(error));
+      }
     } finally {
       setSaving(false);
     }
@@ -54,7 +64,14 @@ export function MemberDetailScreen({ id, today, onBack, onEdit }: MemberDetailSc
           <strong>No se pudo cargar el socio.</strong> {state.message}
         </p>
         <div className="member-detail__actions">
-          <button type="button" className="button button--secondary" onClick={retry}>
+          <button
+            type="button"
+            className="button button--secondary"
+            onClick={() => {
+              setStaleNotice(undefined);
+              retry();
+            }}
+          >
             Reintentar
           </button>
           <button type="button" className="button button--secondary" onClick={onBack}>
@@ -70,6 +87,11 @@ export function MemberDetailScreen({ id, today, onBack, onEdit }: MemberDetailSc
 
   return (
     <>
+      {staleNotice ? (
+        <p className="form-alert" role="alert">
+          {staleNotice}
+        </p>
+      ) : null}
       <MemberDetail
         member={member}
         today={today}

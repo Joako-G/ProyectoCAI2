@@ -294,7 +294,7 @@ describe('MembersView deactivate and reactivate', () => {
 
   it('keeps the dialog open and shows the error when the deactivation fails', async () => {
     overrides['POST /api/members/member-2/deactivate'] = () =>
-      jsonResponse({ error: 'conflict', message: 'Member is already inactive' }, 409);
+      jsonResponse({ error: 'internal_error', message: 'Unexpected failure' }, 500);
     const user = renderView();
     await openDetail(user, 'Ana Álvarez');
 
@@ -303,8 +303,78 @@ describe('MembersView deactivate and reactivate', () => {
     await user.click(screen.getByRole('button', { name: 'Confirmar baja' }));
 
     const dialog = await screen.findByRole('dialog');
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Member is already inactive');
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Unexpected failure');
     expect(within(dialog).getByRole('button', { name: 'Confirmar baja' })).toBeEnabled();
+  });
+
+  it('refreshes the detail and keeps the message when the deactivation conflicts', async () => {
+    overrides['POST /api/members/member-2/deactivate'] = () => {
+      Object.assign(members[1], { status: 'inactive', deactivation: { date: TODAY, reason: 'Otro usuario' } });
+      return jsonResponse({ error: 'conflict', message: 'Member is already inactive' }, 409);
+    };
+    const user = renderView();
+    await openDetail(user, 'Ana Álvarez');
+
+    await user.click(screen.getByRole('button', { name: 'Dar de baja' }));
+    await user.type(screen.getByLabelText('Motivo de la baja'), 'Se mudó');
+    await user.click(screen.getByRole('button', { name: 'Confirmar baja' }));
+
+    expect(await screen.findByRole('button', { name: 'Reactivar' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Member is already inactive');
+    expect(screen.getByText('Motivo de la baja').nextElementSibling).toHaveTextContent('Otro usuario');
+    expect(calls.filter((call) => call.method === 'GET' && call.url === '/api/members/member-2')).toHaveLength(2);
+  });
+
+  it('lands on the not-found state when the member disappeared during the action', async () => {
+    overrides['POST /api/members/member-2/reactivate'] = () => {
+      members.splice(1, 1);
+      return jsonResponse({ error: 'not_found', message: 'Member not found' }, 404);
+    };
+    members[1] = buildMember({
+      id: 'member-2',
+      firstName: 'Ana',
+      lastName: 'Álvarez',
+      status: 'inactive',
+      deactivation: { date: '2026-09-30', reason: 'Mudanza' },
+    });
+    const user = renderView();
+    await openDetail(user, 'Ana Álvarez');
+
+    await user.click(screen.getByRole('button', { name: 'Reactivar' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar reactivación' }));
+
+    expect(await screen.findByText('No se pudo cargar el socio.')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Member not found');
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
+
+  it('moves focus to Reactivar after a successful deactivation', async () => {
+    const user = renderView();
+    await openDetail(user, 'Ana Álvarez');
+
+    await user.click(screen.getByRole('button', { name: 'Dar de baja' }));
+    await user.type(screen.getByLabelText('Motivo de la baja'), 'Se mudó');
+    await user.click(screen.getByRole('button', { name: 'Confirmar baja' }));
+
+    expect(await screen.findByRole('button', { name: 'Reactivar' })).toHaveFocus();
+  });
+
+  it('moves focus to Dar de baja after a successful reactivation', async () => {
+    members[1] = buildMember({
+      id: 'member-2',
+      firstName: 'Ana',
+      lastName: 'Álvarez',
+      status: 'inactive',
+      deactivation: { date: '2026-09-30', reason: 'Mudanza' },
+    });
+    const user = renderView();
+    await openDetail(user, 'Ana Álvarez');
+
+    await user.click(screen.getByRole('button', { name: 'Reactivar' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar reactivación' }));
+
+    expect(await screen.findByRole('button', { name: 'Dar de baja' })).toHaveFocus();
   });
 
   it('cancelling the dialog leaves the member active and returns focus to the opener', async () => {

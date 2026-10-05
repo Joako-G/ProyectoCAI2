@@ -100,6 +100,38 @@ describe('DeactivateDialog', () => {
   });
 });
 
+describe('DeactivateDialog busy keyboard handling', () => {
+  function renderPair(saving: boolean, error?: string) {
+    return (
+      <DeactivateDialog memberName="Lucía Ríos" saving={saving} error={error} onConfirm={vi.fn()} onCancel={onCancelSpy} />
+    );
+  }
+  const onCancelSpy = vi.fn();
+
+  it('keeps focus inside the dialog while busy and restores Escape and Tab trapping afterwards', async () => {
+    onCancelSpy.mockClear();
+    const user = userEvent.setup({ delay: null });
+    const { rerender } = render(renderPair(false));
+    await user.type(screen.getByLabelText('Motivo de la baja'), 'Se mudó');
+    screen.getByRole('button', { name: 'Confirmar baja' }).focus();
+
+    rerender(renderPair(true));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    expect(document.activeElement).toBeEnabled();
+    await user.keyboard('{Escape}');
+    expect(onCancelSpy).not.toHaveBeenCalled();
+
+    rerender(renderPair(false, 'No se pudo conectar con el servidor.'));
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    await user.tab({ shift: true });
+    expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    expect(document.activeElement).not.toBe(document.body);
+    await user.keyboard('{Escape}');
+    expect(onCancelSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('ReactivateDialog', () => {
   it('asks for confirmation, warns about the previous deactivation record and confirms', async () => {
     const onConfirm = vi.fn();
