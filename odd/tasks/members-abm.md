@@ -32,7 +32,7 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
 | 6 | `feat/members-abm-06-form` | T6 | slice 5 |
 
 ## Tasks
-- [ ] T1 — Backend test runner + shared JSON store. Add Vitest to the backend. Implement `backend/src/database/json-store.ts`: read with a default value, atomic write (temp file + rename), serialized writes per file. Tests cover missing file, round trip, concurrent writes without corruption. Route: delegated direct writer. Acceptance: tests, build and typecheck pass; helper documented for the teammate.
+- [x] T1 — Backend test runner + shared JSON store. Add Vitest to the backend. Implement `backend/src/database/json-store.ts`: read with a default value, atomic write (temp file + rename), serialized writes per file. Tests cover missing file, round trip, concurrent writes without corruption. Route: delegated direct writer. Acceptance: tests, build and typecheck pass; helper documented for the teammate.
 - [ ] T2 — Members domain + repository. Member types, validation (required fields, DNI format and uniqueness, valid birthDate, category enum, guardian required for minors), service (create with auto memberNumber, update, deactivate with date/reason, reactivate), `MemberRepository` interface and JSON implementation. Route: delegated direct writer. Acceptance: rule tests written first and passing.
 - [ ] T3 — Members HTTP API. Routes/controller under `/api/members`: list (search by name/DNI, filter by status), get by id, create, update, deactivate, reactivate. Errors map to 400 (validation), 404 (not found), 409 (duplicate DNI). Synthetic seed data. Vite dev proxy `/api` → backend. Route: delegated direct writer. Acceptance: API tests against an ephemeral-port server pass; manual smoke check.
 - [ ] T4 — Frontend design base. Add Vitest + Testing Library to the frontend. Design tokens, fonts, and the app shell (sidebar + header) matching the beta. Route: delegated direct writer. Acceptance: shell renders; tests, build and typecheck pass.
@@ -47,7 +47,8 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
 - `git status` and commit readback after each task.
 
 ## Progress
-- 2026-10-05: Decisions recorded; branch `feat/members-abm` created from `manu`. No source written yet. Chain strategy chosen: feature-branch-chain.
+- 2026-10-05: Decisions recorded; branch `feat/members-abm` created from `manu`. Chain strategy chosen: feature-branch-chain. Plan commit `d105d76` (Gentle-AI: low risk, approved and acknowledged).
+- T1 (delegated writer, slice 1): `createJsonStore<T>(filePath, defaultValue)` with `read`/`update`; atomic temp-file + rename; per-path promise queue shared across instances; invalid JSON throws without touching the file. RED: `pnpm --filter @club-socios/backend test` failed with `Cannot find module '../src/database/json-store.js'`. GREEN: 11/11 tests passed (re-run by the parent: 11/11). `pnpm -r build` and `pnpm -r typecheck` passed. ~198 authored lines. Follow-up: backend `tsc` does not typecheck `tests/` (tsconfig includes only `src`); Vitest strips types without checking them. `pnpm` is only available through `corepack pnpm` on this machine. Rollback: remove `json-store.ts`, its test, the vitest devDependency and the handoff section.
 
 ## Next step
-Start T1 on `feat/members-abm-01-json-store`.
+Commit T1, run the Gentle-AI review, then start T2 on `feat/members-abm-02-domain`.
