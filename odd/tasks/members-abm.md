@@ -135,6 +135,9 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
   About 360 authored lines.
 - 2026-10-05: The user granted consent for the whole-branch candidate (since `3f7c2ed`, lineage `review-5aeb309a84828b1b`). START failed `invalid_request` with `not_started`, because the T4 writer's untracked files were present. Re-run STATUS after the T4 commit.
 
+- Whole-branch review. The user granted consent for the candidate since `3f7c2ed` (47 files, 3,030 lines, medium risk, reliability lens; lineage `review-b9eed22dae7460f5`). Result: approved and acknowledged, authority burned. The reviewed boundary is now `1c55ad2`. It covers the T3 follow-up and T4. Non-blocking SUGGESTION findings, kept as later work:
+  - `R3-corrupt-number-test-inline-cleanup`: in `member.service.test.ts:510`, the corrupt-number test still cleans up inline. Move it to the tracked/afterEach cleanup.
+  - `R3-non-array-store-shape`: in `json-member.repository.ts:6`, a `members.json` whose top level is not an array is not rejected or handled.
+
 ## Next step
-1. Re-run Gentle-AI STATUS after the T4 commit and follow its transition. A new candidate needs fresh consent.
-2. Then T5 (members list) on `feat/members-abm-05-list`.
+T5 (members list) on `feat/members-abm-05-list`, branched from `feat/members-abm-04-ui-shell`.
