@@ -1,0 +1,33 @@
+# Club membership project scaffold
+
+## Objective
+Create a small, runnable pnpm monorepo with frontend and backend foundations and a portable, project-specific Engram handoff for a second developer.
+
+## Problem and rationale
+The club needs to show progress tomorrow, but this work unit is intentionally limited to project structure. A documented baseline makes the later login and user/member CRUD work easier to split between two developers without accidentally treating a browser-only demonstration as a production system.
+
+## Authorized scope and constraints
+- Edit only `club-socios/` in this workspace. `Documentacion/` is the only current requirements source; root-level legacy files are out of scope.
+- Frontend: React, TypeScript and Vite. Backend: Express and TypeScript. Package manager: pnpm. Keep the previously agreed feature-based UI and domain-module backend boundaries.
+- No login, user/member CRUD, database, Docker, biometric service, real credentials, or personal data in this scaffold.
+- No remote operations, push, or pull request. Create a local feature branch and Conventional Commit work units if local Git setup is possible.
+- Shared Engram data must be curated for `club-socios`, not exported wholesale from the older `appcai` project; publish only reviewed non-sensitive project context.
+- TDD mode: not established for this project; no user-visible behavior is being implemented. Verify scaffolding with build/typecheck and local smoke checks instead of claiming RED/GREEN.
+- Delivery strategy: ask-on-risk; forecast about 300–400 authored changed lines, excluding the generated lockfile. This is an advisory estimate, not a hard cap.
+
+## Tasks
+- [x] T1 — Bootstrap the runnable frontend and backend with a minimal pnpm workspace, placeholder feature/domain directories only where useful, environment examples, ignored secrets and a short setup README. No application features. Route: delegated direct writer (multiple non-trivial files; preparation belongs to writer). Acceptance: install and build/typecheck succeed; no database or Docker is required. Evidence: `pnpm install` succeeded after explicitly allowing esbuild's install script; `pnpm -r build` succeeded (frontend 28 modules, backend tsc); `pnpm -r typecheck` succeeded; local ephemeral-port `GET /health` returned 200 `{"status":"ok"}`. Initial install/build failed on pnpm's unapproved esbuild build and the first complete build timed out at 120 seconds; retry completed in 2m38s. Review candidate: `d0762aa`. Runtime: local backend HTTP smoke check. Rollback: remove scaffold source, manifests, workspace config, lockfile and README without touching the original ODD task document.
+- [x] T2 — Add a clear team context handoff and project-bound Engram configuration; seed only curated shared memories, generate native `.engram/` sync artifacts if supported, and document how a colleague imports them. Route: delegated direct writer (documentation and native sync span multiple files). Acceptance: no personal or obsolete project memory leaks; handoff and import procedure read back; Git work unit recorded. Evidence: `engram save ... --project club-socios --scope project` saved one curated observation (#820); `engram sync` exported one observation, one session, no prompts, but the native manifest/chunk were removed after inspection revealed the local username and absolute machine path. The post-removal `engram sync --status` reported local 1, remote 0, pending import 0; no manifest/chunk is shared. `docs/team-handoff.md` provides an honest shareable fallback and explains why import is not yet possible; `.engram/config.json` names the isolated project. Review candidate: `3b4a5b3`. Runtime: N/A (documentation only). Rollback: remove handoff and project config; retain scaffold.
+
+## Applicable checks
+- `pnpm install` (first lockfile creation, if runtime permits).
+- `pnpm -r build` and any provided typecheck scripts.
+- Structural readback of configured directories and handoff files.
+- `engram sync --status` and a scoped export/import check where safe; record any unavailable result instead of claiming imported context.
+- `git status`, `git diff`, and work-unit commit readback after each completed task.
+
+## Progress
+- Planning recorded before application source writes. T1 verified and committed; T2 handoff verified, native sync blocked by metadata disclosure.
+- Running forecast: about 192 authored T1 lines and about 40 authored T2 lines (excluding the 1,776-line generated lockfile and task log); actual work is below the advisory 300–400 line forecast. Retain cohesive work units.
+- T2 bounded follow-up: `.engram/README.md` now gives a PowerShell `engram save` command that passes the reviewed `docs/team-handoff.md` as one multiline project-scoped observation; the handoff links back to it. `engram save --help` confirms positional title/content and `--project`/`--scope`; command was read back, not executed on this machine or a teammate's database. `pnpm -r typecheck` passed for both packages. No native chunks were added, and teammate import/save remains unverified until they choose to run the command. Runtime: N/A (documentation-only change). Rollback: remove `.engram/README.md` and the handoff link; retain the original handoff. Review candidate: `ddc0f15`. Running authored change is roughly 13 additional lines plus this evidence note, still below the advisory forecast.
+- T1 bounded structural correction: added the agreed empty frontend directories (`src/{assets,layouts,pages,services,store,routes,config,utils}` and `public`), members/payments subdirectories (`components`, `hooks`, `services`, `schemas`, `types`), backend `src/{middlewares,types,utils}` and `tests`, root `docs/{requirements,diagrams,api}`, and empty root/frontend `.env.example` files. Renamed backend `src/index.ts` to `src/server.ts` and updated the backend start command; no new application behavior or DB/Docker. `pnpm -r build` passed (backend tsc; frontend Vite transformed 28 modules in 2m41s), `pnpm -r typecheck` passed for both packages, `backend/dist/server.js` exists, and ephemeral-port local `GET /health` returned 200 `{"status":"ok"}`. An initial smoke harness tried `PORT=0` against the logged value 0, not the assigned ephemeral port, and failed; the corrected harness used the actual bound port. Rollback: revert only these placeholder/entrypoint and matching documentation changes; retain T1/T2 work units. Review candidate: `397f0f4`. Running authored change adds roughly 10 README/handoff lines plus this task evidence; placeholders contain no authored lines, well below the advisory forecast.
