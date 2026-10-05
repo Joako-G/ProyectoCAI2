@@ -36,10 +36,14 @@ async function readFileOrDefault<T>(filePath: string, defaultValue: T): Promise<
 }
 
 async function writeAtomically(filePath: string, value: unknown): Promise<void> {
+  const serialized = JSON.stringify(value, null, 2) as string | undefined;
+  if (serialized === undefined) {
+    throw new Error(`Cannot serialize ${typeof value} value to JSON for ${filePath}`);
+  }
   await mkdir(dirname(filePath), { recursive: true });
   const tempPath = `${filePath}.${randomUUID()}.tmp`;
   try {
-    await writeFile(tempPath, `${JSON.stringify(value, null, 2)}\n`, 'utf8');
+    await writeFile(tempPath, `${serialized}\n`, 'utf8');
     await rename(tempPath, filePath);
   } catch (error) {
     await rm(tempPath, { force: true });

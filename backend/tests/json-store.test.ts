@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -116,6 +116,46 @@ describe('createJsonStore', () => {
       Array.from({ length: 10 }, () => store.update((current) => ({ count: current.count + 1 }))),
     );
 
+    expect(await readdir(dir)).toEqual(['data.json']);
+  });
+
+  it('returns a fresh clone of the default value on every read', async () => {
+    const defaultValue = { items: [] as string[] };
+    const store = createJsonStore(join(dir, 'missing.json'), defaultValue);
+
+    (await store.read()).items.push('leaked');
+
+    expect(await store.read()).toEqual({ items: [] });
+    expect(defaultValue).toEqual({ items: [] });
+  });
+
+  it('rejects values that cannot be serialized and keeps the store usable', async () => {
+    const file = join(dir, 'data.json');
+    const store = createJsonStore<unknown>(file, { count: 0 });
+    await store.update(() => ({ count: 1 }));
+
+    await expect(store.update(() => undefined)).rejects.toThrow(/serializ/i);
+    await expect(store.update(() => (() => 1))).rejects.toThrow(/serializ/i);
+
+    expect(JSON.parse(await readFile(file, 'utf8'))).toEqual({ count: 1 });
+    expect(await store.update(() => ({ count: 2 }))).toEqual({ count: 2 });
+    expect(await readdir(dir)).toEqual(['data.json']);
+  });
+
+  it('cleans up the temporary file and recovers when the final rename fails', async () => {
+    const file = join(dir, 'data.json');
+    const store = createJsonStore(file, { count: 0 });
+
+    await expect(
+      store.update(async (current) => {
+        await mkdir(file);
+        return { count: current.count + 1 };
+      }),
+    ).rejects.toThrow();
+
+    expect(await readdir(dir)).toEqual(['data.json']);
+    await rm(file, { recursive: true });
+    expect(await store.update((current) => ({ count: current.count + 5 }))).toEqual({ count: 5 });
     expect(await readdir(dir)).toEqual(['data.json']);
   });
 });

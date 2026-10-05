@@ -50,5 +50,13 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
 - 2026-10-05: Decisions recorded; branch `feat/members-abm` created from `manu`. Chain strategy chosen: feature-branch-chain. Plan commit `d105d76` (Gentle-AI: low risk, approved and acknowledged).
 - T1 (delegated writer, slice 1): `createJsonStore<T>(filePath, defaultValue)` with `read`/`update`; atomic temp-file + rename; per-path promise queue shared across instances; invalid JSON throws without touching the file. RED: `pnpm --filter @club-socios/backend test` failed with `Cannot find module '../src/database/json-store.js'`. GREEN: 11/11 tests passed (re-run by the parent: 11/11). `pnpm -r build` and `pnpm -r typecheck` passed. ~198 authored lines. Follow-up: backend `tsc` does not typecheck `tests/` (tsconfig includes only `src`); Vitest strips types without checking them. `pnpm` is only available through `corepack pnpm` on this machine. Rollback: remove `json-store.ts`, its test, the vitest devDependency and the handoff section.
 
+- T1 committed as `976b32d`. Gentle-AI review (consent granted by the user, lineage `review-f0e8cf7976115228`, base `3f7c2ed`, plan + T1, 422 lines, medium risk, reliability lens): approved and acknowledged; reviewed boundary is now `976b32d`. Non-blocking findings recorded as follow-up work:
+  - WARNING `R3-undefined-write`: an updater that returns `undefined` writes the text `undefined` and bricks the store. Reject non-serializable results before writing, with a test.
+  - SUGGESTION `R3-write-failure-untested`: cover the temp-file cleanup when rename fails (plausible EPERM/EBUSY on Windows).
+  - SUGGESTION `R3-default-clone-untested`: prove the default value is cloned.
+  - SUGGESTION `R3-vitest-range`: pin vitest exactly, matching the repo convention.
+
+- T1 follow-up fixed on slice 1 (delegated writer, user-approved): `writeAtomically` rejects values `JSON.stringify` cannot serialize, before any file work (RED: "promise resolved undefined instead of rejecting"; GREEN). Characterization tests (passed on first run) for rename-failure cleanup and default-value cloning. vitest pinned to `5.0.3`. Backend `typecheck` now uses `tsconfig.test.json` (src + tests, noEmit); `build` still emits only `src`. Evidence: backend tests 14/14 (parent re-run 14/14), backend typecheck passes with tests, `pnpm -r build` and `pnpm -r typecheck` pass. ~55 authored lines.
+
 ## Next step
-Commit T1, run the Gentle-AI review, then start T2 on `feat/members-abm-02-domain`.
+Commit the T1 follow-up, then start T2 on `feat/members-abm-02-domain`.
