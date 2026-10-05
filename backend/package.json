@@ -4,8 +4,10 @@
   "version": "0.0.0",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "start": "node dist/server.js"
+    "typecheck": "tsc -p tsconfig.test.json",
+    "start": "node dist/server.js",
+    "seed": "tsc -p tsconfig.json && node dist/scripts/seed.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "express": "5.1.0"
@@ -13,6 +15,7 @@
   "devDependencies": {
     "@types/express": "5.0.3",
     "@types/node": "24.3.1",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "vitest": "5.0.3"
   }
 }

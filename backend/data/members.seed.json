@@ -1,0 +1,80 @@
+[
+  {
+    "firstName": "Valentina",
+    "lastName": "Ríos",
+    "dni": "99000001",
+    "birthDate": "2001-04-12",
+    "category": "Mayor",
+    "memberSince": "2018-03-01",
+    "whatsapp": "3815550101",
+    "email": "valentina.rios@example.test"
+  },
+  {
+    "firstName": "Mateo",
+    "lastName": "Quiroga",
+    "dni": "99000002",
+    "birthDate": "2015-08-20",
+    "category": "Infantil",
+    "memberSince": "2022-02-15",
+    "whatsapp": "3815550102",
+    "guardian": { "name": "Paula Quiroga", "contact": "3815550202" }
+  },
+  {
+    "firstName": "Rocío",
+    "lastName": "Ferreyra",
+    "dni": "99000003",
+    "birthDate": "2010-02-14",
+    "category": "Cadete",
+    "memberSince": "2020-03-10",
+    "whatsapp": "3815550103",
+    "guardian": { "name": "Daniel Ferreyra", "contact": "3815550203" }
+  },
+  {
+    "firstName": "Camila",
+    "lastName": "Sosa",
+    "dni": "99000004",
+    "birthDate": "1995-11-03",
+    "category": "Mayor",
+    "memberSince": "2016-05-20",
+    "whatsapp": "3815550104"
+  },
+  {
+    "firstName": "Hugo",
+    "lastName": "Belmonte",
+    "dni": "99000005",
+    "birthDate": "1948-06-30",
+    "category": "Vitalicia",
+    "memberSince": "1975-01-10",
+    "whatsapp": "3815550105"
+  },
+  {
+    "firstName": "Thiago",
+    "lastName": "Nieva",
+    "dni": "99000006",
+    "birthDate": "2012-09-09",
+    "category": "Infantil",
+    "memberSince": "2021-03-01",
+    "whatsapp": "3815550106",
+    "guardian": { "name": "Laura Nieva", "contact": "3815550206" }
+  },
+  {
+    "firstName": "Lucas",
+    "lastName": "Ibarra",
+    "dni": "99000007",
+    "birthDate": "1988-01-25",
+    "category": "Mayor",
+    "memberSince": "2012-08-05",
+    "whatsapp": "3815550107",
+    "deactivationReason": "Moved to another city (synthetic example)"
+  },
+  {
+    "firstName": "Marta",
+    "lastName": "Colombres",
+    "dni": "99000008",
+    "birthDate": "1952-12-01",
+    "category": "Vitalicia",
+    "memberSince": "1980-04-18",
+    "whatsapp": "3815550108",
+    "email": "marta.colombres@example.test"
+  }
+]
