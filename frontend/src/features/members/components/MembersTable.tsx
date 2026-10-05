@@ -1,19 +1,17 @@
 import type { Member } from '../types/member';
-import { calculateAge, formatIsoDate } from '../utils/member-format';
+import { calculateAge, formatAge, formatIsoDate } from '../utils/member-format';
 
 interface MembersTableProps {
   members: Member[];
   /** Today's club date (`YYYY-MM-DD`), used to derive ages. */
   today: string;
+  /** Opens a member. The whole row is clickable; the name button makes it reachable by keyboard. */
+  onOpen?: (member: Member) => void;
 }
 
 const STATUS_LABEL = { active: 'Activo', inactive: 'Inactivo' } as const;
 
-function ageLabel(age: number): string {
-  return `${age} ${age === 1 ? 'año' : 'años'}`;
-}
-
-export function MembersTable({ members, today }: MembersTableProps) {
+export function MembersTable({ members, today, onOpen }: MembersTableProps) {
   return (
     <table className="members-table">
       <caption className="visually-hidden">Listado de socios</caption>
@@ -28,15 +26,25 @@ export function MembersTable({ members, today }: MembersTableProps) {
       </thead>
       <tbody>
         {members.map((member) => (
-          <tr key={member.id}>
+          <tr
+            key={member.id}
+            className={onOpen ? 'members-table__row--clickable' : undefined}
+            onClick={onOpen ? () => onOpen(member) : undefined}
+          >
             <td className="members-table__number">{member.memberNumber}</td>
             <td>
               <div className="members-table__person">
-                <span className="members-table__name">
-                  {member.firstName} {member.lastName}
-                </span>
+                {onOpen ? (
+                  <button type="button" className="members-table__name members-table__name-button">
+                    {member.firstName} {member.lastName}
+                  </button>
+                ) : (
+                  <span className="members-table__name">
+                    {member.firstName} {member.lastName}
+                  </span>
+                )}
                 <span className="members-table__meta">
-                  {member.category} · {ageLabel(calculateAge(member.birthDate, today))}
+                  {member.category} · {formatAge(calculateAge(member.birthDate, today))}
                 </span>
               </div>
             </td>

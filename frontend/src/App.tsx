@@ -1,4 +1,4 @@
-import { MembersPage } from './features/members/components/MembersPage';
+import { MembersView } from './features/members/components/MembersView';
 import { AppShell } from './layouts/AppShell';
 
 export function App() {
@@ -7,7 +7,7 @@ export function App() {
       title="Socios"
       subtitle="Búsqueda por N° de socio, DNI o nombre"
     >
-      <MembersPage />
+      <MembersView />
     </AppShell>
   );
 }

@@ -43,3 +43,8 @@ export function formatIsoDate(value: string): string {
   const [year, month, day] = value.split('-');
   return `${day}/${month}/${year}`;
 }
+
+/** `1` -> `1 año`, `36` -> `36 años`. */
+export function formatAge(age: number): string {
+  return `${age} ${age === 1 ? 'año' : 'años'}`;
+}

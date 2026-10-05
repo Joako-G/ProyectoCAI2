@@ -7,6 +7,8 @@ interface MembersPageProps {
   /** Overrides today's club date (`YYYY-MM-DD`); used by tests. */
   today?: string;
   onCreate?: () => void;
+  /** Opens a member's detail. */
+  onOpen?: (id: string) => void;
 }
 
 const STATUS_FILTER_LABEL = { all: 'Todos', active: 'Activos', inactive: 'Inactivos' } as const;
@@ -16,7 +18,7 @@ function resultsLabel(count: number): string {
 }
 
 /** Container: fetches the members and composes the presentational toolbar and table. */
-export function MembersPage({ today = todayInClub(), onCreate }: MembersPageProps) {
+export function MembersPage({ today = todayInClub(), onCreate, onOpen }: MembersPageProps) {
   const { search, status, state, setSearch, setStatus, retry } = useMembersList();
 
   return (
@@ -63,7 +65,11 @@ export function MembersPage({ today = todayInClub(), onCreate }: MembersPageProp
       ) : null}
 
       {state.phase === 'ready' && state.members.length > 0 ? (
-        <MembersTable members={state.members} today={today} />
+        <MembersTable
+          members={state.members}
+          today={today}
+          onOpen={onOpen ? (member) => onOpen(member.id) : undefined}
+        />
       ) : null}
     </section>
   );

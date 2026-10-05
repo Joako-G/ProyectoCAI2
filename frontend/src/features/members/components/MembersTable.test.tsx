@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 import { buildMember } from '../test/fixtures';
 import { MembersTable } from './MembersTable';
 
@@ -60,5 +61,33 @@ describe('MembersTable', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0]).toHaveTextContent('Ana Álvarez');
     expect(rows[1]).toHaveTextContent('Lucía Ríos');
+  });
+
+  it('opens a member by clicking the row', async () => {
+    const onOpen = vi.fn();
+    const member = buildMember();
+    render(<MembersTable members={[member]} today={TODAY} onOpen={onOpen} />);
+
+    await userEvent.click(screen.getByRole('cell', { name: '30123456' }));
+
+    expect(onOpen).toHaveBeenCalledExactlyOnceWith(member);
+  });
+
+  it('opens a member from the keyboard through the name button', async () => {
+    const onOpen = vi.fn();
+    const user = userEvent.setup();
+    render(<MembersTable members={[buildMember()]} today={TODAY} onOpen={onOpen} />);
+
+    await user.tab();
+    expect(screen.getByRole('button', { name: 'Lucía Ríos' })).toHaveFocus();
+    await user.keyboard('{Enter}');
+
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the name as plain text without an open handler', () => {
+    render(<MembersTable members={[buildMember()]} today={TODAY} />);
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });

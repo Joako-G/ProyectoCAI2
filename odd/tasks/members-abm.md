@@ -37,7 +37,7 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
 - [x] T3 — Members HTTP API. Routes/controller under `/api/members`: list (search by name/DNI, filter by status), get by id, create, update, deactivate, reactivate. Errors map to 400 (validation), 404 (not found), 409 (duplicate DNI). Synthetic seed data. Vite dev proxy `/api` → backend. Route: delegated direct writer. Acceptance: API tests against an ephemeral-port server pass; manual smoke check.
 - [x] T4 — Frontend design base. Add Vitest + Testing Library to the frontend. Design tokens, fonts, and the app shell (sidebar + header) matching the beta. Route: delegated direct writer. Acceptance: shell renders; tests, build and typecheck pass.
 - [x] T5 — Members list screen. Table (number, name + category + age, DNI, member since, status chip), search, filter tabs (All / Active / Inactive), "Alta de socio" action, loading/empty/error states. Route: delegated direct writer. Acceptance: component tests pass; works against the real API in the browser.
-- [ ] T6 — Create/edit form, detail, deactivate/reactivate. Shared form with client validation mirroring the backend, guardian fields shown for minors, member detail view, confirmation dialog with reason for deactivation, reactivation. Route: delegated direct writer. Acceptance: component tests pass; full ABM flow verified in the browser.
+- [x] T6 — Create/edit form, detail, deactivate/reactivate. Shared form with client validation mirroring the backend, guardian fields shown for minors, member detail view, confirmation dialog with reason for deactivation, reactivation. Route: delegated direct writer. Acceptance: component tests pass; full ABM flow verified in the browser.
 
 ## Applicable checks
 - `pnpm --filter <package> test` (TDD evidence per task).
@@ -187,5 +187,35 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
 
   GREEN: backend 127/127, frontend 44/44 (parent re-run). Typecheck passes. About 93 lines.
 
+- T6 (2026-10-05, route: delegated direct writer, because it touches 2+ non-trivial files). Frontend only; the backend is unchanged.
+  - Navigation: still no router. `MembersView` holds view state (list | detail | create | edit).
+  - Shared `MemberForm`, with client validation in `utils/member-validation.ts` that mirrors the backend:
+    - guardian fields only for minors;
+    - backend `fieldErrors` mapped onto fields;
+    - a 409 duplicate DNI is shown on the DNI field.
+  - `MemberDetail` follows the beta sheet.
+  - Accessible `ModalDialog`. The deactivate dialog requires a reason; the reactivate dialog is an alertdialog.
+  - The table row and name button open the detail. "Alta de socio" opens the form.
+  - TDD: RED was observed per group (missing modules, missing API functions, row click). A few characterization tests were written without RED, as reported by the writer. GREEN: frontend 113/113 (parent re-run), backend 127/127. `pnpm -r typecheck` and `pnpm -r build` pass (writer).
+  - API flow smoke check through the Vite proxy (parent):
+    - create a minor with a guardian: 0009;
+    - duplicate DNI: 409 `conflict`;
+    - edit;
+    - deactivate with reason "Mudanza" stores the date and reason;
+    - reactivate clears the deactivation;
+    - GET returns the member.
+  - The click-through in a real browser is pending with the user.
+  - About 2,420 authored lines (about 960 of them tests, about 290 CSS). Over the advisory budget; the writer found no cohesive split.
+- Open UX questions (not decided; later work):
+  - keep search/filter when returning to the list;
+  - real routes/URLs (back button, deep links);
+  - success toasts;
+  - backend field messages reaching the UI in English (rare).
+
+  Already settled: category is not validated against age (user-confirmed rule). An adult's guardian is cleared on edit, consistent with PUT replacing the personal fields.
+
 ## Next step
-T6 (create/edit form, detail, deactivate/reactivate) on `feat/members-abm-06-form`, branched from `feat/members-abm-05-list`.
+1. Run the Gentle-AI STATUS for the T6 commit. The user intends to grant review for the candidate that includes `499542c` and T6.
+2. The user does a browser click-through of the full ABM flow.
+3. Remaining SUGGESTION: `R3-corrupt-number-test-inline-cleanup`.
+4. Then delivery (push/PR) only when the user authorizes it.

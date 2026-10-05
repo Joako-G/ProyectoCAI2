@@ -13,9 +13,10 @@ export interface Deactivation {
   reason: string;
 }
 
-export interface Member {
-  id: string;
-  memberNumber: string;
+export const MEMBER_CATEGORIES: readonly MemberCategory[] = ['Infantil', 'Cadete', 'Mayor', 'Vitalicia'];
+
+/** Personal data sent on create and update (the backend replaces all personal fields on update). */
+export interface MemberInput {
   firstName: string;
   lastName: string;
   dni: string;
@@ -25,6 +26,11 @@ export interface Member {
   whatsapp: string;
   email?: string;
   guardian?: Guardian;
+}
+
+export interface Member extends MemberInput {
+  id: string;
+  memberNumber: string;
   status: MemberStatus;
   deactivation?: Deactivation;
   createdAt: string;
