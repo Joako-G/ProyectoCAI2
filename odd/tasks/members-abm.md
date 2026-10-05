@@ -35,7 +35,7 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
 - [x] T1 — Backend test runner + shared JSON store. Add Vitest to the backend. Implement `backend/src/database/json-store.ts`: read with a default value, atomic write (temp file + rename), serialized writes per file. Tests cover missing file, round trip, concurrent writes without corruption. Route: delegated direct writer. Acceptance: tests, build and typecheck pass; helper documented for the teammate.
 - [x] T2 — Members domain + repository. Member types, validation (required fields, DNI format and uniqueness, valid birthDate, category enum, guardian required for minors), service (create with auto memberNumber, update, deactivate with date/reason, reactivate), `MemberRepository` interface and JSON implementation. Route: delegated direct writer. Acceptance: rule tests written first and passing.
 - [x] T3 — Members HTTP API. Routes/controller under `/api/members`: list (search by name/DNI, filter by status), get by id, create, update, deactivate, reactivate. Errors map to 400 (validation), 404 (not found), 409 (duplicate DNI). Synthetic seed data. Vite dev proxy `/api` → backend. Route: delegated direct writer. Acceptance: API tests against an ephemeral-port server pass; manual smoke check.
-- [ ] T4 — Frontend design base. Add Vitest + Testing Library to the frontend. Design tokens, fonts, and the app shell (sidebar + header) matching the beta. Route: delegated direct writer. Acceptance: shell renders; tests, build and typecheck pass.
+- [x] T4 — Frontend design base. Add Vitest + Testing Library to the frontend. Design tokens, fonts, and the app shell (sidebar + header) matching the beta. Route: delegated direct writer. Acceptance: shell renders; tests, build and typecheck pass.
 - [ ] T5 — Members list screen. Table (number, name + category + age, DNI, member since, status chip), search, filter tabs (All / Active / Inactive), "Alta de socio" action, loading/empty/error states. Route: delegated direct writer. Acceptance: component tests pass; works against the real API in the browser.
 - [ ] T6 — Create/edit form, detail, deactivate/reactivate. Shared form with client validation mirroring the backend, guardian fields shown for minors, member detail view, confirmation dialog with reason for deactivation, reactivation. Route: delegated direct writer. Acceptance: component tests pass; full ABM flow verified in the browser.
 
@@ -118,5 +118,23 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
 
   - Committed as `84cb0d4`. `gentle-ai review assess --base-ref 277270c --committed-only` returned medium risk (`executable_change`, `error-handler.ts`, 193 lines) with `review_due` false (`under_budget`). The slice stays pending from boundary `277270c` until a later commit reaches the budget.
 
+- T4 (2026-10-05, route: delegated direct writer, because it touches 2+ non-trivial files). TDD evidence:
+  - RED: `AppShell.test.tsx` failed with "Failed to resolve import ./AppShell"; `App.test.tsx` could not find the navigation landmark.
+  - GREEN: 7/7, confirmed by the parent's re-run.
+
+  Checks:
+  - `pnpm -r typecheck`: pass.
+  - `pnpm -r build`: pass.
+  - Backend tests: 113/113.
+
+  Decisions:
+  - Exact pins: vitest 5.0.3, @testing-library/react 16.3.3, jest-dom 7.0.1, user-event 14.6.7, jsdom 30.1.2.
+  - No router; the "Socios" link points to `/`.
+  - No user/date block in the header, because it depends on the teammate's auth.
+
+  About 360 authored lines.
+- 2026-10-05: The user granted consent for the whole-branch candidate (since `3f7c2ed`, lineage `review-5aeb309a84828b1b`). START failed `invalid_request` with `not_started`, because the T4 writer's untracked files were present. Re-run STATUS after the T4 commit.
+
 ## Next step
-Start T4 (frontend Vitest + tokens + shell) on `feat/members-abm-04-ui-shell`, branched from `feat/members-abm-03-api`.
+1. Re-run Gentle-AI STATUS after the T4 commit and follow its transition. A new candidate needs fresh consent.
+2. Then T5 (members list) on `feat/members-abm-05-list`.
