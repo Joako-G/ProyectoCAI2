@@ -1,4 +1,9 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createJsonMemberRepository } from '../../src/modules/members/json-member.repository.js';
+import { createMemberService } from '../../src/modules/members/member.service.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../src/shared/errors.js';
 import { adultInput, createTestContext, minorInput, TODAY } from './helpers.js';
 
@@ -212,7 +217,7 @@ describe('create', () => {
 
   describe('minor boundary', () => {
     it('is a minor the day before the 18th birthday', async () => {
-      const dayBefore = await createTestContext(() => new Date(2026, 9, 4, 12));
+      const dayBefore = await createTestContext(() => new Date('2026-10-04T15:00:00Z'));
       const { guardian: _guardian, ...input } = minorInput;
 
       const errors = await fieldErrors(dayBefore.service.create({ ...input, birthDate: '2008-10-05', memberSince: '2020-01-01' }));
@@ -239,12 +244,69 @@ describe('create', () => {
   });
 });
 
+describe('club calendar date', () => {
+  const { guardian: _guardian, ...withoutGuardian } = minorInput;
+  const at = (instant: string) => createTestContext(() => new Date(instant));
+
+  it.each([
+    ['2026-10-05T02:00:00Z', '2026-10-04'],
+    ['2026-10-05T03:00:00Z', '2026-10-05'],
+  ])('dates a deactivation at %s as %s in Tucumán', async (instant, date) => {
+    const local = await at('2026-01-01T12:00:00Z');
+    const created = await local.service.create(adultInput);
+    await local.cleanup();
+    const later = await at(instant);
+    await later.repository.mutate(() => ({ members: [created], result: null }));
+
+    const inactive = await later.service.deactivate(created.id, 'Left');
+    await later.cleanup();
+
+    expect(inactive.deactivation?.date).toBe(date);
+    expect(inactive.updatedAt).toBe(instant.replace('Z', '.000Z'));
+  });
+
+  it('treats the 18th birthday as not yet reached until midnight in Tucumán', async () => {
+    const input = { ...withoutGuardian, birthDate: '2008-10-05', memberSince: '2020-01-01' };
+    const before = await at('2026-10-05T02:00:00Z');
+    const after = await at('2026-10-05T03:30:00Z');
+
+    const errors = await fieldErrors(before.service.create(input));
+    const adult = await after.service.create(input);
+    await Promise.all([before.cleanup(), after.cleanup()]);
+
+    expect(errors).toHaveProperty('guardian.name');
+    expect(adult).not.toHaveProperty('guardian');
+  });
+
+  it('rejects dates in the future relative to the club date, not UTC', async () => {
+    const late = await at('2026-10-05T02:00:00Z');
+
+    const errors = await fieldErrors(late.service.create({ ...adultInput, memberSince: '2026-10-05' }));
+    await late.cleanup();
+
+    expect(errors).toHaveProperty('memberSince');
+  });
+
+  it('counts a Feb 29 birthday as March 1 in non-leap years', async () => {
+    const input = { ...withoutGuardian, birthDate: '2008-02-29', memberSince: '2020-01-01' };
+    const eve = await at('2026-02-28T15:00:00Z');
+    const day = await at('2026-03-01T15:00:00Z');
+
+    const errors = await fieldErrors(eve.service.create(input));
+    const adult = await day.service.create(input);
+    await Promise.all([eve.cleanup(), day.cleanup()]);
+
+    expect(errors).toHaveProperty('guardian.name');
+    expect(adult).not.toHaveProperty('guardian');
+  });
+});
+
 describe('update', () => {
   it('changes personal fields and keeps identity, number, status and createdAt', async () => {
     const clock = { value: TODAY };
     const local = await createTestContext(() => clock.value);
     const created = await local.service.create(adultInput);
-    clock.value = new Date(2026, 9, 6, 12);
+    clock.value = new Date('2026-10-06T15:00:00Z');
 
     const updated = await local.service.update(created.id, { ...adultInput, lastName: 'Rios Pérez', dni: '31000111' });
     await local.cleanup();
@@ -271,6 +333,30 @@ describe('update', () => {
     } as never);
 
     expect(updated).toMatchObject({ id: created.id, memberNumber: '0001', status: 'active' });
+  });
+
+  it('removes email and guardian that the update omits', async () => {
+    const created = await ctx.service.create({ ...adultInput, email: 'lucia@example.com', guardian: minorInput.guardian });
+
+    const updated = await ctx.service.update(created.id, adultInput);
+
+    expect(updated).not.toHaveProperty('email');
+    expect(updated).not.toHaveProperty('guardian');
+    expect(await ctx.service.getById(created.id)).not.toHaveProperty('email');
+    expect(await ctx.service.getById(created.id)).not.toHaveProperty('guardian');
+  });
+
+  it('replaces email and guardian when the update provides them', async () => {
+    const created = await ctx.service.create({ ...adultInput, email: 'old@example.com', guardian: minorInput.guardian });
+
+    const updated = await ctx.service.update(created.id, {
+      ...adultInput,
+      email: 'new@example.com',
+      guardian: { name: 'Berta', contact: '1155553333' },
+    });
+
+    expect(updated).toMatchObject({ email: 'new@example.com', guardian: { name: 'Berta', contact: '1155553333' } });
+    expect(await ctx.service.getById(created.id)).toEqual(updated);
   });
 
   it('allows keeping the same dni', async () => {
@@ -404,12 +490,43 @@ describe('list', () => {
     expect(await names({ search: '333' })).toEqual(['Álvarez Bruno']);
   });
 
+  it.each(['55.812', '55 812', '55-812'])('matches dni with separators in %j', async (search) => {
+    await ctx.service.create({ ...adultInput, firstName: 'Zoe', lastName: 'Paz', dni: '30558123' });
+
+    expect(await names({ search })).toEqual(['Paz Zoe']);
+  });
+
+  it('does not extract digits from a query that mixes text and digits', async () => {
+    await ctx.service.create({ ...adultInput, firstName: 'Rocío', lastName: 'Vega', dni: '30444555' });
+
+    expect(await names({ search: 'Rocío 2' })).toEqual([]);
+    expect(await names({ search: 'Rocío' })).toEqual(['Vega Rocío']);
+  });
+
   it('combines search and status', async () => {
     expect(await names({ search: 'rios', status: 'inactive' })).toEqual([]);
   });
 
   it('treats a blank search as no search', async () => {
     expect(await names({ search: '  ' })).toHaveLength(3);
+  });
+});
+
+describe('member numbers with corrupted data', () => {
+  it('ignores stored numbers that are not non-negative integers', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'members-corrupt-'));
+    const file = join(dir, 'members.json');
+    const stored = (memberNumber: string, dni: string) => ({ ...adultInput, id: dni, dni, memberNumber, status: 'active' });
+    await writeFile(
+      file,
+      JSON.stringify([stored('0007', '30000001'), stored('abc', '30000002'), stored('-3', '30000003'), stored('1.5', '30000004')]),
+    );
+    const service = createMemberService({ repository: createJsonMemberRepository(file), now: () => TODAY });
+
+    const member = await service.create({ ...adultInput, dni: '30999999' });
+    await rm(dir, { recursive: true, force: true });
+
+    expect(member.memberNumber).toBe('0008');
   });
 });
 

@@ -68,5 +68,18 @@ The scaffold has no member behavior. The beta (`Gestion Club.dc.html`) only prot
   - Parent-chosen rules (pending user confirmation): adulthood at 18, WhatsApp required, DNI 7–8 digits unique including inactive members, numbers never reused, category not validated against age, reactivation drops the previous deactivation record.
 - T2 evidence: RED = 2 test files failed with "Cannot find module ... errors.js / json-member.repository.js" while the 14 existing tests passed. GREEN = 76/76 (parent re-run 76/76). Backend typecheck, `pnpm -r build` and `pnpm -r typecheck` pass. Authored: 841 lines (src 325, tests 518), over the ~400 slice budget. One slicing pass found no cohesive split, since the tests verify the rules in the same unit. Recommend `size:exception` for slice 2.
 
+- T2 committed as `5b132dc`. Gentle-AI review (consent granted, lineage `review-912b9c3782c03dfb`, base `976b32d`, T1 follow-up + T2, 927 lines, medium, reliability lens): approved and acknowledged; reviewed boundary is now `5b132dc`. Non-blocking findings (pending):
+  - WARNING `R3-update-clears-optional-untested`: no test proves `update` clears omitted email/guardian.
+  - SUGGESTION `R3-search-digit-extraction`: a name query with one digit matches every DNI containing it.
+  - SUGGESTION `R3-member-number-nan`: a non-numeric stored `memberNumber` makes every later number `NaN`.
+  - SUGGESTION `R3-local-tz-today`: "today" (future-date checks, 18th-birthday cutoff, deactivation date) depends on the server timezone. Feb 29 birthdays are untested.
+
+- T2 follow-up fixed on slice 2 (delegated writer, user-approved). Club date uses `CLUB_TIME_ZONE = 'America/Argentina/Tucuman'` (`backend/src/config/club.ts`) via `Intl.DateTimeFormat`. In non-leap years, a Feb 29 birthday counts as March 1. Changes:
+  - The DNI search path runs only for digit/dot/space/dash queries.
+  - Invalid stored member numbers are ignored.
+  - New tests cover update clearing email/guardian (characterization, green on first run).
+  - RED evidence: "Rocío 2" matched an unrelated member; the next number was `0NaN`; 3 failures under `TZ=UTC`.
+  - GREEN: 88/88 under the default TZ, UTC, Asia/Tokyo and America/Los_Angeles; the parent re-ran default and UTC, both 88/88. Typecheck and build pass. ~150 authored lines.
+
 ## Next step
-Commit T2, run the pending Gentle-AI review, then T3 on `feat/members-abm-03-api` only after that review closes.
+Commit the T2 follow-up and close its review, then start T3 on `feat/members-abm-03-api`.

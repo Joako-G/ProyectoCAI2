@@ -1,13 +1,19 @@
+import { CLUB_TIME_ZONE } from '../../config/club.js';
 import { ValidationError } from '../../shared/errors.js';
 import { MEMBER_CATEGORIES, type Guardian, type MemberCategory, type MemberInput } from './member.types.js';
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function toIsoDate(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
+const clubDateFormat = new Intl.DateTimeFormat('en-CA', {
+  timeZone: CLUB_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+export function toIsoDate(instant: Date): string {
+  return clubDateFormat.format(instant);
 }
 
 function isRealDate(value: string): boolean {

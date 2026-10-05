@@ -9,6 +9,8 @@ export interface MemberServiceDeps {
   now?: () => Date;
 }
 
+const DNI_QUERY = /^[\d.\s-]+$/;
+
 function fold(value: string): string {
   return value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 }
@@ -18,7 +20,7 @@ function matchesSearch(member: Member, search: string): boolean {
   if (!query) return true;
   const first = fold(member.firstName);
   const last = fold(member.lastName);
-  const digits = query.replace(/\D/g, '');
+  const digits = DNI_QUERY.test(query) ? query.replace(/\D/g, '') : '';
   return (
     `${first} ${last}`.includes(query) ||
     `${last} ${first}`.includes(query) ||
@@ -33,7 +35,10 @@ function compareByName(a: Member, b: Member): number {
 }
 
 function nextMemberNumber(members: Member[]): string {
-  const highest = members.reduce((max, member) => Math.max(max, Number(member.memberNumber)), 0);
+  const highest = members.reduce((max, member) => {
+    const number = Number(member.memberNumber);
+    return Number.isInteger(number) && number >= 0 ? Math.max(max, number) : max;
+  }, 0);
   return String(highest + 1).padStart(4, '0');
 }
 

@@ -5,7 +5,7 @@ import { createJsonMemberRepository } from '../../src/modules/members/json-membe
 import { createMemberService } from '../../src/modules/members/member.service.js';
 import type { MemberInput } from '../../src/modules/members/member.types.js';
 
-export const TODAY = new Date(2026, 9, 5, 12);
+export const TODAY = new Date('2026-10-05T15:00:00Z');
 
 export const adultInput: MemberInput = {
   firstName: 'Lucía',
