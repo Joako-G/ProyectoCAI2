@@ -33,6 +33,24 @@ describe('fetchMembers', () => {
     expect(url).toBe('/api/members?search=r%C3%ADos+7&status=inactive');
   });
 
+  it('adds the discipline filter, combined with search and status', async () => {
+    stubFetch(jsonResponse([]));
+    await fetchMembers({ search: 'rios', status: 'active', disciplineId: 'disc-2' });
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/members?search=rios&status=active&disciplineId=disc-2');
+
+    stubFetch(jsonResponse([]));
+    await fetchMembers({ search: '', status: 'all', disciplineId: 'disc 1' });
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/members?disciplineId=disc+1');
+  });
+
+  it('omits an empty discipline filter', async () => {
+    stubFetch(jsonResponse([]));
+
+    await fetchMembers({ search: '', status: 'all', disciplineId: '' });
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/members');
+  });
+
   it('omits empty search and the "all" status', async () => {
     stubFetch(jsonResponse([]));
 
@@ -93,6 +111,7 @@ const input: MemberInput = {
   category: 'Mayor',
   memberSince: '2015-02-01',
   whatsapp: '1155551234',
+  disciplineIds: ['disc-1', 'disc-2'],
 };
 
 function lastRequest() {

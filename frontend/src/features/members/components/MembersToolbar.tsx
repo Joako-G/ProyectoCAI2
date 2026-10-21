@@ -1,11 +1,17 @@
 import { useState, type FormEvent } from 'react';
+import type { Discipline } from '../../disciplines/types/discipline';
+import { disciplineOptionLabel } from '../../disciplines/utils/discipline-labels';
 import type { MemberStatusFilter } from '../types/member';
 
 interface MembersToolbarProps {
   search: string;
   status: MemberStatusFilter;
+  /** Selected discipline id; empty means every discipline. */
+  disciplineId: string;
+  disciplines: Discipline[];
   onSearchSubmit: (search: string) => void;
   onStatusChange: (status: MemberStatusFilter) => void;
+  onDisciplineChange: (disciplineId: string) => void;
   /** Opens the member creation flow (wired in a later task). */
   onCreate?: () => void;
 }
@@ -19,8 +25,11 @@ const STATUS_OPTIONS: ReadonlyArray<{ value: MemberStatusFilter; label: string }
 export function MembersToolbar({
   search,
   status,
+  disciplineId,
+  disciplines,
   onSearchSubmit,
   onStatusChange,
+  onDisciplineChange,
   onCreate,
 }: MembersToolbarProps) {
   const [draft, setDraft] = useState(search);
@@ -62,6 +71,20 @@ export function MembersToolbar({
           </label>
         ))}
       </div>
+
+      <select
+        className="members-toolbar__select"
+        aria-label="Filtrar por disciplina"
+        value={disciplineId}
+        onChange={(event) => onDisciplineChange(event.target.value)}
+      >
+        <option value="">Todas las disciplinas</option>
+        {disciplines.map((discipline) => (
+          <option key={discipline.id} value={discipline.id}>
+            {disciplineOptionLabel(discipline)}
+          </option>
+        ))}
+      </select>
 
       <button type="button" className="button button--primary" onClick={onCreate}>
         Alta de socio

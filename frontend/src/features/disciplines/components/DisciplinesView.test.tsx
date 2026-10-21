@@ -163,6 +163,25 @@ describe('DisciplinesView create and edit', () => {
     expect(requests()[1]).toBe('PUT /api/disciplines/disc-1');
   });
 
+  it('keeps the status tab and search when coming back from the form', async () => {
+    fetchMock.mockImplementation(async () => jsonResponse([basket]));
+    const user = userEvent.setup();
+    render(<DisciplinesView />);
+    await screen.findByText('Básquet');
+
+    await user.click(screen.getByRole('radio', { name: 'Activas' }));
+    await user.type(screen.getByRole('searchbox', { name: /Buscar disciplina/ }), 'bás{Enter}');
+    await waitFor(() => expect(requests()).toContain('GET /api/disciplines?search=b%C3%A1s&status=active'));
+
+    await user.click(await screen.findByRole('button', { name: 'Editar Básquet' }));
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    await screen.findByRole('table', { name: 'Listado de disciplinas' });
+    expect(screen.getByRole('radio', { name: 'Activas' })).toBeChecked();
+    expect(screen.getByRole('searchbox', { name: /Buscar disciplina/ })).toHaveValue('bás');
+    expect(requests().at(-1)).toBe('GET /api/disciplines?search=b%C3%A1s&status=active');
+  });
+
   it('cancels back to the list without saving', async () => {
     fetchMock.mockImplementation(async () => jsonResponse([basket]));
     const user = userEvent.setup();
@@ -221,6 +240,27 @@ describe('DisciplinesView status actions', () => {
     await user.click(screen.getByRole('button', { name: 'Confirmar baja' }));
 
     expect(await within(screen.getByRole('alertdialog')).findByRole('alert')).toHaveTextContent('Boom');
+  });
+
+  it('closes the dialog, reloads and explains when the discipline no longer exists (404)', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse([basket]))
+      .mockResolvedValueOnce(jsonResponse({ error: 'not_found', message: 'Discipline not found' }, 404))
+      .mockResolvedValueOnce(jsonResponse([]));
+    const user = userEvent.setup();
+    render(<DisciplinesView />);
+
+    await user.click(await screen.findByRole('button', { name: 'Dar de baja Básquet' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar baja' }));
+
+    expect(await screen.findByText(/No hay disciplinas/)).toBeInTheDocument();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Discipline not found');
+    expect(requests()).toEqual([
+      'GET /api/disciplines',
+      'POST /api/disciplines/disc-1/deactivate',
+      'GET /api/disciplines',
+    ]);
   });
 
   it('closes the dialog, reloads and explains when the discipline already changed (409)', async () => {

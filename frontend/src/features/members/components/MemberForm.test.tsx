@@ -1,17 +1,23 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { buildDiscipline } from '../../disciplines/test/fixtures';
 import { buildMember } from '../test/fixtures';
 import { emptyMemberForm, memberToFormValues } from '../utils/member-validation';
 import { MemberForm } from './MemberForm';
 
 const TODAY = '2026-10-05';
+const basket = buildDiscipline();
+const volley = buildDiscipline({ id: 'disc-2', name: 'Vóley', status: 'inactive' });
+const futbol = buildDiscipline({ id: 'disc-3', name: 'Fútbol' });
+const CATALOG = [basket, volley, futbol];
 
 function renderForm(overrides: Partial<React.ComponentProps<typeof MemberForm>> = {}) {
   const props = {
     mode: 'create' as const,
     initialValues: emptyMemberForm(TODAY),
     today: TODAY,
+    disciplines: CATALOG,
     saving: false,
     onSubmit: vi.fn(),
     onCancel: vi.fn(),
@@ -29,6 +35,7 @@ async function fillAdult(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Fecha de nacimiento'), '1990-03-15');
   await user.selectOptions(screen.getByLabelText('Categoría'), 'Mayor');
   await user.type(screen.getByLabelText('WhatsApp'), '1155551234');
+  await user.click(screen.getByRole('checkbox', { name: 'Básquet' }));
 }
 
 describe('MemberForm', () => {
@@ -58,6 +65,7 @@ describe('MemberForm', () => {
       category: 'Mayor',
       memberSince: TODAY,
       whatsapp: '1155551234',
+      disciplineIds: ['disc-1'],
     });
   });
 
@@ -113,10 +121,14 @@ describe('MemberForm', () => {
 
     await user.type(screen.getByLabelText('Nombre del tutor'), 'Darío Quiroga');
     await user.type(screen.getByLabelText('Contacto del tutor'), '3816128874');
+    await user.click(screen.getByRole('checkbox', { name: 'Fútbol' }));
     await user.click(screen.getByRole('button', { name: 'Crear socio' }));
 
     expect(onSubmit).toHaveBeenCalledWith(
-      expect.objectContaining({ guardian: { name: 'Darío Quiroga', contact: '3816128874' } }),
+      expect.objectContaining({
+        guardian: { name: 'Darío Quiroga', contact: '3816128874' },
+        disciplineIds: ['disc-3'],
+      }),
     );
   });
 
@@ -147,10 +159,13 @@ describe('MemberForm', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('No se pudo conectar con el servidor.');
   });
 
-  it('disables the submit button while saving', () => {
-    renderForm({ saving: true });
+  it('disables the submit and Cancelar buttons while saving', async () => {
+    const { user, onCancel } = renderForm({ saving: true });
 
     expect(screen.getByRole('button', { name: 'Guardando…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(onCancel).not.toHaveBeenCalled();
   });
 
   it('calls onCancel from the Cancelar button', async () => {
@@ -159,5 +174,82 @@ describe('MemberForm', () => {
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
 
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  describe('disciplines', () => {
+    it('offers the active disciplines and hides inactive ones nobody has', () => {
+      renderForm();
+
+      expect(screen.getByRole('group', { name: 'Disciplinas' })).toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: 'Básquet' })).not.toBeChecked();
+      expect(screen.getByRole('checkbox', { name: 'Fútbol' })).not.toBeChecked();
+      expect(screen.queryByRole('checkbox', { name: /Vóley/ })).not.toBeInTheDocument();
+    });
+
+    it('keeps an assigned inactive discipline checked, labeled as inactive, and lets it be unchecked', async () => {
+      const member = buildMember({ disciplineIds: ['disc-1', 'disc-2'] });
+      const { user, onSubmit } = renderForm({ mode: 'edit', initialValues: memberToFormValues(member) });
+
+      const inactive = screen.getByRole('checkbox', { name: 'Vóley (inactiva)' });
+      expect(inactive).toBeChecked();
+      expect(screen.getByRole('checkbox', { name: 'Básquet' })).toBeChecked();
+
+      await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+      expect(onSubmit).toHaveBeenLastCalledWith(expect.objectContaining({ disciplineIds: ['disc-1', 'disc-2'] }));
+
+      await user.click(inactive);
+      await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+      expect(onSubmit).toHaveBeenLastCalledWith(expect.objectContaining({ disciplineIds: ['disc-1'] }));
+    });
+
+    it('shows an assigned id missing from the catalog so it can be unchecked', async () => {
+      const member = buildMember({ disciplineIds: ['disc-9'] });
+      const { user } = renderForm({ mode: 'edit', initialValues: memberToFormValues(member) });
+
+      const unknown = screen.getByRole('checkbox', { name: 'disc-9 (desconocida)' });
+      expect(unknown).toBeChecked();
+      await user.click(unknown);
+      expect(unknown).not.toBeChecked();
+    });
+
+    it('opens a legacy member with nothing checked and requires a choice', async () => {
+      const member = buildMember({ disciplineIds: [] });
+      const { user, onSubmit } = renderForm({ mode: 'edit', initialValues: memberToFormValues(member) });
+
+      for (const checkbox of screen.getAllByRole('checkbox')) expect(checkbox).not.toBeChecked();
+      await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(screen.getByRole('checkbox', { name: 'Básquet' })).toHaveAccessibleDescription(
+        'Elegí al menos una disciplina.',
+      );
+    });
+
+    it('shows the required error on the field, focuses it and clears it on choosing', async () => {
+      const { user } = renderForm({ initialValues: { ...memberToFormValues(buildMember()), disciplineIds: [] } });
+
+      await user.click(screen.getByRole('button', { name: 'Crear socio' }));
+      expect(screen.getByRole('checkbox', { name: 'Básquet' })).toBeInvalid();
+
+      await user.click(screen.getByRole('checkbox', { name: 'Básquet' }));
+      expect(screen.getByRole('checkbox', { name: 'Básquet' })).toBeValid();
+      expect(screen.queryByText('Elegí al menos una disciplina.')).not.toBeInTheDocument();
+    });
+
+    it('shows the backend error for disciplineIds', () => {
+      renderForm({ fieldErrors: { disciplineIds: 'Unknown discipline: disc-9' } });
+
+      expect(screen.getByRole('checkbox', { name: 'Básquet' })).toHaveAccessibleDescription(
+        'Unknown discipline: disc-9',
+      );
+      expect(screen.getByRole('checkbox', { name: 'Básquet' })).toHaveFocus();
+    });
+
+    it('explains when there are no disciplines to choose from', () => {
+      renderForm({ disciplines: [volley] });
+
+      expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+      expect(screen.getByText(/No hay disciplinas activas/)).toBeInTheDocument();
+    });
   });
 });

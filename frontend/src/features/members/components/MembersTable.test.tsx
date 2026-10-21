@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { buildDiscipline } from '../../disciplines/test/fixtures';
 import { buildMember } from '../test/fixtures';
 import { MembersTable } from './MembersTable';
 
@@ -11,7 +12,7 @@ describe('MembersTable', () => {
     render(<MembersTable members={[buildMember()]} today={TODAY} />);
 
     const table = screen.getByRole('table', { name: 'Listado de socios' });
-    for (const name of ['N° socio', 'Socio', 'DNI', 'Socio desde', 'Estado']) {
+    for (const name of ['N° socio', 'Socio', 'DNI', 'Disciplinas', 'Socio desde', 'Estado']) {
       expect(within(table).getByRole('columnheader', { name })).toBeInTheDocument();
     }
   });
@@ -26,6 +27,36 @@ describe('MembersTable', () => {
     expect(within(row).getByRole('cell', { name: '30123456' })).toBeInTheDocument();
     expect(within(row).getByRole('cell', { name: '01/02/2015' })).toBeInTheDocument();
     expect(within(row).getByText('Activo')).toBeInTheDocument();
+  });
+
+  it('shows the discipline names of each member compactly', () => {
+    const disciplines = [buildDiscipline(), buildDiscipline({ id: 'disc-2', name: 'Vóley', status: 'inactive' })];
+    render(
+      <MembersTable
+        members={[buildMember({ disciplineIds: ['disc-1', 'disc-2'] })]}
+        disciplines={disciplines}
+        today={TODAY}
+      />,
+    );
+
+    expect(screen.getByRole('cell', { name: 'Básquet, Vóley' })).toBeInTheDocument();
+  });
+
+  it('falls back to the id for unknown disciplines and a dash for none', () => {
+    render(
+      <MembersTable
+        members={[
+          buildMember({ id: 'a', disciplineIds: ['disc-9'] }),
+          buildMember({ id: 'b', disciplineIds: [] }),
+        ]}
+        disciplines={[]}
+        today={TODAY}
+      />,
+    );
+
+    const rows = screen.getAllByRole('row').slice(1);
+    expect(within(rows[0]).getByRole('cell', { name: 'disc-9' })).toBeInTheDocument();
+    expect(within(rows[1]).getByRole('cell', { name: '—' })).toBeInTheDocument();
   });
 
   it('shows the inactive chip for inactive members', () => {

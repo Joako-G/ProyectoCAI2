@@ -24,6 +24,8 @@ export interface MemberInput {
   category: MemberCategory;
   memberSince: string;
   whatsapp: string;
+  /** Ids of the assigned disciplines; at least one is required. Legacy members read as `[]`. */
+  disciplineIds: string[];
   email?: string;
   guardian?: Guardian;
 }
@@ -40,4 +42,6 @@ export interface Member extends MemberInput {
 export interface MemberListQuery {
   search: string;
   status: MemberStatusFilter;
+  /** Only members assigned to this discipline; empty or missing means every discipline. */
+  disciplineId?: string;
 }

@@ -125,7 +125,7 @@ export function DisciplineForm({
         <button type="submit" className="button button--primary" disabled={saving}>
           {saving ? 'Guardando…' : mode === 'create' ? 'Crear disciplina' : 'Guardar cambios'}
         </button>
-        <button type="button" className="button button--secondary" onClick={onCancel}>
+        <button type="button" className="button button--secondary" disabled={saving} onClick={onCancel}>
           Cancelar
         </button>
       </div>

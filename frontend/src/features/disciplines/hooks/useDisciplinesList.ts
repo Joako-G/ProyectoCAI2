@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError, fetchDisciplines } from '../services/disciplines-api';
-import type { Discipline, DisciplineStatusFilter } from '../types/discipline';
+import type { Discipline, DisciplineListQuery } from '../types/discipline';
 
 export type DisciplinesListState =
   | { phase: 'loading' }
@@ -13,10 +13,8 @@ export function describeError(error: unknown): string {
   return error instanceof ApiError ? error.message : NETWORK_ERROR_MESSAGE;
 }
 
-/** Container logic of the disciplines list: owns the filters and fetches on every change. */
-export function useDisciplinesList() {
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<DisciplineStatusFilter>('all');
+/** Container logic of the disciplines list: fetches for the given filters, which the caller owns. */
+export function useDisciplinesList({ search, status }: DisciplineListQuery) {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<DisciplinesListState>({ phase: 'loading' });
 
@@ -38,11 +36,5 @@ export function useDisciplinesList() {
 
   const reload = useCallback(() => setAttempt((current) => current + 1), []);
 
-  // Submitting the same text again acts as a refresh: the unchanged state alone would not refetch.
-  const submitSearch = useCallback((next: string) => {
-    setSearch(next);
-    setAttempt((current) => current + 1);
-  }, []);
-
-  return { search, status, state, setSearch: submitSearch, setStatus, reload };
+  return { state, reload };
 }

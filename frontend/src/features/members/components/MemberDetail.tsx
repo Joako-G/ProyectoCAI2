@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import type { Discipline } from '../../disciplines/types/discipline';
+import { disciplineNames } from '../../disciplines/utils/discipline-labels';
 import type { Member } from '../types/member';
 import { calculateAge, formatAge, formatIsoDate } from '../utils/member-format';
 
@@ -6,6 +8,8 @@ interface MemberDetailProps {
   member: Member;
   /** Today's club date (`YYYY-MM-DD`), used to derive the age. */
   today: string;
+  /** Discipline catalog used to resolve the member's discipline ids to names. */
+  disciplines?: Discipline[];
   onBack: () => void;
   onEdit: () => void;
   onDeactivate: () => void;
@@ -25,7 +29,15 @@ function Fact({ term, children }: { term: string; children: string }) {
 }
 
 /** Presentational member sheet with the available actions. */
-export function MemberDetail({ member, today, onBack, onEdit, onDeactivate, onReactivate }: MemberDetailProps) {
+export function MemberDetail({
+  member,
+  today,
+  disciplines = [],
+  onBack,
+  onEdit,
+  onDeactivate,
+  onReactivate,
+}: MemberDetailProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => headingRef.current?.focus(), []);
 
@@ -72,6 +84,7 @@ export function MemberDetail({ member, today, onBack, onEdit, onDeactivate, onRe
         <Fact term="Socio desde">{formatIsoDate(member.memberSince)}</Fact>
         <Fact term="WhatsApp">{member.whatsapp}</Fact>
         <Fact term="Email">{member.email ?? MISSING}</Fact>
+        <Fact term="Disciplinas">{disciplineNames(member.disciplineIds, disciplines).join(', ') || MISSING}</Fact>
         {guardian ? <Fact term="Tutor">{`${guardian.name} · ${guardian.contact}`}</Fact> : null}
       </dl>
 

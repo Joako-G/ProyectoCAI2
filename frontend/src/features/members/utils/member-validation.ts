@@ -16,6 +16,7 @@ export interface MemberFormValues {
   email: string;
   guardianName: string;
   guardianContact: string;
+  disciplineIds: string[];
 }
 
 /** Field errors keyed like the backend `fieldErrors` (`guardian.name`, `guardian.contact`, ...). */
@@ -66,6 +67,7 @@ export function emptyMemberForm(today: string): MemberFormValues {
     email: '',
     guardianName: '',
     guardianContact: '',
+    disciplineIds: [],
   };
 }
 
@@ -81,6 +83,7 @@ export function memberToFormValues(member: Member): MemberFormValues {
     email: member.email ?? '',
     guardianName: member.guardian?.name ?? '',
     guardianContact: member.guardian?.contact ?? '',
+    disciplineIds: [...member.disciplineIds],
   };
 }
 
@@ -116,6 +119,10 @@ export function validateMemberForm(values: MemberFormValues, today: string): Val
   const email = values.email.trim();
   if (email && !EMAIL.test(email)) errors.email = 'Ingresá un email válido.';
 
+  const { disciplineIds } = values;
+  if (disciplineIds.length === 0) errors.disciplineIds = 'Elegí al menos una disciplina.';
+  else if (new Set(disciplineIds).size !== disciplineIds.length) errors.disciplineIds = 'No repitas disciplinas.';
+
   // Guardian data only applies to minors; for an adult it is ignored and cleared on save.
   let guardian: MemberInput['guardian'];
   if (birthDateValid && isMinorOn(birthDate, today)) {
@@ -138,6 +145,7 @@ export function validateMemberForm(values: MemberFormValues, today: string): Val
       category: category!,
       memberSince,
       whatsapp: whatsapp!,
+      disciplineIds: [...disciplineIds],
       ...(email && { email }),
       ...(guardian && { guardian }),
     },

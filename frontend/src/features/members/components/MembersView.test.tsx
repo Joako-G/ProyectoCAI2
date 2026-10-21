@@ -1,6 +1,8 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildDiscipline } from '../../disciplines/test/fixtures';
+import type { Discipline } from '../../disciplines/types/discipline';
 import { buildMember, jsonResponse } from '../test/fixtures';
 import type { Member } from '../types/member';
 import { MembersView } from './MembersView';
@@ -15,6 +17,7 @@ interface Call {
 }
 
 let members: Member[];
+let disciplines: Discipline[];
 let calls: Call[];
 /** Overrides for a `METHOD /path` key; return `undefined` to fall through to the default fake API. */
 let overrides: Record<string, () => Response | Promise<Response>>;
@@ -24,7 +27,22 @@ function key(call: Call) {
 }
 
 beforeEach(() => {
-  members = [buildMember(), buildMember({ id: 'member-2', memberNumber: '0002', firstName: 'Ana', lastName: 'Álvarez', dni: '30222222' })];
+  disciplines = [
+    buildDiscipline(),
+    buildDiscipline({ id: 'disc-2', name: 'Vóley', status: 'inactive' }),
+    buildDiscipline({ id: 'disc-3', name: 'Fútbol' }),
+  ];
+  members = [
+    buildMember(),
+    buildMember({
+      id: 'member-2',
+      memberNumber: '0002',
+      firstName: 'Ana',
+      lastName: 'Álvarez',
+      dni: '30222222',
+      disciplineIds: ['disc-3', 'disc-2'],
+    }),
+  ];
   calls = [];
   overrides = {};
   fetchMock.mockImplementation(async (input, init) => {
@@ -37,8 +55,12 @@ beforeEach(() => {
     const override = overrides[key(call)];
     if (override) return override();
 
+    if (key(call) === 'GET /api/disciplines') return jsonResponse(disciplines);
     if (key(call).startsWith('GET /api/members?') || key(call) === 'GET /api/members') {
-      return jsonResponse(members);
+      const disciplineId = new URL(call.url, 'http://club.test').searchParams.get('disciplineId');
+      return jsonResponse(
+        disciplineId ? members.filter((member) => member.disciplineIds.includes(disciplineId)) : members,
+      );
     }
     const byId = /^\/api\/members\/([^/]+)(\/\w+)?$/.exec(call.url);
     const member = members.find((candidate) => candidate.id === byId?.[1]);
@@ -78,13 +100,14 @@ function listCalls() {
   return calls.filter((call) => call.method === 'GET' && call.url.startsWith('/api/members?') || call.url === '/api/members' && call.method === 'GET');
 }
 
-async function fillCreateForm(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(screen.getByLabelText('Nombre'), 'Valentina');
+async function fillCreateForm(user: ReturnType<typeof userEvent.setup>, { discipline = true } = {}) {
+  await user.type(await screen.findByLabelText('Nombre'), 'Valentina');
   await user.type(screen.getByLabelText('Apellido'), 'Ferreyra');
   await user.type(screen.getByLabelText('DNI'), '39884120');
   await user.type(screen.getByLabelText('Fecha de nacimiento'), '1999-05-20');
   await user.selectOptions(screen.getByLabelText('Categoría'), 'Mayor');
   await user.type(screen.getByLabelText('WhatsApp'), '3814903321');
+  if (discipline) await user.click(screen.getByRole('checkbox', { name: 'Básquet' }));
 }
 
 describe('MembersView navigation', () => {
@@ -109,6 +132,20 @@ describe('MembersView navigation', () => {
     expect(listCalls()).toHaveLength(2);
   });
 
+  it('fetches the discipline catalog once for the whole view', async () => {
+    const user = renderView();
+    await screen.findByText('Ana Álvarez');
+    await user.click(screen.getByRole('button', { name: 'Ana Álvarez' }));
+    await screen.findByRole('heading', { level: 2, name: 'Ana Álvarez' });
+    await user.click(screen.getByRole('button', { name: 'Editar' }));
+    await screen.findByRole('checkbox', { name: 'Fútbol' });
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+    await user.click(await screen.findByRole('button', { name: 'Volver al listado' }));
+    await screen.findByRole('table', { name: 'Listado de socios' });
+
+    expect(calls.filter((call) => call.url === '/api/disciplines')).toHaveLength(1);
+  });
+
   it('shows a detail error with retry and a way back when the member cannot be loaded', async () => {
     overrides['GET /api/members/member-2'] = () =>
       jsonResponse({ error: 'not_found', message: 'Member not found' }, 404);
@@ -122,6 +159,41 @@ describe('MembersView navigation', () => {
     expect(alert).toHaveTextContent('Member not found');
     await user.click(screen.getByRole('button', { name: 'Volver al listado' }));
     expect(await screen.findByRole('table')).toBeInTheDocument();
+  });
+});
+
+describe('MembersView disciplines in list and detail', () => {
+  it('shows the discipline names per row', async () => {
+    renderView();
+
+    expect(await screen.findByRole('cell', { name: 'Básquet' })).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: 'Fútbol, Vóley' })).toBeInTheDocument();
+  });
+
+  it('filters the list by discipline and back to all', async () => {
+    const user = renderView();
+    await screen.findByText('Lucía Ríos');
+    await screen.findByRole('option', { name: 'Fútbol' });
+    const select = screen.getByRole('combobox', { name: 'Filtrar por disciplina' });
+
+    await user.selectOptions(select, 'disc-3');
+
+    await waitFor(() => expect(screen.queryByText('Lucía Ríos')).not.toBeInTheDocument());
+    expect(screen.getByText('Ana Álvarez')).toBeInTheDocument();
+    expect(listCalls().at(-1)?.url).toBe('/api/members?disciplineId=disc-3');
+
+    await user.selectOptions(select, 'Todas las disciplinas');
+    expect(await screen.findByText('Lucía Ríos')).toBeInTheDocument();
+  });
+
+  it('shows the discipline names in the detail', async () => {
+    const user = renderView();
+    await screen.findByText('Ana Álvarez');
+
+    await user.click(screen.getByRole('button', { name: 'Ana Álvarez' }));
+
+    const fact = (await screen.findByText('Disciplinas')).nextElementSibling;
+    expect(fact).toHaveTextContent('Fútbol, Vóley');
   });
 });
 
@@ -142,7 +214,93 @@ describe('MembersView create', () => {
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Valentina Ferreyra' })).toBeInTheDocument();
     const post = calls.find((call) => call.method === 'POST');
-    expect(post?.body).toMatchObject({ firstName: 'Valentina', dni: '39884120', memberSince: TODAY });
+    expect(post?.body).toMatchObject({
+      firstName: 'Valentina',
+      dni: '39884120',
+      memberSince: TODAY,
+      disciplineIds: ['disc-1'],
+    });
+  });
+
+  it('sends several chosen disciplines and never offers an inactive one', async () => {
+    const user = renderView();
+    await screen.findByText('Ana Álvarez');
+    await user.click(screen.getByRole('button', { name: 'Alta de socio' }));
+    await fillCreateForm(user);
+    await user.click(screen.getByRole('checkbox', { name: 'Fútbol' }));
+    expect(screen.queryByRole('checkbox', { name: /Vóley/ })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Crear socio' }));
+
+    await waitFor(() => expect(calls.some((call) => call.method === 'POST')).toBe(true));
+    expect(calls.find((call) => call.method === 'POST')?.body).toMatchObject({ disciplineIds: ['disc-1', 'disc-3'] });
+  });
+
+  it('blocks the submit without a discipline and shows it on the field', async () => {
+    const user = renderView();
+    await screen.findByText('Ana Álvarez');
+    await user.click(screen.getByRole('button', { name: 'Alta de socio' }));
+    await fillCreateForm(user, { discipline: false });
+
+    await user.click(screen.getByRole('button', { name: 'Crear socio' }));
+
+    expect(calls.some((call) => call.method === 'POST')).toBe(false);
+    expect(screen.getByRole('checkbox', { name: 'Básquet' })).toHaveAccessibleDescription(
+      'Elegí al menos una disciplina.',
+    );
+    expect(screen.getByRole('checkbox', { name: 'Básquet' })).toHaveFocus();
+  });
+
+  it('shows the backend disciplineIds error on the field', async () => {
+    overrides['POST /api/members'] = () =>
+      jsonResponse(
+        { error: 'validation_error', message: 'Validation failed', fieldErrors: { disciplineIds: 'Unknown discipline: disc-1' } },
+        400,
+      );
+    const user = renderView();
+    await screen.findByText('Ana Álvarez');
+    await user.click(screen.getByRole('button', { name: 'Alta de socio' }));
+    await fillCreateForm(user);
+
+    await user.click(screen.getByRole('button', { name: 'Crear socio' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('checkbox', { name: 'Básquet' })).toHaveAccessibleDescription('Unknown discipline: disc-1'),
+    );
+  });
+
+  it('shows the catalog loading error in the form, blocks it and recovers on retry', async () => {
+    let failing = true;
+    overrides['GET /api/disciplines'] = () =>
+      failing
+        ? jsonResponse({ error: 'internal_error', message: 'Catalog down' }, 500)
+        : jsonResponse(disciplines);
+    const user = renderView();
+    await screen.findByText('Ana Álvarez');
+
+    await user.click(screen.getByRole('button', { name: 'Alta de socio' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('No se pudieron cargar las disciplinas');
+    expect(alert).toHaveTextContent('Catalog down');
+    expect(screen.queryByRole('button', { name: 'Crear socio' })).not.toBeInTheDocument();
+
+    failing = false;
+    await user.click(within(alert).getByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByRole('button', { name: 'Crear socio' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Básquet' })).toBeInTheDocument();
+  });
+
+  it('can leave the form when the catalog cannot be loaded', async () => {
+    overrides['GET /api/disciplines'] = () => jsonResponse({ error: 'internal_error', message: 'Catalog down' }, 500);
+    const user = renderView();
+    await screen.findByText('Ana Álvarez');
+    await user.click(screen.getByRole('button', { name: 'Alta de socio' }));
+
+    await user.click(await screen.findByRole('button', { name: 'Volver' }));
+
+    expect(await screen.findByRole('table', { name: 'Listado de socios' })).toBeInTheDocument();
   });
 
   it('does not call the API while the form is invalid', async () => {
@@ -167,6 +325,7 @@ describe('MembersView create', () => {
     await user.click(screen.getByRole('button', { name: 'Crear socio' }));
 
     expect(screen.getByRole('button', { name: 'Guardando…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeDisabled();
     const created = buildMember({ id: 'member-9', firstName: 'Valentina', lastName: 'Ferreyra' });
     members.push(created);
     finish(jsonResponse(created, 201));
@@ -252,6 +411,41 @@ describe('MembersView edit', () => {
     const put = calls.find((call) => call.method === 'PUT');
     expect(put?.url).toBe('/api/members/member-2');
     expect(put?.body).toMatchObject({ firstName: 'Ana María', lastName: 'Álvarez', dni: '30222222' });
+  });
+
+  it('keeps an assigned inactive discipline checked and saves the selection', async () => {
+    const user = renderView();
+    await screen.findByText('Ana Álvarez');
+    await user.click(screen.getByRole('button', { name: 'Ana Álvarez' }));
+    await user.click(await screen.findByRole('button', { name: 'Editar' }));
+
+    expect(await screen.findByRole('checkbox', { name: 'Vóley (inactiva)' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Fútbol' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Básquet' })).not.toBeChecked();
+    await user.click(screen.getByRole('checkbox', { name: 'Básquet' }));
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    await screen.findByRole('heading', { level: 2, name: 'Ana Álvarez' });
+    expect(calls.find((call) => call.method === 'PUT')?.body).toMatchObject({
+      disciplineIds: ['disc-3', 'disc-2', 'disc-1'],
+    });
+  });
+
+  it('opens a legacy member without disciplines with nothing checked and requires one', async () => {
+    members[1] = buildMember({ id: 'member-2', firstName: 'Ana', lastName: 'Álvarez', disciplineIds: [] });
+    const user = renderView();
+    await screen.findByText('Ana Álvarez');
+    await user.click(screen.getByRole('button', { name: 'Ana Álvarez' }));
+    await user.click(await screen.findByRole('button', { name: 'Editar' }));
+    await screen.findByRole('checkbox', { name: 'Básquet' });
+
+    for (const checkbox of screen.getAllByRole('checkbox')) expect(checkbox).not.toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    expect(calls.some((call) => call.method === 'PUT')).toBe(false);
+    expect(screen.getByRole('checkbox', { name: 'Básquet' })).toHaveAccessibleDescription(
+      'Elegí al menos una disciplina.',
+    );
   });
 
   it('cancels back to the detail', async () => {

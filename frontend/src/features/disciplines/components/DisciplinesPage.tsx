@@ -5,12 +5,15 @@ import {
   deactivateDiscipline,
   reactivateDiscipline,
 } from '../services/disciplines-api';
-import type { Discipline } from '../types/discipline';
+import type { Discipline, DisciplineListQuery } from '../types/discipline';
 import { DisciplineStatusDialog } from './DisciplineDialog';
 import { DisciplinesTable } from './DisciplinesTable';
 import { DisciplinesToolbar, STATUS_FILTER_LABEL } from './DisciplinesToolbar';
 
 interface DisciplinesPageProps {
+  /** Search and status filters; owned by the parent so they survive the create / edit form. */
+  query: DisciplineListQuery;
+  onQueryChange: (query: DisciplineListQuery) => void;
   onCreate: () => void;
   onEdit: (discipline: Discipline) => void;
 }
@@ -25,8 +28,9 @@ function resultsLabel(count: number): string {
 }
 
 /** Container: fetches the disciplines, composes toolbar and table and runs the status actions. */
-export function DisciplinesPage({ onCreate, onEdit }: DisciplinesPageProps) {
-  const { search, status, state, setSearch, setStatus, reload } = useDisciplinesList();
+export function DisciplinesPage({ query, onQueryChange, onCreate, onEdit }: DisciplinesPageProps) {
+  const { search, status } = query;
+  const { state, reload } = useDisciplinesList(query);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState<string>();
@@ -36,6 +40,12 @@ export function DisciplinesPage({ onCreate, onEdit }: DisciplinesPageProps) {
   function closeDialog() {
     setPending(null);
     setActionError(undefined);
+  }
+
+  // Submitting the same text again acts as a refresh: the unchanged query alone would not refetch.
+  function submitSearch(next: string) {
+    onQueryChange({ ...query, search: next });
+    reload();
   }
 
   async function confirm() {
@@ -67,8 +77,8 @@ export function DisciplinesPage({ onCreate, onEdit }: DisciplinesPageProps) {
       <DisciplinesToolbar
         search={search}
         status={status}
-        onSearchSubmit={setSearch}
-        onStatusChange={setStatus}
+        onSearchSubmit={submitSearch}
+        onStatusChange={(next) => onQueryChange({ ...query, status: next })}
         onCreate={onCreate}
       />
 

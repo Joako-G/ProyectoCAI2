@@ -15,10 +15,11 @@ export class ApiError extends Error {
   }
 }
 
-function buildListUrl({ search, status }: MemberListQuery): string {
+function buildListUrl({ search, status, disciplineId }: MemberListQuery): string {
   const params = new URLSearchParams();
   if (search.trim()) params.set('search', search.trim());
   if (status !== 'all') params.set('status', status);
+  if (disciplineId) params.set('disciplineId', disciplineId);
   const query = params.toString();
   return query ? `/api/members?${query}` : '/api/members';
 }

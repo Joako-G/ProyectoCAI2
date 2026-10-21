@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { Discipline } from '../../disciplines/types/discipline';
 import { describeError, useMemberDetail } from '../hooks/useMemberDetail';
 import { ApiError, deactivateMember, reactivateMember } from '../services/members-api';
 import type { Member } from '../types/member';
@@ -8,6 +9,7 @@ import { DeactivateDialog, ReactivateDialog } from './MemberDialogs';
 interface MemberDetailScreenProps {
   id: string;
   today: string;
+  disciplines?: Discipline[];
   onBack: () => void;
   onEdit: (id: string) => void;
 }
@@ -15,7 +17,7 @@ interface MemberDetailScreenProps {
 type Dialog = 'deactivate' | 'reactivate' | null;
 
 /** Container: loads the member and runs the deactivate / reactivate actions. */
-export function MemberDetailScreen({ id, today, onBack, onEdit }: MemberDetailScreenProps) {
+export function MemberDetailScreen({ id, today, disciplines, onBack, onEdit }: MemberDetailScreenProps) {
   const { state, retry, replace } = useMemberDetail(id);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [saving, setSaving] = useState(false);
@@ -95,6 +97,7 @@ export function MemberDetailScreen({ id, today, onBack, onEdit }: MemberDetailSc
       <MemberDetail
         member={member}
         today={today}
+        disciplines={disciplines}
         onBack={onBack}
         onEdit={() => onEdit(member.id)}
         onDeactivate={() => setDialog('deactivate')}

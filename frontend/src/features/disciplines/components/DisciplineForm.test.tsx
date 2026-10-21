@@ -66,9 +66,12 @@ describe('DisciplineForm', () => {
     expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeEnabled();
   });
 
-  it('disables submit while saving and cancels on demand', async () => {
+  it('disables submit and Cancelar while saving, and cancels on demand otherwise', async () => {
     const { user, props, rerender } = renderForm({ saving: true });
     expect(screen.getByRole('button', { name: 'Guardando…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Cancelar' })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(props.onCancel).not.toHaveBeenCalled();
 
     rerender(<DisciplineForm {...props} saving={false} />);
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));

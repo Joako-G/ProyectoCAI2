@@ -17,6 +17,7 @@ function describeError(error: unknown): string {
 export function useMembersList() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<MemberStatusFilter>('all');
+  const [disciplineId, setDisciplineId] = useState('');
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<MembersListState>({ phase: 'loading' });
 
@@ -24,7 +25,7 @@ export function useMembersList() {
     const controller = new AbortController();
     setState({ phase: 'loading' });
 
-    fetchMembers({ search, status }, controller.signal).then(
+    fetchMembers({ search, status, disciplineId }, controller.signal).then(
       (members) => {
         if (!controller.signal.aborted) setState({ phase: 'ready', members });
       },
@@ -34,7 +35,7 @@ export function useMembersList() {
     );
 
     return () => controller.abort();
-  }, [search, status, attempt]);
+  }, [search, status, disciplineId, attempt]);
 
   const retry = useCallback(() => setAttempt((current) => current + 1), []);
 
@@ -44,5 +45,5 @@ export function useMembersList() {
     setAttempt((current) => current + 1);
   }, []);
 
-  return { search, status, state, setSearch: submitSearch, setStatus, retry };
+  return { search, status, disciplineId, state, setSearch: submitSearch, setStatus, setDisciplineId, retry };
 }

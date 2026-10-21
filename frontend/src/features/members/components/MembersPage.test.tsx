@@ -1,12 +1,15 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildDiscipline } from '../../disciplines/test/fixtures';
 import { buildMember, jsonResponse } from '../test/fixtures';
 import { MembersPage } from './MembersPage';
 
 const fetchMock = vi.fn<typeof fetch>();
 const TODAY = '2026-10-05';
 
+const basket = buildDiscipline();
+const volley = buildDiscipline({ id: 'disc-2', name: 'Vóley' });
 const lucia = buildMember();
 const ana = buildMember({
   id: 'member-2',
@@ -156,6 +159,31 @@ describe('MembersPage', () => {
 
     expect(screen.queryByText('Lucía Ríos')).not.toBeInTheDocument();
     expect(screen.getByText('Ana Álvarez')).toBeInTheDocument();
+  });
+
+  it('shows the discipline names in the rows', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse([buildMember({ disciplineIds: ['disc-1', 'disc-2'] })]));
+    render(<MembersPage today={TODAY} disciplines={[basket, volley]} />);
+
+    expect(await screen.findByRole('cell', { name: 'Básquet, Vóley' })).toBeInTheDocument();
+  });
+
+  it('combines the discipline filter with search and status', async () => {
+    fetchMock.mockImplementation(async () => jsonResponse([lucia]));
+    const user = userEvent.setup();
+    render(<MembersPage today={TODAY} disciplines={[basket, volley]} />);
+    await screen.findByText('Lucía Ríos');
+
+    await user.click(screen.getByRole('radio', { name: 'Activos' }));
+    await user.type(screen.getByRole('searchbox', { name: /Buscar socio/ }), 'rios{Enter}');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Filtrar por disciplina' }), 'disc-2');
+
+    await waitFor(() =>
+      expect(requestedUrls()).toContain('/api/members?search=rios&status=active&disciplineId=disc-2'),
+    );
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Filtrar por disciplina' }), '');
+    await waitFor(() => expect(requestedUrls().at(-1)).toBe('/api/members?search=rios&status=active'));
   });
 
   it('forwards the Alta de socio action', async () => {

@@ -1,3 +1,4 @@
+import type { Discipline } from '../../disciplines/types/discipline';
 import { useMembersList } from '../hooks/useMembersList';
 import { todayInClub } from '../utils/member-format';
 import { MembersTable } from './MembersTable';
@@ -6,6 +7,8 @@ import { MembersToolbar } from './MembersToolbar';
 interface MembersPageProps {
   /** Overrides today's club date (`YYYY-MM-DD`); used by tests. */
   today?: string;
+  /** Discipline catalog for the filter and the row names; empty until it is loaded. */
+  disciplines?: Discipline[];
   onCreate?: () => void;
   /** Opens a member's detail. */
   onOpen?: (id: string) => void;
@@ -18,16 +21,19 @@ function resultsLabel(count: number): string {
 }
 
 /** Container: fetches the members and composes the presentational toolbar and table. */
-export function MembersPage({ today = todayInClub(), onCreate, onOpen }: MembersPageProps) {
-  const { search, status, state, setSearch, setStatus, retry } = useMembersList();
+export function MembersPage({ today = todayInClub(), disciplines = [], onCreate, onOpen }: MembersPageProps) {
+  const { search, status, disciplineId, state, setSearch, setStatus, setDisciplineId, retry } = useMembersList();
 
   return (
     <section className="card members-page" aria-label="Socios">
       <MembersToolbar
         search={search}
         status={status}
+        disciplineId={disciplineId}
+        disciplines={disciplines}
         onSearchSubmit={setSearch}
         onStatusChange={setStatus}
+        onDisciplineChange={setDisciplineId}
         onCreate={onCreate}
       />
 
@@ -68,6 +74,7 @@ export function MembersPage({ today = todayInClub(), onCreate, onOpen }: Members
         <MembersTable
           members={state.members}
           today={today}
+          disciplines={disciplines}
           onOpen={onOpen ? (member) => onOpen(member.id) : undefined}
         />
       ) : null}
