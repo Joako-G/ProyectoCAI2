@@ -1,0 +1,8 @@
+[
+  { "name": "Básquet", "teacherName": "Marcos Ledesma (demo)" },
+  { "name": "Vóley", "teacherName": "Carla Ibarra (demo)" },
+  { "name": "Patín artístico", "teacherName": "Lía Soria (demo)" },
+  { "name": "Fútbol infantil", "teacherName": "Darío Paz (demo)" },
+  { "name": "Gimnasia artística", "teacherName": "Noelia Vera (demo)" },
+  { "name": "Taekwondo", "teacherName": "Hugo Benítez (demo)" }
+]

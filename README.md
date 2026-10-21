@@ -30,11 +30,26 @@ Members are stored in a JSON file (`backend/data/members.json`, or the path in `
 
 Errors are JSON `{ error, message }`: 400 `validation_error` (with `fieldErrors`) or `invalid_json`, 404 `not_found`, 409 `conflict`, 413 `payload_too_large` (body over 100kb), other client body errors as their 4xx `bad_request` (e.g. 415), 500 `internal_error`.
 
-Load the synthetic seed (`backend/data/members.seed.json`, 8 fake members) through the service rules; it refuses if the file already has data unless `--force` is given:
+Load the synthetic seeds (`backend/data/members.seed.json`, 8 fake members, and `backend/data/disciplines.seed.json`, 6 disciplines) through the service rules; each refuses if its file already has data unless `--force` is given:
 
 ```sh
 pnpm --filter @club-socios/backend seed          # add --force to replace existing data
 ```
+
+## Disciplines API (demo)
+
+The disciplines catalog is stored in a JSON file (`backend/data/disciplines.json`, or the path in `DISCIPLINES_FILE`), with the same demo-only limits as members. Each discipline has a name (required, unique ignoring case, also against inactive ones) and a teacher name (free text, required). Removal is logical, so there is no delete endpoint.
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| GET | `/api/disciplines?search=&status=` | `search` matches the name; `status` is `active` or `inactive` |
+| GET | `/api/disciplines/:id` | 404 if unknown |
+| POST | `/api/disciplines` | 201 with the created discipline; 409 on a duplicate name |
+| PUT | `/api/disciplines/:id` | Replaces name and teacher name |
+| POST | `/api/disciplines/:id/deactivate` | 409 if already inactive |
+| POST | `/api/disciplines/:id/reactivate` | 409 if already active |
+
+Errors use the same JSON envelope as the Members API.
 
 Run backend and frontend together (two terminals). The Vite dev server proxies `/api` to `http://localhost:3001`:
 
