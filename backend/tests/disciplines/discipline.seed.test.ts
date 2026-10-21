@@ -30,6 +30,24 @@ describe('seedDisciplines', () => {
     expect(disciplines.every((d) => d.status === 'active')).toBe(true);
   });
 
+  it('seeds disciplines with one and with several teachers, each with a lead among them', async () => {
+    const { service, repository, entries } = await setup();
+    await seedDisciplines({ repository, entries });
+
+    const disciplines = await service.list();
+    expect(disciplines.some((d) => d.teachers.length === 1)).toBe(true);
+    expect(disciplines.some((d) => d.teachers.length === 2)).toBe(true);
+    expect(disciplines.every((d) => d.teachers.includes(d.leadTeacher))).toBe(true);
+  });
+
+  it('refuses a seed entry whose lead teacher is not among its teachers', async () => {
+    const { service, repository, entries } = await setup();
+    const invalid = [{ ...entries[0]!, leadTeacher: 'Nobody (demo)' }];
+
+    await expect(seedDisciplines({ repository, entries: invalid })).rejects.toThrow(/Validation failed/);
+    expect(await service.list()).toEqual([]);
+  });
+
   it('refuses to overwrite existing data without force', async () => {
     const { service, repository, entries } = await setup();
     await seedDisciplines({ repository, entries });

@@ -9,6 +9,11 @@ interface DisciplinesTableProps {
 
 const STATUS_LABEL = { active: 'Activa', inactive: 'Inactiva' } as const;
 
+// The teacher in charge is shown first; the rest follow in their stored order.
+function otherTeachers(discipline: Discipline): string[] {
+  return discipline.teachers.filter((teacher) => teacher !== discipline.leadTeacher);
+}
+
 export function DisciplinesTable({ disciplines, onEdit, onDeactivate, onReactivate }: DisciplinesTableProps) {
   return (
     <table className="members-table">
@@ -16,7 +21,7 @@ export function DisciplinesTable({ disciplines, onEdit, onDeactivate, onReactiva
       <thead>
         <tr className="table-head">
           <th scope="col">Disciplina</th>
-          <th scope="col">Profesor</th>
+          <th scope="col">Profesores</th>
           <th scope="col">Estado</th>
           <th scope="col">Acciones</th>
         </tr>
@@ -27,7 +32,12 @@ export function DisciplinesTable({ disciplines, onEdit, onDeactivate, onReactiva
             <td>
               <span className="members-table__name">{discipline.name}</span>
             </td>
-            <td>{discipline.teacherName}</td>
+            <td>
+              <span>{discipline.leadTeacher}</span>
+              {otherTeachers(discipline).length > 0 ? (
+                <span className="disciplines-table__others">Otros: {otherTeachers(discipline).join(', ')}</span>
+              ) : null}
+            </td>
             <td>
               <span className={`status-chip status-chip--${discipline.status}`}>
                 {STATUS_LABEL[discipline.status]}

@@ -7,8 +7,16 @@ import type { DisciplineInput } from '../../src/modules/disciplines/discipline.t
 
 export const TODAY = new Date('2026-10-21T15:00:00Z');
 
-export const basketball: DisciplineInput = { name: 'Básquet', teacherName: 'Marcos Ledesma' };
-export const volleyball: DisciplineInput = { name: 'Vóley', teacherName: 'Carla Ibarra' };
+export const basketball: DisciplineInput = {
+  name: 'Básquet',
+  teachers: ['Marcos Ledesma'],
+  leadTeacher: 'Marcos Ledesma',
+};
+export const volleyball: DisciplineInput = {
+  name: 'Vóley',
+  teachers: ['Carla Ibarra'],
+  leadTeacher: 'Carla Ibarra',
+};
 
 export async function createTestContext(now: () => Date = () => TODAY) {
   const dir = await mkdtemp(join(tmpdir(), 'disciplines-'));

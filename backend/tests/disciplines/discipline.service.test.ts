@@ -35,35 +35,75 @@ describe('discipline service', () => {
 
     it('trims name and teacher name', async () => {
       const { service } = await setup();
-      const discipline = await service.create({ name: '  Patín artístico ', teacherName: ' Lía Soria  ' });
-      expect(discipline).toMatchObject({ name: 'Patín artístico', teacherName: 'Lía Soria' });
+      const discipline = await service.create({
+        name: '  Patín artístico ',
+        teachers: [' Lía Soria  ', ' Ana Gil'],
+        leadTeacher: '  Ana Gil ',
+      });
+      expect(discipline).toMatchObject({
+        name: 'Patín artístico',
+        teachers: ['Lía Soria', 'Ana Gil'],
+        leadTeacher: 'Ana Gil',
+      });
     });
 
-    it('requires name and teacher name', async () => {
+    it('requires name, teachers and lead teacher', async () => {
       const { service } = await setup();
-      const errors = await fieldErrorsOf(service.create({ name: '  ', teacherName: '' }));
-      expect(Object.keys(errors).sort()).toEqual(['name', 'teacherName']);
+      const errors = await fieldErrorsOf(service.create({ name: '  ', teachers: [], leadTeacher: '' }));
+      expect(Object.keys(errors).sort()).toEqual(['leadTeacher', 'name', 'teachers']);
     });
 
     it('rejects non-string and missing values', async () => {
       const { service } = await setup();
-      const errors = await fieldErrorsOf(service.create({ name: 5, teacherName: null } as never));
-      expect(Object.keys(errors).sort()).toEqual(['name', 'teacherName']);
+      const errors = await fieldErrorsOf(service.create({ name: 5, teachers: 'Ana', leadTeacher: null } as never));
+      expect(Object.keys(errors).sort()).toEqual(['leadTeacher', 'name', 'teachers']);
       await fieldErrorsOf(service.create(undefined as never));
     });
 
     it('rejects values over the maximum length', async () => {
       const { service } = await setup();
       const errors = await fieldErrorsOf(
-        service.create({ name: 'x'.repeat(81), teacherName: 'y'.repeat(101) }),
+        service.create({ name: 'x'.repeat(81), teachers: ['y'.repeat(101)], leadTeacher: 'y'.repeat(101) }),
       );
-      expect(Object.keys(errors).sort()).toEqual(['name', 'teacherName']);
+      expect(Object.keys(errors).sort()).toEqual(['name', 'teachers']);
+    });
+
+    it('requires at least one teacher and rejects blank entries', async () => {
+      const { service } = await setup();
+      for (const teachers of [[], ['  '], ['Ana Gil', ''], [5]]) {
+        const errors = await fieldErrorsOf(service.create({ ...basketball, teachers, leadTeacher: 'Ana Gil' } as never));
+        expect(errors.teachers).toBeTruthy();
+      }
+    });
+
+    it('rejects repeated teachers ignoring case and accents', async () => {
+      const { service } = await setup();
+      const errors = await fieldErrorsOf(
+        service.create({ ...basketball, teachers: ['Lía Soria', ' LIA soria '], leadTeacher: 'Lía Soria' }),
+      );
+      expect(errors.teachers).toBeTruthy();
+      expect(errors.leadTeacher).toBeUndefined();
+    });
+
+    it('requires the lead teacher to be one of the teachers, comparing trimmed values', async () => {
+      const { service } = await setup();
+      const errors = await fieldErrorsOf(
+        service.create({ ...basketball, teachers: ['Ana Gil', 'Lía Soria'], leadTeacher: 'Otra Persona' }),
+      );
+      expect(Object.keys(errors)).toEqual(['leadTeacher']);
+
+      const stored = await service.create({
+        ...basketball,
+        teachers: ['Ana Gil', 'Lía Soria'],
+        leadTeacher: '  Lía Soria ',
+      });
+      expect(stored.leadTeacher).toBe('Lía Soria');
     });
 
     it('rejects a duplicate name ignoring case and surrounding spaces', async () => {
       const { service } = await setup();
       await service.create(basketball);
-      await expect(service.create({ name: ' BÁSQUET ', teacherName: 'Otro Docente' })).rejects.toBeInstanceOf(
+      await expect(service.create({ ...volleyball, name: ' BÁSQUET ' })).rejects.toBeInstanceOf(
         ConflictError,
       );
       expect(await service.list()).toHaveLength(1);
@@ -71,12 +111,12 @@ describe('discipline service', () => {
 
     it('folds accents like the search does when checking uniqueness', async () => {
       const { service } = await setup();
-      await service.create({ name: 'Fútbol', teacherName: 'Darío Paz' });
-      await expect(service.create({ name: 'Futbol', teacherName: 'Otro Docente' })).rejects.toBeInstanceOf(
+      await service.create({ name: 'Fútbol', teachers: ['Darío Paz'], leadTeacher: 'Darío Paz' });
+      await expect(service.create({ ...volleyball, name: 'Futbol' })).rejects.toBeInstanceOf(
         ConflictError,
       );
-      const other = await service.create({ name: 'Tenis', teacherName: 'Ana Gil' });
-      await expect(service.update(other.id, { name: 'FUTBOL', teacherName: 'Ana Gil' })).rejects.toBeInstanceOf(
+      const other = await service.create({ name: 'Tenis', teachers: ['Ana Gil'], leadTeacher: 'Ana Gil' });
+      await expect(service.update(other.id, { ...volleyball, name: 'FUTBOL' })).rejects.toBeInstanceOf(
         ConflictError,
       );
     });
@@ -90,14 +130,19 @@ describe('discipline service', () => {
   });
 
   describe('update', () => {
-    it('replaces name and teacher and keeps identity and status', async () => {
+    it('replaces name and teachers and keeps identity and status', async () => {
       const { service } = await setup();
       const created = await service.create(basketball);
-      const updated = await service.update(created.id, { name: 'Básquet mayor', teacherName: 'Nuevo Docente' });
+      const updated = await service.update(created.id, {
+        name: 'Básquet mayor',
+        teachers: ['Nuevo Docente', 'Marcos Ledesma'],
+        leadTeacher: 'Nuevo Docente',
+      });
       expect(updated).toMatchObject({
         id: created.id,
         name: 'Básquet mayor',
-        teacherName: 'Nuevo Docente',
+        teachers: ['Nuevo Docente', 'Marcos Ledesma'],
+        leadTeacher: 'Nuevo Docente',
         status: 'active',
         createdAt: created.createdAt,
       });
@@ -107,7 +152,7 @@ describe('discipline service', () => {
     it('allows keeping the own name with different casing', async () => {
       const { service } = await setup();
       const created = await service.create(basketball);
-      const updated = await service.update(created.id, { name: 'básquet', teacherName: 'Marcos Ledesma' });
+      const updated = await service.update(created.id, { ...basketball, name: 'básquet' });
       expect(updated.name).toBe('básquet');
     });
 
@@ -115,7 +160,7 @@ describe('discipline service', () => {
       const { service } = await setup();
       await service.create(basketball);
       const other = await service.create(volleyball);
-      await expect(service.update(other.id, { name: 'básquet', teacherName: 'X' })).rejects.toBeInstanceOf(
+      await expect(service.update(other.id, { ...volleyball, name: 'básquet' })).rejects.toBeInstanceOf(
         ConflictError,
       );
     });
@@ -123,7 +168,7 @@ describe('discipline service', () => {
     it('validates input and reports unknown ids', async () => {
       const { service } = await setup();
       const created = await service.create(basketball);
-      await fieldErrorsOf(service.update(created.id, { name: '', teacherName: 'X' }));
+      await fieldErrorsOf(service.update(created.id, { ...basketball, name: '' }));
       await expect(service.update('missing', volleyball)).rejects.toBeInstanceOf(NotFoundError);
     });
   });

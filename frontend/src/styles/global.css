@@ -751,6 +751,30 @@ a:hover {
 
 /* Disciplines list */
 
+.disciplines-table__others {
+  display: block;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.teacher-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.teacher-row input[type='text'] {
+  flex: 1 1 200px;
+}
+
+.teacher-row__lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .disciplines-table__actions {
   display: flex;
   gap: 8px;

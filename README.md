@@ -40,14 +40,14 @@ pnpm --filter @club-socios/backend seed          # add --force to replace existi
 
 ## Disciplines API (demo)
 
-The disciplines catalog is stored in a JSON file (`backend/data/disciplines.json`, or the path in `DISCIPLINES_FILE`), with the same demo-only limits as members. Each discipline has a name (required, unique ignoring case and accents, also against inactive ones) and a teacher name (free text, required). Removal is logical, so there is no delete endpoint.
+The disciplines catalog is stored in a JSON file (`backend/data/disciplines.json`, or the path in `DISCIPLINES_FILE`), with the same demo-only limits as members. Each discipline has a name (required, unique ignoring case and accents, also against inactive ones) and one or more teachers. `teachers` is a list of names (free text, each trimmed, at most 100 characters, unique ignoring case and accents) and `leadTeacher` is the one in charge; it must be one of `teachers` (compared after trimming). Validation errors use the field keys `teachers` and `leadTeacher`. Members enroll in the discipline only, not with a specific teacher. Records stored with the older single `teacherName` are read as `teachers: [teacherName]`, `leadTeacher: teacherName` (the file is rewritten in the new shape on the next change). Removal is logical, so there is no delete endpoint.
 
 | Method | Path | Notes |
 | --- | --- | --- |
 | GET | `/api/disciplines?search=&status=` | `search` matches the name; `status` is `active` or `inactive` |
 | GET | `/api/disciplines/:id` | 404 if unknown |
 | POST | `/api/disciplines` | 201 with the created discipline; 409 on a duplicate name |
-| PUT | `/api/disciplines/:id` | Replaces name and teacher name |
+| PUT | `/api/disciplines/:id` | Replaces name, teachers and lead teacher |
 | POST | `/api/disciplines/:id/deactivate` | 409 if already inactive |
 | POST | `/api/disciplines/:id/reactivate` | 409 if already active |
 

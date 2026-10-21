@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { toIsoDate } from '../../shared/date.js';
 import { ConflictError, NotFoundError } from '../../shared/errors.js';
+import { foldText as fold } from '../../shared/text.js';
 import type { DisciplineRepository } from './discipline.repository.js';
 import type { Discipline, DisciplineInput, DisciplineListQuery } from './discipline.types.js';
 import { validateDisciplineInput } from './discipline.validation.js';
@@ -8,10 +9,6 @@ import { validateDisciplineInput } from './discipline.validation.js';
 export interface DisciplineServiceDeps {
   repository: DisciplineRepository;
   now?: () => Date;
-}
-
-function fold(value: string): string {
-  return value.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 }
 
 function compareByName(a: Discipline, b: Discipline): number {

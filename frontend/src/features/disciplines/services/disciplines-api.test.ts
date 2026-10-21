@@ -59,7 +59,7 @@ describe('fetchDisciplines', () => {
 });
 
 describe('mutations', () => {
-  const input = { name: 'Vóley', teacherName: 'Ana Gómez' };
+  const input = { name: 'Vóley', teachers: ['Ana Gómez', 'Luis Sosa'], leadTeacher: 'Luis Sosa' };
 
   it('creates with a JSON POST', async () => {
     stubFetch(jsonResponse(buildDiscipline(input), 201));

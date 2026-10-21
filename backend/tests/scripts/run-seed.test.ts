@@ -49,7 +49,7 @@ describe('runSeed', () => {
   });
 
   it('writes nothing when the disciplines file already has data', async () => {
-    const existing = '[{"id":"keep","name":"Judo","teacherName":"T","status":"active"}]';
+    const existing = '[{"id":"keep","name":"Judo","teachers":["T"],"leadTeacher":"T","status":"active"}]';
     await writeFile(disciplinesFile, existing, 'utf8');
 
     await expect(runSeed(options())).rejects.toThrow(/Disciplines file already has data/);

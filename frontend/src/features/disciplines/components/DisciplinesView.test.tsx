@@ -8,7 +8,11 @@ import { DisciplinesView } from './DisciplinesView';
 const fetchMock = vi.fn<typeof fetch>();
 
 const basket = buildDiscipline();
-const volley = buildDiscipline({ id: 'disc-2', name: 'Vóley', teacherName: 'Ana Gómez', status: 'inactive' });
+const volley = buildDiscipline({ id: 'disc-2', name: 'Vóley',
+  teachers: ['Ana Gómez', 'Luis Sosa', 'Eva Ríos'],
+  leadTeacher: 'Luis Sosa',
+  status: 'inactive',
+});
 
 function requests() {
   return fetchMock.mock.calls.map(([url, init]) => `${init?.method ?? 'GET'} ${String(url)}`);
@@ -24,7 +28,7 @@ afterEach(() => {
 });
 
 describe('DisciplinesView list', () => {
-  it('shows a loading state, then name, teacher and status chip', async () => {
+  it('shows a loading state, then name, teachers and status chip', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse([basket, volley]));
     render(<DisciplinesView />);
 
@@ -34,8 +38,11 @@ describe('DisciplinesView list', () => {
     const rows = within(table).getAllByRole('row');
     expect(within(rows[1]).getByText('Básquet')).toBeInTheDocument();
     expect(within(rows[1]).getByText('Marcos Peña')).toBeInTheDocument();
+    expect(within(rows[1]).queryByText(/Otros/)).not.toBeInTheDocument();
     expect(within(rows[1]).getByText('Activa')).toBeInTheDocument();
     expect(within(rows[2]).getByText('Inactiva')).toBeInTheDocument();
+    expect(within(rows[2]).getByText('Luis Sosa')).toBeInTheDocument();
+    expect(within(rows[2]).getByText('Otros: Ana Gómez, Eva Ríos')).toBeInTheDocument();
     expect(screen.getByText('2 resultados')).toBeInTheDocument();
     expect(requests()).toEqual(['GET /api/disciplines']);
   });
@@ -97,12 +104,19 @@ describe('DisciplinesView create and edit', () => {
     await user.click(await screen.findByRole('button', { name: 'Nueva disciplina' }));
     expect(screen.getByRole('heading', { name: 'Alta de disciplina' })).toHaveFocus();
     await user.type(screen.getByLabelText('Nombre'), 'Básquet');
-    await user.type(screen.getByLabelText('Profesor'), 'Marcos Peña');
+    await user.type(screen.getByLabelText('Profesor 1'), 'Marcos Peña');
+    await user.click(screen.getByRole('button', { name: 'Agregar profesor' }));
+    await user.type(screen.getByLabelText('Profesor 2'), 'Ana Gómez');
+    await user.click(screen.getByRole('radio', { name: 'A cargo: profesor 2' }));
     await user.click(screen.getByRole('button', { name: 'Crear disciplina' }));
 
     expect(await screen.findByRole('table', { name: 'Listado de disciplinas' })).toBeInTheDocument();
     expect(requests()).toEqual(['GET /api/disciplines', 'POST /api/disciplines', 'GET /api/disciplines']);
-    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({ name: 'Básquet', teacherName: 'Marcos Peña' });
+    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({
+      name: 'Básquet',
+      teachers: ['Marcos Peña', 'Ana Gómez'],
+      leadTeacher: 'Ana Gómez',
+    });
   });
 
   it('shows the duplicate-name conflict on the name field', async () => {
@@ -114,7 +128,7 @@ describe('DisciplinesView create and edit', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Nueva disciplina' }));
     await user.type(screen.getByLabelText('Nombre'), 'Básquet');
-    await user.type(screen.getByLabelText('Profesor'), 'Marcos Peña');
+    await user.type(screen.getByLabelText('Profesor 1'), 'Marcos Peña');
     await user.click(screen.getByRole('button', { name: 'Crear disciplina' }));
 
     await waitFor(() =>
@@ -128,35 +142,42 @@ describe('DisciplinesView create and edit', () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse([]))
       .mockResolvedValueOnce(
-        jsonResponse({ error: 'validation_error', message: 'Invalid', fieldErrors: { teacherName: 'Teacher name is required' } }, 400),
+        jsonResponse({ error: 'validation_error', message: 'Invalid', fieldErrors: { teachers: 'Teachers must not be repeated', leadTeacher: 'Lead teacher must be one of the teachers' } }, 400),
       );
     const user = userEvent.setup();
     render(<DisciplinesView />);
 
     await user.click(await screen.findByRole('button', { name: 'Nueva disciplina' }));
     await user.type(screen.getByLabelText('Nombre'), 'Básquet');
-    await user.type(screen.getByLabelText('Profesor'), 'x');
+    await user.type(screen.getByLabelText('Profesor 1'), 'x');
     await user.click(screen.getByRole('button', { name: 'Crear disciplina' }));
 
     await waitFor(() =>
-      expect(screen.getByLabelText('Profesor')).toHaveAccessibleDescription('Teacher name is required'),
+      expect(screen.getByRole('group', { name: 'Profesores' })).toHaveAccessibleDescription(
+        'Teachers must not be repeated',
+      ),
+    );
+    expect(screen.getByRole('radio', { name: 'A cargo: profesor 1' })).toHaveAccessibleDescription(
+      'Lead teacher must be one of the teachers',
     );
   });
 
   it('edits a discipline with a prefilled form', async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse([basket]))
-      .mockResolvedValueOnce(jsonResponse({ ...basket, teacherName: 'Lucas Vera' }))
-      .mockResolvedValueOnce(jsonResponse([{ ...basket, teacherName: 'Lucas Vera' }]));
+      .mockResolvedValueOnce(jsonResponse({ ...basket, teachers: ['Lucas Vera'], leadTeacher: 'Lucas Vera' }))
+      .mockResolvedValueOnce(jsonResponse([{ ...basket, teachers: ['Lucas Vera'], leadTeacher: 'Lucas Vera' }]));
     const user = userEvent.setup();
     render(<DisciplinesView />);
 
     await user.click(await screen.findByRole('button', { name: 'Editar Básquet' }));
     expect(screen.getByRole('heading', { name: 'Editar disciplina' })).toBeInTheDocument();
     expect(screen.getByLabelText('Nombre')).toHaveValue('Básquet');
+    expect(screen.getByLabelText('Profesor 1')).toHaveValue('Marcos Peña');
+    expect(screen.getByRole('radio', { name: 'A cargo: profesor 1' })).toBeChecked();
 
-    await user.clear(screen.getByLabelText('Profesor'));
-    await user.type(screen.getByLabelText('Profesor'), 'Lucas Vera');
+    await user.clear(screen.getByLabelText('Profesor 1'));
+    await user.type(screen.getByLabelText('Profesor 1'), 'Lucas Vera');
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
 
     expect(await screen.findByText('Lucas Vera')).toBeInTheDocument();

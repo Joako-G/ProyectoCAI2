@@ -1,8 +1,8 @@
 [
-  { "id": "disc-basquet", "name": "Básquet", "teacherName": "Marcos Ledesma (demo)" },
-  { "id": "disc-voley", "name": "Vóley", "teacherName": "Carla Ibarra (demo)" },
-  { "id": "disc-patin-artistico", "name": "Patín artístico", "teacherName": "Lía Soria (demo)" },
-  { "id": "disc-futbol-infantil", "name": "Fútbol infantil", "teacherName": "Darío Paz (demo)" },
-  { "id": "disc-gimnasia-artistica", "name": "Gimnasia artística", "teacherName": "Noelia Vera (demo)" },
-  { "id": "disc-taekwondo", "name": "Taekwondo", "teacherName": "Hugo Benítez (demo)" }
+  { "id": "disc-basquet", "name": "Básquet", "teachers": ["Marcos Ledesma (demo)", "Paula Rinaldi (demo)"], "leadTeacher": "Marcos Ledesma (demo)" },
+  { "id": "disc-voley", "name": "Vóley", "teachers": ["Carla Ibarra (demo)"], "leadTeacher": "Carla Ibarra (demo)" },
+  { "id": "disc-patin-artistico", "name": "Patín artístico", "teachers": ["Lía Soria (demo)", "Julieta Fuentes (demo)"], "leadTeacher": "Julieta Fuentes (demo)" },
+  { "id": "disc-futbol-infantil", "name": "Fútbol infantil", "teachers": ["Darío Paz (demo)"], "leadTeacher": "Darío Paz (demo)" },
+  { "id": "disc-gimnasia-artistica", "name": "Gimnasia artística", "teachers": ["Noelia Vera (demo)"], "leadTeacher": "Noelia Vera (demo)" },
+  { "id": "disc-taekwondo", "name": "Taekwondo", "teachers": ["Hugo Benítez (demo)"], "leadTeacher": "Hugo Benítez (demo)" }
 ]

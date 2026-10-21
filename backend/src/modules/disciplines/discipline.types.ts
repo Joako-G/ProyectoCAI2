@@ -2,7 +2,9 @@ export type DisciplineStatus = 'active' | 'inactive';
 
 export interface DisciplineInput {
   name: string;
-  teacherName: string;
+  // At least one teacher; exactly one of them is in charge (teachers are not system users).
+  teachers: string[];
+  leadTeacher: string;
 }
 
 export interface Discipline extends DisciplineInput {

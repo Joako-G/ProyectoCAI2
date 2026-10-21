@@ -42,7 +42,12 @@ describe('disciplines API', () => {
     const created = await send('POST', '/api/disciplines', basketball);
     expect(created.status).toBe(201);
     const discipline = await created.json();
-    expect(discipline).toMatchObject({ name: 'Básquet', teacherName: 'Marcos Ledesma', status: 'active' });
+    expect(discipline).toMatchObject({
+      name: 'Básquet',
+      teachers: ['Marcos Ledesma'],
+      leadTeacher: 'Marcos Ledesma',
+      status: 'active',
+    });
 
     const fetched = await send('GET', `/api/disciplines/${discipline.id}`);
     expect(fetched.status).toBe(200);
@@ -79,11 +84,34 @@ describe('disciplines API', () => {
 
   it('returns 400 with field errors for invalid input', async () => {
     const { send } = await startApi();
-    const response = await send('POST', '/api/disciplines', { name: '', teacherName: '' });
+    const response = await send('POST', '/api/disciplines', { name: '', teachers: [], leadTeacher: '' });
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error).toBe('validation_error');
-    expect(Object.keys(body.fieldErrors).sort()).toEqual(['name', 'teacherName']);
+    expect(Object.keys(body.fieldErrors).sort()).toEqual(['leadTeacher', 'name', 'teachers']);
+  });
+
+  it('rejects a lead teacher that is not among the teachers with 400 on create and update', async () => {
+    const { send } = await startApi();
+    const invalid = { ...basketball, teachers: ['Ana Gil', 'Lía Soria'], leadTeacher: 'Otra Persona' };
+    const created = await send('POST', '/api/disciplines', invalid);
+    expect(created.status).toBe(400);
+    expect(Object.keys((await created.json()).fieldErrors)).toEqual(['leadTeacher']);
+
+    const valid = await (await send('POST', '/api/disciplines', basketball)).json();
+    const updated = await send('PUT', `/api/disciplines/${valid.id}`, invalid);
+    expect(updated.status).toBe(400);
+  });
+
+  it('creates a discipline with several teachers and returns them with the lead teacher', async () => {
+    const { send } = await startApi();
+    const response = await send('POST', '/api/disciplines', {
+      ...basketball,
+      teachers: ['Ana Gil', 'Lía Soria'],
+      leadTeacher: 'Lía Soria',
+    });
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({ teachers: ['Ana Gil', 'Lía Soria'], leadTeacher: 'Lía Soria' });
   });
 
   it('returns 409 conflict for a duplicate name on create and update', async () => {
@@ -103,7 +131,8 @@ describe('disciplines API', () => {
     const created = await (await send('POST', '/api/disciplines', basketball)).json();
     const response = await send('PUT', `/api/disciplines/${created.id}`, {
       name: 'Básquet mayor',
-      teacherName: 'Nuevo Docente',
+      teachers: ['Nuevo Docente', 'Otra Docente'],
+      leadTeacher: 'Otra Docente',
     });
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ id: created.id, name: 'Básquet mayor' });

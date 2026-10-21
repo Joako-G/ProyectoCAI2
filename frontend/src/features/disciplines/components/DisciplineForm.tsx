@@ -15,25 +15,23 @@ interface DisciplineFormProps {
   onCancel: () => void;
 }
 
-interface TextFieldProps {
-  name: keyof DisciplineFormValues;
-  label: string;
+interface NameFieldProps {
   value: string;
   error?: string;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
 }
 
-function TextField({ name, label, value, error, onChange }: TextFieldProps) {
+function NameField({ value, error, onChange }: NameFieldProps) {
   const id = useId();
   const errorId = `${id}-error`;
   return (
     <div className="form-field">
       <label htmlFor={id} className="form-field__label">
-        {label}
+        Nombre
       </label>
       <input
         id={id}
-        name={name}
+        name="name"
         type="text"
         autoComplete="off"
         required
@@ -64,7 +62,12 @@ export function DisciplineForm({
   const [values, setValues] = useState<DisciplineFormValues>(initialValues);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [focusRequest, setFocusRequest] = useState(0);
+  // A new object per request, so asking for the same row twice still moves the focus.
+  const [teacherFocus, setTeacherFocus] = useState<{ index: number }>();
   const formRef = useRef<HTMLFormElement>(null);
+  const leadGroupName = useId();
+  const teachersErrorId = useId();
+  const leadErrorId = useId();
 
   useEffect(() => {
     if (fieldErrors && Object.keys(fieldErrors).length > 0) {
@@ -77,14 +80,56 @@ export function DisciplineForm({
     if (focusRequest > 0) formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
   }, [focusRequest]);
 
-  function handleChange(event: ChangeEvent<HTMLInputElement>) {
-    const { name, value } = event.target;
-    setValues((current) => ({ ...current, [name]: value }));
+  useEffect(() => {
+    if (teacherFocus) {
+      formRef.current?.querySelector<HTMLElement>(`[data-teacher-row="${teacherFocus.index}"]`)?.focus();
+    }
+  }, [teacherFocus]);
+
+  function clearErrors(...names: string[]) {
     setErrors((current) => {
-      if (!(name in current)) return current;
-      const { [name]: _cleared, ...rest } = current;
+      if (!names.some((name) => name in current)) return current;
+      const rest = { ...current };
+      for (const name of names) delete rest[name];
       return rest;
     });
+  }
+
+  function handleNameChange(event: ChangeEvent<HTMLInputElement>) {
+    setValues((current) => ({ ...current, name: event.target.value }));
+    clearErrors('name');
+  }
+
+  function changeTeacher(index: number, value: string) {
+    setValues((current) => ({
+      ...current,
+      teachers: current.teachers.map((teacher, i) => (i === index ? value : teacher)),
+    }));
+    clearErrors('teachers');
+  }
+
+  function addTeacher() {
+    setValues((current) => ({ ...current, teachers: [...current.teachers, ''] }));
+    setTeacherFocus({ index: values.teachers.length });
+    clearErrors('teachers');
+  }
+
+  // The lead follows the same person when a row above it goes away; if the lead row is removed, row 1 takes over.
+  function removeTeacher(index: number) {
+    if (values.teachers.length <= 1) return;
+    setValues((current) => ({
+      ...current,
+      teachers: current.teachers.filter((_, i) => i !== index),
+      leadIndex:
+        current.leadIndex === index ? 0 : current.leadIndex > index ? current.leadIndex - 1 : current.leadIndex,
+    }));
+    setTeacherFocus({ index: Math.max(0, index - 1) });
+    clearErrors('teachers', 'leadTeacher');
+  }
+
+  function selectLead(index: number) {
+    setValues((current) => ({ ...current, leadIndex: index }));
+    clearErrors('leadTeacher');
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -105,21 +150,61 @@ export function DisciplineForm({
       ) : null}
 
       <div className="member-form__grid">
-        <TextField
-          name="name"
-          label="Nombre"
-          value={values.name}
-          error={errors.name}
-          onChange={handleChange}
-        />
-        <TextField
-          name="teacherName"
-          label="Profesor"
-          value={values.teacherName}
-          error={errors.teacherName}
-          onChange={handleChange}
-        />
+        <NameField value={values.name} error={errors.name} onChange={handleNameChange} />
       </div>
+
+      <fieldset className="member-form__section" aria-describedby={errors.teachers ? teachersErrorId : undefined}>
+        <legend className="member-form__legend">Profesores</legend>
+        {values.teachers.map((teacher, index) => (
+          // Rows have no identity besides their position, so the index is the key.
+          <div key={index} className="teacher-row">
+            <input
+              type="text"
+              autoComplete="off"
+              data-teacher-row={index}
+              aria-label={`Profesor ${index + 1}`}
+              value={teacher}
+              aria-invalid={errors.teachers ? true : undefined}
+              aria-describedby={errors.teachers ? teachersErrorId : undefined}
+              onChange={(event) => changeTeacher(index, event.target.value)}
+            />
+            <label className="teacher-row__lead">
+              <input
+                type="radio"
+                name={leadGroupName}
+                checked={values.leadIndex === index}
+                aria-label={`A cargo: profesor ${index + 1}`}
+                aria-invalid={errors.leadTeacher && index === 0 ? true : undefined}
+                aria-describedby={errors.leadTeacher ? leadErrorId : undefined}
+                onChange={() => selectLead(index)}
+              />
+              <span aria-hidden="true">A cargo</span>
+            </label>
+            <button
+              type="button"
+              className="button button--secondary"
+              aria-label={`Quitar profesor ${index + 1}`}
+              disabled={values.teachers.length === 1}
+              onClick={() => removeTeacher(index)}
+            >
+              Quitar
+            </button>
+          </div>
+        ))}
+        {errors.teachers ? (
+          <p id={teachersErrorId} className="form-field__error">
+            {errors.teachers}
+          </p>
+        ) : null}
+        {errors.leadTeacher ? (
+          <p id={leadErrorId} className="form-field__error">
+            {errors.leadTeacher}
+          </p>
+        ) : null}
+        <button type="button" className="button button--secondary" onClick={addTeacher}>
+          Agregar profesor
+        </button>
+      </fieldset>
 
       <div className="member-form__actions">
         <button type="submit" className="button button--primary" disabled={saving}>
