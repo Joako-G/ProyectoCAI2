@@ -6,9 +6,13 @@ import { createJsonMemberRepository } from './modules/members/json-member.reposi
 import { createMemberService } from './modules/members/member.service.js';
 
 const port = Number(process.env.PORT ?? 3001);
-const memberService = createMemberService({ repository: createJsonMemberRepository(membersFilePath()) });
 const disciplineService = createDisciplineService({
   repository: createJsonDisciplineRepository(disciplinesFilePath()),
+});
+// The members module only sees the small lookup port, which the disciplines service satisfies.
+const memberService = createMemberService({
+  repository: createJsonMemberRepository(membersFilePath()),
+  disciplineLookup: disciplineService,
 });
 const app = createApp({ memberService, disciplineService });
 

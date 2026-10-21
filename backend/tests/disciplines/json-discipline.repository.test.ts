@@ -33,4 +33,29 @@ describe('json discipline repository', () => {
     );
     expect(await readFile(file, 'utf8')).toBe('{"not":"an array"}');
   });
+
+  it.each([
+    ['a non-object element', '[1]'],
+    ['a missing field', '[{"id":"a","name":"Básquet","status":"active"}]'],
+    ['an unknown status', '[{"id":"a","name":"Básquet","teacherName":"T","status":"gone"}]'],
+    ['a null element', '[null]'],
+  ])('refuses a file with %s and leaves it untouched', async (_label, content) => {
+    const file = await tempFile();
+    await writeFile(file, content, 'utf8');
+    const repository = createJsonDisciplineRepository(file);
+
+    await expect(repository.list()).rejects.toThrow(/Invalid disciplines file/);
+    await expect(repository.mutate((disciplines) => ({ disciplines, result: 1 }))).rejects.toThrow(
+      /Invalid disciplines file/,
+    );
+    expect(await readFile(file, 'utf8')).toBe(content);
+  });
+
+  it('accepts well-shaped disciplines', async () => {
+    const file = await tempFile();
+    const discipline = { id: 'a', name: 'Básquet', teacherName: 'T', status: 'inactive', deactivatedAt: '2026-10-01' };
+    await writeFile(file, JSON.stringify([discipline]), 'utf8');
+
+    expect(await createJsonDisciplineRepository(file).list()).toEqual([discipline]);
+  });
 });

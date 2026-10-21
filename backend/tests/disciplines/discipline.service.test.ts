@@ -69,6 +69,18 @@ describe('discipline service', () => {
       expect(await service.list()).toHaveLength(1);
     });
 
+    it('folds accents like the search does when checking uniqueness', async () => {
+      const { service } = await setup();
+      await service.create({ name: 'Fútbol', teacherName: 'Darío Paz' });
+      await expect(service.create({ name: 'Futbol', teacherName: 'Otro Docente' })).rejects.toBeInstanceOf(
+        ConflictError,
+      );
+      const other = await service.create({ name: 'Tenis', teacherName: 'Ana Gil' });
+      await expect(service.update(other.id, { name: 'FUTBOL', teacherName: 'Ana Gil' })).rejects.toBeInstanceOf(
+        ConflictError,
+      );
+    });
+
     it('rejects a name that belongs to an inactive discipline', async () => {
       const { service } = await setup();
       const created = await service.create(basketball);

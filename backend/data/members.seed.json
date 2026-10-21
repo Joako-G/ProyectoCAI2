@@ -7,6 +7,7 @@
     "category": "Mayor",
     "memberSince": "2018-03-01",
     "whatsapp": "3815550101",
+    "disciplineIds": ["disc-voley"],
     "email": "valentina.rios@example.test"
   },
   {
@@ -17,6 +18,7 @@
     "category": "Infantil",
     "memberSince": "2022-02-15",
     "whatsapp": "3815550102",
+    "disciplineIds": ["disc-futbol-infantil"],
     "guardian": { "name": "Paula Quiroga", "contact": "3815550202" }
   },
   {
@@ -27,6 +29,7 @@
     "category": "Cadete",
     "memberSince": "2020-03-10",
     "whatsapp": "3815550103",
+    "disciplineIds": ["disc-patin-artistico", "disc-gimnasia-artistica"],
     "guardian": { "name": "Daniel Ferreyra", "contact": "3815550203" }
   },
   {
@@ -36,7 +39,8 @@
     "birthDate": "1995-11-03",
     "category": "Mayor",
     "memberSince": "2016-05-20",
-    "whatsapp": "3815550104"
+    "whatsapp": "3815550104",
+    "disciplineIds": ["disc-basquet", "disc-voley"]
   },
   {
     "firstName": "Hugo",
@@ -45,7 +49,8 @@
     "birthDate": "1948-06-30",
     "category": "Vitalicia",
     "memberSince": "1975-01-10",
-    "whatsapp": "3815550105"
+    "whatsapp": "3815550105",
+    "disciplineIds": ["disc-voley"]
   },
   {
     "firstName": "Thiago",
@@ -55,6 +60,7 @@
     "category": "Infantil",
     "memberSince": "2021-03-01",
     "whatsapp": "3815550106",
+    "disciplineIds": ["disc-futbol-infantil", "disc-taekwondo"],
     "guardian": { "name": "Laura Nieva", "contact": "3815550206" }
   },
   {
@@ -65,6 +71,7 @@
     "category": "Mayor",
     "memberSince": "2012-08-05",
     "whatsapp": "3815550107",
+    "disciplineIds": ["disc-basquet"],
     "deactivationReason": "Moved to another city (synthetic example)"
   },
   {
@@ -75,6 +82,7 @@
     "category": "Vitalicia",
     "memberSince": "1980-04-18",
     "whatsapp": "3815550108",
+    "disciplineIds": ["disc-gimnasia-artistica"],
     "email": "marta.colombres@example.test"
   }
 ]

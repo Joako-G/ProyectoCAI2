@@ -21,16 +21,18 @@ Members are stored in a JSON file (`backend/data/members.json`, or the path in `
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| GET | `/api/members?search=&status=` | `status` is `active` or `inactive` |
+| GET | `/api/members?search=&status=&disciplineId=` | `status` is `active` or `inactive`; `disciplineId` keeps members assigned to that discipline; filters combine |
 | GET | `/api/members/:id` | 404 if unknown |
 | POST | `/api/members` | 201 with the created member |
-| PUT | `/api/members/:id` | Replaces personal fields |
+| PUT | `/api/members/:id` | Replaces personal fields and disciplines |
 | POST | `/api/members/:id/deactivate` | Body `{ "reason": "..." }` |
 | POST | `/api/members/:id/reactivate` | |
 
+Each member has `disciplineIds` (array of discipline ids). At least one is required on create and on update (`fieldErrors.disciplineIds`); ids cannot repeat, must exist, and newly added ones must be active, but a discipline already assigned to the member may be kept after it was deactivated. Members stored before this field existed read as `disciplineIds: []` (no migration); editing one requires choosing at least one discipline.
+
 Errors are JSON `{ error, message }`: 400 `validation_error` (with `fieldErrors`) or `invalid_json`, 404 `not_found`, 409 `conflict`, 413 `payload_too_large` (body over 100kb), other client body errors as their 4xx `bad_request` (e.g. 415), 500 `internal_error`.
 
-Load the synthetic seeds (`backend/data/members.seed.json`, 8 fake members, and `backend/data/disciplines.seed.json`, 6 disciplines) through the service rules; each refuses if its file already has data unless `--force` is given:
+Load the synthetic seeds (`backend/data/members.seed.json`, 8 fake members, and `backend/data/disciplines.seed.json`, 6 disciplines with fixed ids that the members reference) through the service rules, validating members against the seeded disciplines. The run refuses, before writing anything, if either file already has data unless `--force` is given:
 
 ```sh
 pnpm --filter @club-socios/backend seed          # add --force to replace existing data
@@ -38,7 +40,7 @@ pnpm --filter @club-socios/backend seed          # add --force to replace existi
 
 ## Disciplines API (demo)
 
-The disciplines catalog is stored in a JSON file (`backend/data/disciplines.json`, or the path in `DISCIPLINES_FILE`), with the same demo-only limits as members. Each discipline has a name (required, unique ignoring case, also against inactive ones) and a teacher name (free text, required). Removal is logical, so there is no delete endpoint.
+The disciplines catalog is stored in a JSON file (`backend/data/disciplines.json`, or the path in `DISCIPLINES_FILE`), with the same demo-only limits as members. Each discipline has a name (required, unique ignoring case and accents, also against inactive ones) and a teacher name (free text, required). Removal is logical, so there is no delete endpoint.
 
 | Method | Path | Notes |
 | --- | --- | --- |

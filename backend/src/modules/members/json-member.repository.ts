@@ -10,7 +10,12 @@ export function createJsonMemberRepository(filePath: string): MemberRepository {
     if (!Array.isArray(value)) {
       throw new Error(`Invalid members file ${filePath}: it must contain a JSON array of members`);
     }
-    return value as Member[];
+    // Members stored before disciplines existed have no list; they read as unassigned.
+    return (value as Member[]).map((member) =>
+      typeof member === 'object' && member !== null && !Array.isArray(member.disciplineIds)
+        ? { ...member, disciplineIds: [] }
+        : member,
+    );
   }
 
   return {

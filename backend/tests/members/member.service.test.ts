@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createJsonMemberRepository } from '../../src/modules/members/json-member.repository.js';
 import { createMemberService } from '../../src/modules/members/member.service.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../src/shared/errors.js';
-import { adultInput, minorInput, TODAY, trackContexts } from './helpers.js';
+import { adultInput, fakeDisciplineLookup, minorInput, TODAY, trackContexts } from './helpers.js';
 
 const contexts = trackContexts();
 let ctx: Awaited<ReturnType<typeof contexts.create>>;
@@ -76,6 +76,7 @@ describe('create', () => {
         category: 'Junior' as never,
         memberSince: 'yesterday',
         whatsapp: 'abc',
+        disciplineIds: [],
         email: 'not-an-email',
       }),
     );
@@ -83,6 +84,7 @@ describe('create', () => {
     expect(Object.keys(errors).sort()).toEqual([
       'birthDate',
       'category',
+      'disciplineIds',
       'dni',
       'email',
       'firstName',
@@ -562,7 +564,11 @@ describe('member numbers with corrupted data', () => {
       file,
       JSON.stringify([stored('0007', '30000001'), stored('abc', '30000002'), stored('-3', '30000003'), stored('1.5', '30000004')]),
     );
-    const service = createMemberService({ repository: createJsonMemberRepository(file), now: () => TODAY });
+    const service = createMemberService({
+      repository: createJsonMemberRepository(file),
+      now: () => TODAY,
+      disciplineLookup: fakeDisciplineLookup(),
+    });
 
     const member = await service.create({ ...adultInput, dni: '30999999' });
     await rm(dir, { recursive: true, force: true });

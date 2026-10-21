@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { toIsoDate } from '../../shared/date.js';
 import { ConflictError, NotFoundError } from '../../shared/errors.js';
-import { toIsoDate } from '../members/member.validation.js';
 import type { DisciplineRepository } from './discipline.repository.js';
 import type { Discipline, DisciplineInput, DisciplineListQuery } from './discipline.types.js';
 import { validateDisciplineInput } from './discipline.validation.js';
@@ -24,10 +24,10 @@ function findIndex(disciplines: Discipline[], id: string): number {
   return index;
 }
 
-// Names are unique ignoring case, including against inactive disciplines.
+// Names are unique ignoring case and accents (as search does), including against inactive disciplines.
 function assertNameAvailable(disciplines: Discipline[], name: string, ownId?: string): void {
-  const wanted = name.toLowerCase();
-  if (disciplines.some((discipline) => discipline.name.toLowerCase() === wanted && discipline.id !== ownId)) {
+  const wanted = fold(name);
+  if (disciplines.some((discipline) => fold(discipline.name) === wanted && discipline.id !== ownId)) {
     throw new ConflictError('A discipline with this name already exists');
   }
 }

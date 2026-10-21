@@ -3,7 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../../src/app.js';
 import type { MemberService } from '../../src/modules/members/member.service.js';
-import { adultInput, createTestContext, minorInput } from './helpers.js';
+import { adultInput, BASKET, createTestContext, minorInput, RETIRED, VOLLEY } from './helpers.js';
 
 const cleanups: Array<() => Promise<void> | void> = [];
 
@@ -222,5 +222,50 @@ describe('members API', () => {
     expect(text).not.toContain('secret');
     expect(text).not.toContain('stack');
     expect(logged).toHaveBeenCalledWith(expect.anything(), error);
+  });
+});
+
+describe('members API disciplines', () => {
+  it('returns disciplineIds on create and get', async () => {
+    const { send } = await startApi();
+    const created = await (await send('POST', '/api/members', { ...adultInput, disciplineIds: [BASKET, VOLLEY] })).json();
+    expect(created.disciplineIds).toEqual([BASKET, VOLLEY]);
+    expect((await (await send('GET', `/api/members/${created.id}`)).json()).disciplineIds).toEqual([BASKET, VOLLEY]);
+  });
+
+  it('answers 400 validation_error with fieldErrors.disciplineIds when none are given', async () => {
+    const { send } = await startApi();
+    const { disciplineIds: _ids, ...withoutDisciplines } = adultInput;
+    const response = await send('POST', '/api/members', withoutDisciplines);
+    expect(response.status).toBe(400);
+    const body = await response.json();
+    expect(body.error).toBe('validation_error');
+    expect(body.fieldErrors).toHaveProperty('disciplineIds');
+  });
+
+  it('answers 400 for an inactive discipline on create and for no disciplines on update', async () => {
+    const { send } = await startApi();
+    const inactive = await send('POST', '/api/members', { ...adultInput, disciplineIds: [RETIRED] });
+    expect(inactive.status).toBe(400);
+    expect((await inactive.json()).fieldErrors).toHaveProperty('disciplineIds');
+
+    const created = await (await send('POST', '/api/members', adultInput)).json();
+    const update = await send('PUT', `/api/members/${created.id}`, { ...adultInput, disciplineIds: [] });
+    expect(update.status).toBe(400);
+    expect((await update.json()).fieldErrors).toHaveProperty('disciplineIds');
+  });
+
+  it('filters the list by disciplineId, combined with search and status', async () => {
+    const { send } = await startApi();
+    await send('POST', '/api/members', adultInput);
+    const minor = await (await send('POST', '/api/members', minorInput)).json();
+    await send('POST', `/api/members/${minor.id}/deactivate`, { reason: 'Moved away' });
+
+    const ids = async (query: string) => (await (await send('GET', `/api/members${query}`)).json()).map((m: { id: string }) => m.id);
+    expect(await ids(`?disciplineId=${VOLLEY}`)).toEqual([minor.id]);
+    expect(await ids(`?disciplineId=${VOLLEY}&status=active`)).toEqual([]);
+    expect(await ids(`?disciplineId=${BASKET}&search=rios`)).toHaveLength(1);
+    expect(await ids('?disciplineId=')).toHaveLength(2);
+    expect(await ids('?disciplineId=unknown')).toEqual([]);
   });
 });

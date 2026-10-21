@@ -20,7 +20,7 @@ async function startApi() {
     mutate: async (change) => change([]).result,
   };
   const app = createApp({
-    memberService: createMemberService({ repository: memberRepository }),
+    memberService: createMemberService({ repository: memberRepository, disciplineLookup: context.service }),
     disciplineService: context.service,
   });
   const server: Server = app.listen(0);

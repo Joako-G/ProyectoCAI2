@@ -1,8 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { seedDisciplines } from '../../src/modules/disciplines/discipline.seed.js';
-import type { DisciplineInput } from '../../src/modules/disciplines/discipline.types.js';
+import { seedDisciplines, type DisciplineSeedEntry } from '../../src/modules/disciplines/discipline.seed.js';
 import { createTestContext } from './helpers.js';
 
 const cleanups: Array<() => Promise<void>> = [];
@@ -16,7 +15,7 @@ async function setup() {
   cleanups.push(context.cleanup);
   const entries = JSON.parse(
     await readFile(join(__dirname, '../../data/disciplines.seed.json'), 'utf8'),
-  ) as DisciplineInput[];
+  ) as DisciplineSeedEntry[];
   return { ...context, entries };
 }
 
@@ -49,9 +48,24 @@ describe('seedDisciplines', () => {
 
   it('writes nothing when an entry is invalid', async () => {
     const { service, repository, entries } = await setup();
-    const invalid = [...entries, { ...entries[0]! }];
+    const invalid = [...entries, { ...entries[0]!, id: 'disc-copy' }];
 
     await expect(seedDisciplines({ repository, entries: invalid })).rejects.toThrow(/already exists/);
+    expect(await service.list()).toEqual([]);
+  });
+
+  it('keeps the fixed ids of the seed entries so other seeds can reference them', async () => {
+    const { service, repository, entries } = await setup();
+    await seedDisciplines({ repository, entries });
+
+    expect((await service.list()).map((d) => d.id).sort()).toEqual(entries.map((e) => e.id).sort());
+  });
+
+  it('rejects duplicate ids and writes nothing', async () => {
+    const { service, repository, entries } = await setup();
+    const invalid = [entries[0]!, { ...entries[1]!, id: entries[0]!.id }];
+
+    await expect(seedDisciplines({ repository, entries: invalid })).rejects.toThrow(/id/i);
     expect(await service.list()).toEqual([]);
   });
 });

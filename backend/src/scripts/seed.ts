@@ -1,29 +1,22 @@
 import { readFile } from 'node:fs/promises';
 import { DISCIPLINES_SEED_FILE, SEED_FILE, disciplinesFilePath, membersFilePath } from '../config/paths.js';
-import { seedDisciplines } from '../modules/disciplines/discipline.seed.js';
-import type { DisciplineInput } from '../modules/disciplines/discipline.types.js';
-import { createJsonDisciplineRepository } from '../modules/disciplines/json-discipline.repository.js';
-import { createJsonMemberRepository } from '../modules/members/json-member.repository.js';
-import { seedMembers, type SeedEntry } from '../modules/members/member.seed.js';
+import type { DisciplineSeedEntry } from '../modules/disciplines/discipline.seed.js';
+import type { SeedEntry } from '../modules/members/member.seed.js';
+import { runSeed } from './run-seed.js';
 
 async function main() {
-  const force = process.argv.includes('--force');
-
   const disciplinesFile = disciplinesFilePath();
-  const disciplineEntries = JSON.parse(await readFile(DISCIPLINES_SEED_FILE, 'utf8')) as DisciplineInput[];
-  const disciplineCount = await seedDisciplines({
-    repository: createJsonDisciplineRepository(disciplinesFile),
-    entries: disciplineEntries,
-    force,
+  const membersFile = membersFilePath();
+
+  const { disciplines, members } = await runSeed({
+    disciplinesFile,
+    membersFile,
+    disciplineEntries: JSON.parse(await readFile(DISCIPLINES_SEED_FILE, 'utf8')) as DisciplineSeedEntry[],
+    memberEntries: JSON.parse(await readFile(SEED_FILE, 'utf8')) as SeedEntry[],
+    force: process.argv.includes('--force'),
   });
-  console.log(`Seeded ${disciplineCount} synthetic disciplines into ${disciplinesFile}`);
-
-  const file = membersFilePath();
-  const repository = createJsonMemberRepository(file);
-  const entries = JSON.parse(await readFile(SEED_FILE, 'utf8')) as SeedEntry[];
-
-  const count = await seedMembers({ repository, entries, force });
-  console.log(`Seeded ${count} synthetic members into ${file}`);
+  console.log(`Seeded ${disciplines} synthetic disciplines into ${disciplinesFile}`);
+  console.log(`Seeded ${members} synthetic members into ${membersFile}`);
 }
 
 main().catch((error: unknown) => {

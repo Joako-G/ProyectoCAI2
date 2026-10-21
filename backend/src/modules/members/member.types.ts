@@ -21,6 +21,7 @@ export interface MemberInput {
   category: MemberCategory;
   memberSince: string;
   whatsapp: string;
+  disciplineIds: string[];
   email?: string;
   guardian?: Guardian;
 }
@@ -37,4 +38,5 @@ export interface Member extends MemberInput {
 export interface MemberListQuery {
   search?: string;
   status?: MemberStatus;
+  disciplineId?: string;
 }

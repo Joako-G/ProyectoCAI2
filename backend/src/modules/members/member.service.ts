@@ -1,11 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError, ValidationError } from '../../shared/errors.js';
+import { toIsoDate } from '../../shared/date.js';
+import type { DisciplineLookup } from './discipline-lookup.js';
 import type { MemberRepository } from './member.repository.js';
 import type { Member, MemberInput, MemberListQuery } from './member.types.js';
-import { toIsoDate, validateMemberInput } from './member.validation.js';
+import { assertDisciplinesAssignable, validateMemberInput } from './member.validation.js';
 
 export interface MemberServiceDeps {
   repository: MemberRepository;
+  disciplineLookup: DisciplineLookup;
   now?: () => Date;
 }
 
@@ -75,13 +78,14 @@ function replaceAt(members: Member[], index: number, member: Member): Member[] {
   return members.map((current, i) => (i === index ? member : current));
 }
 
-export function createMemberService({ repository, now = () => new Date() }: MemberServiceDeps) {
+export function createMemberService({ repository, disciplineLookup, now = () => new Date() }: MemberServiceDeps) {
   const timestamp = () => now().toISOString();
   const today = () => toIsoDate(now());
 
   return {
     async create(raw: MemberInput): Promise<Member> {
       const input = validateMemberInput(raw, today());
+      assertDisciplinesAssignable(input.disciplineIds, await disciplineLookup.findByIds(input.disciplineIds));
       return repository.mutate((members) => {
         assertDniAvailable(members, input.dni);
         const at = timestamp();
@@ -99,8 +103,10 @@ export function createMemberService({ repository, now = () => new Date() }: Memb
 
     async update(id: string, raw: MemberInput): Promise<Member> {
       const input = validateMemberInput(raw, today());
+      const found = await disciplineLookup.findByIds(input.disciplineIds);
       return repository.mutate((members) => {
         const index = findIndex(members, id);
+        assertDisciplinesAssignable(input.disciplineIds, found, members[index]!.disciplineIds);
         assertDniAvailable(members, input.dni, id);
         const { email: _email, guardian: _guardian, ...current } = members[index]!;
         const member: Member = { ...current, ...input, updatedAt: timestamp() };
@@ -140,10 +146,15 @@ export function createMemberService({ repository, now = () => new Date() }: Memb
       return members[findIndex(members, id)]!;
     },
 
-    async list({ search = '', status }: MemberListQuery = {}): Promise<Member[]> {
+    async list({ search = '', status, disciplineId }: MemberListQuery = {}): Promise<Member[]> {
       const members = await repository.list();
       return members
-        .filter((member) => (!status || member.status === status) && matchesSearch(member, search))
+        .filter(
+          (member) =>
+            (!status || member.status === status) &&
+            (!disciplineId || member.disciplineIds.includes(disciplineId)) &&
+            matchesSearch(member, search),
+        )
         .sort(compareByName);
     },
   };
