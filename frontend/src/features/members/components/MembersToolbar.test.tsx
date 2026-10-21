@@ -102,4 +102,20 @@ describe('MembersToolbar', () => {
 
     await user.click(screen.getByRole('button', { name: 'Alta de socio' }));
   });
+
+  it('disables the discipline select with an explanation while the catalog loads', () => {
+    setup({ disciplines: [], catalogPhase: 'loading' });
+
+    const select = screen.getByRole('combobox', { name: 'Filtrar por disciplina' });
+    expect(select).toBeDisabled();
+    expect(select).toHaveDisplayValue('Cargando disciplinas…');
+  });
+
+  it('disables the discipline select and says it is unavailable when the catalog failed', () => {
+    setup({ disciplines: [], catalogPhase: 'error' });
+
+    const select = screen.getByRole('combobox', { name: 'Filtrar por disciplina' });
+    expect(select).toBeDisabled();
+    expect(select).toHaveDisplayValue('Disciplinas no disponibles');
+  });
 });

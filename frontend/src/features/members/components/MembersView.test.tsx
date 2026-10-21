@@ -197,6 +197,86 @@ describe('MembersView disciplines in list and detail', () => {
   });
 });
 
+describe('MembersView list filters across navigation', () => {
+  it('keeps search, status and discipline after opening a detail and coming back', async () => {
+    const user = renderView();
+    await screen.findByText('Ana Álvarez');
+    await screen.findByRole('option', { name: 'Fútbol' });
+    await user.click(screen.getByRole('radio', { name: 'Activos' }));
+    await user.type(screen.getByRole('searchbox', { name: /Buscar socio/ }), 'alvarez{Enter}');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Filtrar por disciplina' }), 'disc-3');
+    await screen.findByText('Ana Álvarez');
+
+    await user.click(screen.getByRole('button', { name: 'Ana Álvarez' }));
+    await screen.findByRole('heading', { level: 2, name: 'Ana Álvarez' });
+    await user.click(screen.getByRole('button', { name: 'Volver al listado' }));
+
+    await screen.findByRole('table', { name: 'Listado de socios' });
+    expect(screen.getByRole('radio', { name: 'Activos' })).toBeChecked();
+    expect(screen.getByRole('searchbox', { name: /Buscar socio/ })).toHaveValue('alvarez');
+    expect(screen.getByRole('combobox', { name: 'Filtrar por disciplina' })).toHaveValue('disc-3');
+    expect(listCalls().at(-1)?.url).toBe('/api/members?search=alvarez&status=active&disciplineId=disc-3');
+  });
+
+  it('keeps the filters after leaving the creation form', async () => {
+    const user = renderView();
+    await screen.findByText('Ana Álvarez');
+    await user.click(screen.getByRole('radio', { name: 'Inactivos' }));
+    await waitFor(() => expect(listCalls().at(-1)?.url).toBe('/api/members?status=inactive'));
+
+    await user.click(screen.getByRole('button', { name: 'Alta de socio' }));
+    await user.click(await screen.findByRole('button', { name: 'Cancelar' }));
+
+    await screen.findByRole('table', { name: 'Listado de socios' });
+    expect(screen.getByRole('radio', { name: 'Inactivos' })).toBeChecked();
+    expect(listCalls().at(-1)?.url).toBe('/api/members?status=inactive');
+  });
+});
+
+describe('MembersView discipline catalog failure', () => {
+  let failing: boolean;
+
+  beforeEach(() => {
+    failing = true;
+    overrides['GET /api/disciplines'] = () =>
+      failing ? jsonResponse({ error: 'internal_error', message: 'Catalog down' }, 500) : jsonResponse(disciplines);
+  });
+
+  it('warns in the list, still shows the members, disables the filter and recovers on retry', async () => {
+    const user = renderView();
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('No se pudieron cargar las disciplinas');
+    expect(alert).toHaveTextContent('Catalog down');
+    expect(await screen.findByText('Ana Álvarez')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Filtrar por disciplina' })).toBeDisabled();
+
+    failing = false;
+    await user.click(within(alert).getByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByRole('cell', { name: 'Fútbol, Vóley' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Filtrar por disciplina' })).toBeEnabled();
+  });
+
+  it('warns in the detail with a retry that resolves the names', async () => {
+    const user = renderView();
+    await screen.findByText('Ana Álvarez');
+    await user.click(screen.getByRole('button', { name: 'Ana Álvarez' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('No se pudieron cargar las disciplinas');
+    expect(screen.getByRole('heading', { level: 2, name: 'Ana Álvarez' })).toBeInTheDocument();
+
+    failing = false;
+    await user.click(within(alert).getByRole('button', { name: 'Reintentar' }));
+
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    expect((await screen.findByText('Disciplinas')).nextElementSibling).toHaveTextContent('Fútbol, Vóley');
+  });
+});
+
+
 describe('MembersView create', () => {
   it('creates a member and shows its detail', async () => {
     const created = buildMember({ id: 'member-9', memberNumber: '0009', firstName: 'Valentina', lastName: 'Ferreyra', dni: '39884120' });
