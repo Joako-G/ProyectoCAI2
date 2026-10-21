@@ -707,3 +707,10 @@ a:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* Disciplines list */
+
+.disciplines-table__actions {
+  display: flex;
+  gap: 8px;
+}

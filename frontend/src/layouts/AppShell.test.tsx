@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 import { AppShell } from './AppShell';
 
 function renderShell() {
@@ -62,5 +63,23 @@ describe('AppShell', () => {
     );
 
     expect(screen.queryByText('Padrón de socios')).not.toBeInTheDocument();
+  });
+
+  it('lists the Disciplinas entry and marks the active section', () => {
+    render(<AppShell title="Disciplinas" section="disciplines" />);
+
+    const nav = screen.getByRole('navigation', { name: 'Navegación principal' });
+
+    expect(within(nav).getByRole('link', { name: /Disciplinas/ })).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('link', { name: /Socios/ })).not.toHaveAttribute('aria-current');
+  });
+
+  it('reports the chosen section on navigation', async () => {
+    const onNavigate = vi.fn();
+    render(<AppShell title="Socios" onNavigate={onNavigate} />);
+
+    await userEvent.click(screen.getByRole('link', { name: /Disciplinas/ }));
+
+    expect(onNavigate).toHaveBeenCalledWith('disciplines');
   });
 });
