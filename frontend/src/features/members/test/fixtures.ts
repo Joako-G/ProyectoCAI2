@@ -11,6 +11,7 @@ export function buildMember(overrides: Partial<Member> = {}): Member {
     category: 'Mayor',
     memberSince: '2015-02-01',
     whatsapp: '1155551234',
+    disciplineIds: ['disc-1'],
     status: 'active',
     createdAt: '2026-10-05T15:00:00.000Z',
     updatedAt: '2026-10-05T15:00:00.000Z',

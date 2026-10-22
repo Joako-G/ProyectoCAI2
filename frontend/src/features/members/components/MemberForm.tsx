@@ -1,4 +1,6 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
+import type { Discipline } from '../../disciplines/types/discipline';
+import { disciplineOptionLabel } from '../../disciplines/utils/discipline-labels';
 import { MEMBER_CATEGORIES, type MemberInput } from '../types/member';
 import {
   isMinorOn,
@@ -12,6 +14,8 @@ interface MemberFormProps {
   initialValues: MemberFormValues;
   /** Today's club date (`YYYY-MM-DD`): bounds the date fields and decides who is a minor. */
   today: string;
+  /** Whole discipline catalog; inactive ones are offered only while the member already has them. */
+  disciplines: Discipline[];
   saving: boolean;
   /** Errors reported by the backend, keyed like the form errors (`guardian.name`, ...). */
   fieldErrors?: FieldErrors;
@@ -65,11 +69,27 @@ function Field({ name, label, required = true, error, children }: FieldProps) {
   );
 }
 
+interface DisciplineOption {
+  id: string;
+  label: string;
+}
+
+/** Active disciplines, plus the ones the member already had even if inactive or no longer in the catalog. */
+function disciplineOptions(disciplines: Discipline[], assignedIds: string[]): DisciplineOption[] {
+  const options = disciplines
+    .filter((discipline) => discipline.status === 'active' || assignedIds.includes(discipline.id))
+    .map((discipline) => ({ id: discipline.id, label: disciplineOptionLabel(discipline) }));
+  const known = new Set(disciplines.map((discipline) => discipline.id));
+  const unknown = assignedIds.filter((id) => !known.has(id)).map((id) => ({ id, label: `${id} (desconocida)` }));
+  return [...options, ...unknown];
+}
+
 /** Presentational create/edit form. Validates on submit and reports the payload through `onSubmit`. */
 export function MemberForm({
   mode,
   initialValues,
   today,
+  disciplines,
   saving,
   fieldErrors,
   submitError,
@@ -93,6 +113,21 @@ export function MemberForm({
   }, [focusRequest]);
 
   const isMinor = isMinorOn(values.birthDate, today);
+  const [options] = useState(() => disciplineOptions(disciplines, initialValues.disciplineIds));
+  const disciplinesErrorId = `${useId()}-disciplines-error`;
+
+  function toggleDiscipline(id: string) {
+    setValues((current) => ({
+      ...current,
+      disciplineIds: current.disciplineIds.includes(id)
+        ? current.disciplineIds.filter((candidate) => candidate !== id)
+        : [...current.disciplineIds, id],
+    }));
+    setErrors((current) => {
+      const { disciplineIds: _cleared, ...rest } = current;
+      return rest;
+    });
+  }
 
   function handleChange(event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = event.target;
@@ -172,6 +207,35 @@ export function MemberForm({
         </div>
       </fieldset>
 
+      <fieldset className="member-form__section" aria-describedby={errors.disciplineIds ? disciplinesErrorId : undefined}>
+        <legend className="member-form__legend">Disciplinas</legend>
+        {options.length === 0 ? (
+          <p className="member-form__hint">No hay disciplinas activas. Creá una desde la sección Disciplinas.</p>
+        ) : (
+          <div className="check-group">
+            {options.map((option) => (
+              <label key={option.id} className="check-group__option">
+                <input
+                  type="checkbox"
+                  name="disciplineIds"
+                  value={option.id}
+                  checked={values.disciplineIds.includes(option.id)}
+                  aria-invalid={errors.disciplineIds ? true : undefined}
+                  aria-describedby={errors.disciplineIds ? disciplinesErrorId : undefined}
+                  onChange={() => toggleDiscipline(option.id)}
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
+        )}
+        {errors.disciplineIds ? (
+          <p id={disciplinesErrorId} className="form-field__error">
+            {errors.disciplineIds}
+          </p>
+        ) : null}
+      </fieldset>
+
       {isMinor ? (
         <fieldset className="member-form__section">
           <legend className="member-form__legend">Tutor o responsable</legend>
@@ -191,7 +255,7 @@ export function MemberForm({
         <button type="submit" className="button button--primary" disabled={saving}>
           {saving ? 'Guardando…' : mode === 'create' ? 'Crear socio' : 'Guardar cambios'}
         </button>
-        <button type="button" className="button button--secondary" onClick={onCancel}>
+        <button type="button" className="button button--secondary" disabled={saving} onClick={onCancel}>
           Cancelar
         </button>
       </div>

@@ -1,3 +1,5 @@
+import type { Discipline } from '../../disciplines/types/discipline';
+import { disciplineNames } from '../../disciplines/utils/discipline-labels';
 import type { Member } from '../types/member';
 import { calculateAge, formatAge, formatIsoDate } from '../utils/member-format';
 
@@ -5,13 +7,15 @@ interface MembersTableProps {
   members: Member[];
   /** Today's club date (`YYYY-MM-DD`), used to derive ages. */
   today: string;
+  /** Discipline catalog used to show names instead of ids. */
+  disciplines?: Discipline[];
   /** Opens a member. The whole row is clickable; the name button makes it reachable by keyboard. */
   onOpen?: (member: Member) => void;
 }
 
 const STATUS_LABEL = { active: 'Activo', inactive: 'Inactivo' } as const;
 
-export function MembersTable({ members, today, onOpen }: MembersTableProps) {
+export function MembersTable({ members, today, disciplines = [], onOpen }: MembersTableProps) {
   return (
     <table className="members-table">
       <caption className="visually-hidden">Listado de socios</caption>
@@ -20,6 +24,7 @@ export function MembersTable({ members, today, onOpen }: MembersTableProps) {
           <th scope="col">N° socio</th>
           <th scope="col">Socio</th>
           <th scope="col">DNI</th>
+          <th scope="col">Disciplinas</th>
           <th scope="col">Socio desde</th>
           <th scope="col">Estado</th>
         </tr>
@@ -49,6 +54,9 @@ export function MembersTable({ members, today, onOpen }: MembersTableProps) {
               </div>
             </td>
             <td className="members-table__mono">{member.dni}</td>
+            <td className="members-table__disciplines">
+              {disciplineNames(member.disciplineIds, disciplines).join(', ') || '—'}
+            </td>
             <td className="members-table__mono">{formatIsoDate(member.memberSince)}</td>
             <td>
               <span className={`status-chip status-chip--${member.status}`}>

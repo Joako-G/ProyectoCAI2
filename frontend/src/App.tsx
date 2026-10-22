@@ -1,7 +1,16 @@
 import { FormEvent, useEffect, useState } from 'react';
 import './app.css';
+import { DisciplinesView } from './features/disciplines/components/DisciplinesView';
 import { MembersView } from './features/members/components/MembersView';
 import { AppShell } from './layouts/AppShell';
+import type { Section } from './layouts/Sidebar';
+
+// No router: the visible section is plain state.
+const PAGES: Record<Section, { title: string; subtitle: string }> = {
+  members: { title: 'Socios', subtitle: 'Búsqueda por N° de socio, DNI o nombre' },
+  disciplines: { title: 'Disciplinas', subtitle: 'Catálogo de disciplinas y sus profesores' },
+  users: { title: 'Usuarios', subtitle: 'Administración de cuentas de demostración' },
+};
 
 interface LoginUser { id: string; name: string; email: string; role: string; }
 type LoginState = 'idle' | 'pending' | 'error' | 'success';
@@ -16,7 +25,7 @@ export function App() {
   const [password, setPassword] = useState('');
   const [state, setState] = useState<LoginState>('idle');
   const [user, setUser] = useState<LoginUser | null>(null);
-  const [view, setView] = useState<'welcome' | 'users' | 'members'>('welcome');
+  const [view, setView] = useState<Section>('members');
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState('');
@@ -79,8 +88,9 @@ export function App() {
   }
 
   if (state === 'success' && user) {
-    return <AppShell title={view === 'members' ? 'Socios' : 'Usuarios'} subtitle={view === 'members' ? 'Búsqueda por N° de socio, DNI o nombre' : 'Administración de cuentas de demostración'} activeSection={view === 'users' ? 'users' : 'members'} onSectionChange={section => setView(section)}>
-      {view === 'members' ? <MembersView /> : <section className="users-screen" aria-label="Administración de usuarios">
+    const { title, subtitle } = PAGES[view];
+    return <AppShell title={title} subtitle={subtitle} section={view} onNavigate={setView}>
+      {view === 'members' ? <MembersView /> : view === 'disciplines' ? <DisciplinesView /> : <section className="users-screen" aria-label="Administración de usuarios">
         <div className="users-toolbar"><div><strong>{users.length}</strong> usuarios <span className="toolbar-hint">El rol es solo informativo.</span></div><button className="primary-button" onClick={() => openForm()}>＋ Crear usuario</button></div>
         {usersError && <p className="feedback error" role="alert">{usersError}</p>}{notice && <p className="feedback success" role="status" aria-live="polite">{notice}</p>}
         {formOpen && <form className="user-form" onSubmit={saveUser}>

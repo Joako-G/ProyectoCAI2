@@ -1,11 +1,21 @@
 import { useState, type FormEvent } from 'react';
+import type { Discipline } from '../../disciplines/types/discipline';
+import { disciplineOptionLabel } from '../../disciplines/utils/discipline-labels';
 import type { MemberStatusFilter } from '../types/member';
+
+export type CatalogPhase = 'loading' | 'error' | 'ready';
 
 interface MembersToolbarProps {
   search: string;
   status: MemberStatusFilter;
+  /** Selected discipline id; empty means every discipline. */
+  disciplineId: string;
+  disciplines: Discipline[];
+  /** Load state of the discipline catalog; the select is only usable once it is ready. */
+  catalogPhase?: CatalogPhase;
   onSearchSubmit: (search: string) => void;
   onStatusChange: (status: MemberStatusFilter) => void;
+  onDisciplineChange: (disciplineId: string) => void;
   /** Opens the member creation flow (wired in a later task). */
   onCreate?: () => void;
 }
@@ -16,11 +26,21 @@ const STATUS_OPTIONS: ReadonlyArray<{ value: MemberStatusFilter; label: string }
   { value: 'inactive', label: 'Inactivos' },
 ];
 
+const ALL_DISCIPLINES_LABEL: Record<CatalogPhase, string> = {
+  ready: 'Todas las disciplinas',
+  loading: 'Cargando disciplinas…',
+  error: 'Disciplinas no disponibles',
+};
+
 export function MembersToolbar({
   search,
   status,
+  disciplineId,
+  disciplines,
+  catalogPhase = 'ready',
   onSearchSubmit,
   onStatusChange,
+  onDisciplineChange,
   onCreate,
 }: MembersToolbarProps) {
   const [draft, setDraft] = useState(search);
@@ -62,6 +82,21 @@ export function MembersToolbar({
           </label>
         ))}
       </div>
+
+      <select
+        className="members-toolbar__select"
+        aria-label="Filtrar por disciplina"
+        value={disciplineId}
+        disabled={catalogPhase !== 'ready'}
+        onChange={(event) => onDisciplineChange(event.target.value)}
+      >
+        <option value="">{ALL_DISCIPLINES_LABEL[catalogPhase]}</option>
+        {disciplines.map((discipline) => (
+          <option key={discipline.id} value={discipline.id}>
+            {disciplineOptionLabel(discipline)}
+          </option>
+        ))}
+      </select>
 
       <button type="button" className="button button--primary" onClick={onCreate}>
         Alta de socio

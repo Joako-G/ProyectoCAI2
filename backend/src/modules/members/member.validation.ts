@@ -1,20 +1,9 @@
-import { CLUB_TIME_ZONE } from '../../config/club.js';
 import { ValidationError } from '../../shared/errors.js';
+import type { DisciplineRef } from './discipline-lookup.js';
 import { MEMBER_CATEGORIES, type Guardian, type MemberCategory, type MemberInput } from './member.types.js';
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const clubDateFormat = new Intl.DateTimeFormat('en-CA', {
-  timeZone: CLUB_TIME_ZONE,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
-
-export function toIsoDate(instant: Date): string {
-  return clubDateFormat.format(instant);
-}
 
 function isRealDate(value: string): boolean {
   const match = ISO_DATE.exec(value);
@@ -79,6 +68,8 @@ export function validateMemberInput(raw: unknown, today: string): MemberInput {
   const emailRaw = text(input.email) ?? '';
   if (emailRaw && !EMAIL.test(emailRaw)) errors.email = 'Email is not valid';
 
+  const disciplineIds = validateDisciplineIds(input.disciplineIds, errors);
+
   const guardian = validateGuardian(input.guardian, birthDateValid && isMinor(birthDate, today), errors);
 
   if (Object.keys(errors).length > 0) throw new ValidationError(errors);
@@ -91,6 +82,7 @@ export function validateMemberInput(raw: unknown, today: string): MemberInput {
     category,
     memberSince,
     whatsapp: whatsapp!,
+    disciplineIds,
     ...(emailRaw && { email: emailRaw }),
     ...(guardian && { guardian }),
   };
@@ -106,4 +98,35 @@ function validateGuardian(raw: unknown, required: boolean, errors: Record<string
   const contact = phone(contactRaw);
   if (!contact) errors['guardian.contact'] = 'Guardian contact must be a valid phone number';
   return name && contact ? { name, contact } : undefined;
+}
+
+function validateDisciplineIds(raw: unknown, errors: Record<string, string>): string[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    errors.disciplineIds = 'At least one discipline is required';
+    return [];
+  }
+  const ids = raw.map(text);
+  if (ids.some((id) => !id)) errors.disciplineIds = 'Disciplines must be a list of discipline ids';
+  else if (new Set(ids).size !== ids.length) errors.disciplineIds = 'A discipline cannot be assigned more than once';
+  return ids as string[];
+}
+
+// Every id must exist; only ids the member does not already have must be active, so a discipline
+// deactivated after the assignment can stay on an edited member.
+export function assertDisciplinesAssignable(
+  ids: readonly string[],
+  found: readonly DisciplineRef[],
+  alreadyAssigned: readonly string[] = [],
+): void {
+  const byId = new Map(found.map((discipline) => [discipline.id, discipline]));
+  const unknown = ids.filter((id) => !byId.has(id));
+  if (unknown.length > 0) {
+    throw new ValidationError({ disciplineIds: 'Unknown discipline: ' + unknown.join(', ') });
+  }
+  const inactive = ids.filter((id) => byId.get(id)!.status !== 'active' && !alreadyAssigned.includes(id));
+  if (inactive.length > 0) {
+    throw new ValidationError({
+      disciplineIds: 'Inactive disciplines cannot be newly assigned: ' + inactive.join(', '),
+    });
+  }
 }

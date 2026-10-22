@@ -1,9 +1,17 @@
+export type Section = 'members' | 'disciplines' | 'users';
+
 interface SidebarProps {
-  activeSection: 'members' | 'users';
-  onSectionChange: (section: 'members' | 'users') => void;
+  current?: Section;
+  onNavigate?: (section: Section) => void;
 }
 
-export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
+const SECTIONS: ReadonlyArray<{ id: Section; label: string }> = [
+  { id: 'members', label: 'Socios' },
+  { id: 'disciplines', label: 'Disciplinas' },
+  { id: 'users', label: 'Usuarios' },
+];
+
+export function Sidebar({ current = 'members', onNavigate }: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
@@ -11,16 +19,23 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
         <div className="sidebar__brand-tagline">Sistema de gestión</div>
       </div>
       <nav className="sidebar__nav" aria-label="Navegación principal">
-        <a className="sidebar__link" href="/" aria-current={activeSection === 'members' ? 'page' : undefined} onClick={event => { event.preventDefault(); onSectionChange('members'); }}>
-          <span className="sidebar__link-index" aria-hidden="true">
-            01
-          </span>
-          Socios
-        </a>
-        <a className="sidebar__link" href="/users" aria-current={activeSection === 'users' ? 'page' : undefined} onClick={event => { event.preventDefault(); onSectionChange('users'); }}>
-          <span className="sidebar__link-index" aria-hidden="true">02</span>
-          Usuarios
-        </a>
+        {SECTIONS.map((section, index) => (
+          <a
+            key={section.id}
+            className="sidebar__link"
+            href={`#${section.id}`}
+            aria-current={section.id === current ? 'page' : undefined}
+            onClick={(event) => {
+              event.preventDefault();
+              onNavigate?.(section.id);
+            }}
+          >
+            <span className="sidebar__link-index" aria-hidden="true">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            {section.label}
+          </a>
+        ))}
       </nav>
     </aside>
   );

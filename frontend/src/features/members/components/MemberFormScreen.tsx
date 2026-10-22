@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { catalogDisciplines, type DisciplineCatalog } from '../../disciplines/hooks/useDisciplineCatalog';
 import { describeError, useMemberDetail } from '../hooks/useMemberDetail';
 import { ApiError, createMember, updateMember } from '../services/members-api';
 import type { Member, MemberInput } from '../types/member';
@@ -9,6 +10,8 @@ interface MemberFormScreenProps {
   /** `null` creates a new member; an id edits that member. */
   memberId: string | null;
   today: string;
+  /** Discipline catalog shared by the members screens; the form waits until it is loaded. */
+  catalog: DisciplineCatalog;
   onSaved: (member: Member) => void;
   onCancel: () => void;
 }
@@ -41,7 +44,7 @@ function FormHeading({ children }: { children: string }) {
 }
 
 /** Container: owns the request for the shared create / edit form. */
-export function MemberFormScreen({ memberId, today, onSaved, onCancel }: MemberFormScreenProps) {
+export function MemberFormScreen({ memberId, today, catalog, onSaved, onCancel }: MemberFormScreenProps) {
   const editing = memberId !== null;
   const { state, retry } = useMemberDetail(memberId);
   const [saving, setSaving] = useState(false);
@@ -82,6 +85,28 @@ export function MemberFormScreen({ memberId, today, onSaved, onCancel }: MemberF
     );
   }
 
+  if (catalog.state.phase !== 'ready') {
+    return catalog.state.phase === 'loading' ? (
+      <p className="card members-page__notice" role="status">
+        Cargando disciplinas…
+      </p>
+    ) : (
+      <div className="card members-page__notice members-page__notice--error" role="alert">
+        <p>
+          <strong>No se pudieron cargar las disciplinas.</strong> {catalog.state.message}
+        </p>
+        <div className="member-detail__actions">
+          <button type="button" className="button button--secondary" onClick={catalog.retry}>
+            Reintentar
+          </button>
+          <button type="button" className="button button--secondary" onClick={onCancel}>
+            Volver
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <section className="card member-form-card" aria-label={title}>
       <FormHeading>{title}</FormHeading>
@@ -89,6 +114,7 @@ export function MemberFormScreen({ memberId, today, onSaved, onCancel }: MemberF
         mode={editing ? 'edit' : 'create'}
         initialValues={state.phase === 'ready' ? memberToFormValues(state.member) : emptyMemberForm(today)}
         today={today}
+        disciplines={catalogDisciplines(catalog)}
         saving={saving}
         fieldErrors={failure?.fieldErrors}
         submitError={failure?.message}

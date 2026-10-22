@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { DisciplineCatalogNotice } from '../../disciplines/components/DisciplineCatalogNotice';
+import { catalogDisciplines, type DisciplineCatalog } from '../../disciplines/hooks/useDisciplineCatalog';
 import { describeError, useMemberDetail } from '../hooks/useMemberDetail';
 import { ApiError, deactivateMember, reactivateMember } from '../services/members-api';
 import type { Member } from '../types/member';
@@ -8,6 +10,8 @@ import { DeactivateDialog, ReactivateDialog } from './MemberDialogs';
 interface MemberDetailScreenProps {
   id: string;
   today: string;
+  /** Discipline catalog used to name the member's disciplines; a failure is reported with a retry. */
+  catalog: DisciplineCatalog;
   onBack: () => void;
   onEdit: (id: string) => void;
 }
@@ -15,7 +19,7 @@ interface MemberDetailScreenProps {
 type Dialog = 'deactivate' | 'reactivate' | null;
 
 /** Container: loads the member and runs the deactivate / reactivate actions. */
-export function MemberDetailScreen({ id, today, onBack, onEdit }: MemberDetailScreenProps) {
+export function MemberDetailScreen({ id, today, catalog, onBack, onEdit }: MemberDetailScreenProps) {
   const { state, retry, replace } = useMemberDetail(id);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [saving, setSaving] = useState(false);
@@ -92,9 +96,11 @@ export function MemberDetailScreen({ id, today, onBack, onEdit }: MemberDetailSc
           {staleNotice}
         </p>
       ) : null}
+      <DisciplineCatalogNotice catalog={catalog} />
       <MemberDetail
         member={member}
         today={today}
+        disciplines={catalogDisciplines(catalog)}
         onBack={onBack}
         onEdit={() => onEdit(member.id)}
         onDeactivate={() => setDialog('deactivate')}

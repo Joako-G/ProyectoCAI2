@@ -4,6 +4,8 @@ import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileS
 import { dirname, join } from 'node:path';
 import demoUsers from './database/demo-users.json';
 import { apiNotFound, errorHandler } from './middlewares/error-handler.js';
+import { createDisciplinesRouter } from './modules/disciplines/discipline.routes.js';
+import type { DisciplineService } from './modules/disciplines/discipline.service.js';
 import { createMembersRouter } from './modules/members/member.routes.js';
 import type { MemberService } from './modules/members/member.service.js';
 
@@ -47,6 +49,8 @@ class UserRepository {
 
 export interface AppDependencies {
   memberService?: MemberService;
+  // Optional so apps that only exercise members (tests) can omit the catalog.
+  disciplineService?: DisciplineService;
   storePath?: string;
   persist?: (users: DemoUser[]) => void;
 }
@@ -129,7 +133,9 @@ app.delete('/users/:id', (request, response) => {
   response.json(safeUser(updated));
 });
 
+// Add auth here, e.g. app.use('/api', requireAuth), to protect every API route at once.
 if (options.memberService) app.use('/api/members', createMembersRouter(options.memberService));
+if (options.disciplineService) app.use('/api/disciplines', createDisciplinesRouter(options.disciplineService));
 app.use('/api', apiNotFound);
 app.use(errorHandler);
 return app;

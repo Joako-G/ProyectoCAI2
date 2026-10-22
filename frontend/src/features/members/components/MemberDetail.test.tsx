@@ -1,12 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { buildDiscipline } from '../../disciplines/test/fixtures';
+import type { Discipline } from '../../disciplines/types/discipline';
 import { buildMember } from '../test/fixtures';
 import { MemberDetail } from './MemberDetail';
 
 const TODAY = '2026-10-05';
 
-function renderDetail(member = buildMember()) {
+function renderDetail(member = buildMember(), disciplines: Discipline[] = []) {
   const handlers = {
     onBack: vi.fn(),
     onEdit: vi.fn(),
@@ -14,7 +16,7 @@ function renderDetail(member = buildMember()) {
     onReactivate: vi.fn(),
   };
   const user = userEvent.setup();
-  render(<MemberDetail member={member} today={TODAY} {...handlers} />);
+  render(<MemberDetail member={member} today={TODAY} disciplines={disciplines} {...handlers} />);
   return { user, ...handlers };
 }
 
@@ -49,6 +51,26 @@ describe('MemberDetail', () => {
 
     expect(screen.getByText('Tutor').nextElementSibling).toHaveTextContent('Silvia Ríos · 3815442019');
     expect(screen.getByText('Email').nextElementSibling).toHaveTextContent('—');
+  });
+
+  it('lists the discipline names of the member', () => {
+    renderDetail(buildMember({ disciplineIds: ['disc-1', 'disc-2'] }), [
+      buildDiscipline(),
+      buildDiscipline({ id: 'disc-2', name: 'Vóley', status: 'inactive' }),
+    ]);
+
+    expect(screen.getByText('Disciplinas').nextElementSibling).toHaveTextContent('Básquet, Vóley');
+  });
+
+  it('shows the id for a discipline missing from the catalog', () => {
+    renderDetail(buildMember({ disciplineIds: ['disc-9'] }));
+    expect(screen.getByText('Disciplinas').nextElementSibling).toHaveTextContent('disc-9');
+  });
+
+  it('shows a dash for a member without disciplines', () => {
+    renderDetail(buildMember({ disciplineIds: [] }));
+
+    expect(screen.getByText('Disciplinas').nextElementSibling).toHaveTextContent('—');
   });
 
   it('omits the guardian row for an adult without guardian', () => {

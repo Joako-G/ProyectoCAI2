@@ -8,3 +8,4 @@ backend/data/users.json
 !.env.*.example
 backend/data/*
 !backend/data/members.seed.json
+!backend/data/disciplines.seed.json

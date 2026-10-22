@@ -15,7 +15,7 @@ beforeEach(async () => {
 
 afterEach(() => rm(dir, { recursive: true, force: true }));
 
-const member = { id: 'a', memberNumber: '0001' } as Member;
+const member = { id: 'a', memberNumber: '0001', disciplineIds: [] } as unknown as Member;
 
 describe('json member repository', () => {
   it('lists nothing when the file does not exist', async () => {
@@ -67,6 +67,19 @@ describe('json member repository', () => {
 
       expect(called).toBe(false);
       expect(await readFile(file, 'utf8')).toBe(content);
+    });
+  });
+});
+
+describe('json member repository legacy data', () => {
+  it('normalizes stored members without disciplineIds to an empty list', async () => {
+    await writeFile(file, JSON.stringify([{ id: 'a', memberNumber: '0001' }, { id: 'b', disciplineIds: ['x'] }]));
+    const repository = createJsonMemberRepository(file);
+
+    expect((await repository.list()).map((m) => m.disciplineIds)).toEqual([[], ['x']]);
+    await repository.mutate((members) => {
+      expect(members.map((m) => m.disciplineIds)).toEqual([[], ['x']]);
+      return { members, result: null };
     });
   });
 });

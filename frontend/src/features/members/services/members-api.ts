@@ -15,10 +15,11 @@ export class ApiError extends Error {
   }
 }
 
-function buildListUrl({ search, status }: MemberListQuery): string {
+function buildListUrl({ search, status, disciplineId }: MemberListQuery): string {
   const params = new URLSearchParams();
   if (search.trim()) params.set('search', search.trim());
   if (status !== 'all') params.set('status', status);
+  if (disciplineId) params.set('disciplineId', disciplineId);
   const query = params.toString();
   return query ? `/api/members?${query}` : '/api/members';
 }
@@ -47,13 +48,13 @@ async function toApiError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, 'unknown_error', `Request failed (${response.status})`);
 }
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
+export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   if (!response.ok) throw await toApiError(response);
   return (await response.json()) as T;
 }
 
-function sendJson(method: 'POST' | 'PUT', body?: unknown): RequestInit {
+export function sendJson(method: 'POST' | 'PUT', body?: unknown): RequestInit {
   return body === undefined
     ? { method }
     : { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };

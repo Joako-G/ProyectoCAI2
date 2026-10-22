@@ -1,4 +1,7 @@
+import { DisciplineCatalogNotice } from '../../disciplines/components/DisciplineCatalogNotice';
+import { catalogDisciplines, type DisciplineCatalog } from '../../disciplines/hooks/useDisciplineCatalog';
 import { useMembersList } from '../hooks/useMembersList';
+import type { MemberListQuery } from '../types/member';
 import { todayInClub } from '../utils/member-format';
 import { MembersTable } from './MembersTable';
 import { MembersToolbar } from './MembersToolbar';
@@ -6,6 +9,11 @@ import { MembersToolbar } from './MembersToolbar';
 interface MembersPageProps {
   /** Overrides today's club date (`YYYY-MM-DD`); used by tests. */
   today?: string;
+  /** Search, status and discipline filters; owned by the parent so they survive detail and form. */
+  query: MemberListQuery;
+  onQueryChange: (query: MemberListQuery) => void;
+  /** Discipline catalog for the filter and the row names; without it the filter stays empty. */
+  catalog?: DisciplineCatalog;
   onCreate?: () => void;
   /** Opens a member's detail. */
   onOpen?: (id: string) => void;
@@ -18,16 +26,35 @@ function resultsLabel(count: number): string {
 }
 
 /** Container: fetches the members and composes the presentational toolbar and table. */
-export function MembersPage({ today = todayInClub(), onCreate, onOpen }: MembersPageProps) {
-  const { search, status, state, setSearch, setStatus, retry } = useMembersList();
+export function MembersPage({
+  today = todayInClub(),
+  query,
+  onQueryChange,
+  catalog,
+  onCreate,
+  onOpen,
+}: MembersPageProps) {
+  const { search, status, disciplineId = '' } = query;
+  const { state, retry } = useMembersList(query);
+  const disciplines = catalog ? catalogDisciplines(catalog) : [];
+
+  // Submitting the same text again acts as a refresh: the unchanged query alone would not refetch.
+  function submitSearch(next: string) {
+    onQueryChange({ ...query, search: next });
+    retry();
+  }
 
   return (
     <section className="card members-page" aria-label="Socios">
       <MembersToolbar
         search={search}
         status={status}
-        onSearchSubmit={setSearch}
-        onStatusChange={setStatus}
+        disciplineId={disciplineId}
+        disciplines={disciplines}
+        catalogPhase={catalog?.state.phase}
+        onSearchSubmit={submitSearch}
+        onStatusChange={(next) => onQueryChange({ ...query, status: next })}
+        onDisciplineChange={(next) => onQueryChange({ ...query, disciplineId: next })}
         onCreate={onCreate}
       />
 
@@ -40,6 +67,8 @@ export function MembersPage({ today = todayInClub(), onCreate, onOpen }: Members
           </>
         ) : null}
       </div>
+
+      {catalog ? <DisciplineCatalogNotice catalog={catalog} /> : null}
 
       {state.phase === 'loading' ? (
         <p className="members-page__notice" role="status">
@@ -68,6 +97,7 @@ export function MembersPage({ today = todayInClub(), onCreate, onOpen }: Members
         <MembersTable
           members={state.members}
           today={today}
+          disciplines={disciplines}
           onOpen={onOpen ? (member) => onOpen(member.id) : undefined}
         />
       ) : null}

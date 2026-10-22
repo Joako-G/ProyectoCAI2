@@ -1,12 +1,29 @@
+import { useState, type ComponentProps } from 'react';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { DisciplineCatalog } from '../../disciplines/hooks/useDisciplineCatalog';
+import { buildDiscipline } from '../../disciplines/test/fixtures';
+import type { Discipline } from '../../disciplines/types/discipline';
 import { buildMember, jsonResponse } from '../test/fixtures';
-import { MembersPage } from './MembersPage';
+import type { MemberListQuery } from '../types/member';
+import { MembersPage as ControlledMembersPage } from './MembersPage';
+
+/** Holds the query like `MembersView` does, so the page can be exercised on its own. */
+function MembersPage(props: Omit<ComponentProps<typeof ControlledMembersPage>, 'query' | 'onQueryChange'>) {
+  const [query, setQuery] = useState<MemberListQuery>({ search: '', status: 'all', disciplineId: '' });
+  return <ControlledMembersPage {...props} query={query} onQueryChange={setQuery} />;
+}
+
+function readyCatalog(...disciplines: Discipline[]): DisciplineCatalog {
+  return { state: { phase: 'ready', disciplines }, retry: vi.fn() };
+}
 
 const fetchMock = vi.fn<typeof fetch>();
 const TODAY = '2026-10-05';
 
+const basket = buildDiscipline();
+const volley = buildDiscipline({ id: 'disc-2', name: 'Vóley' });
 const lucia = buildMember();
 const ana = buildMember({
   id: 'member-2',
@@ -158,6 +175,31 @@ describe('MembersPage', () => {
     expect(screen.getByText('Ana Álvarez')).toBeInTheDocument();
   });
 
+  it('shows the discipline names in the rows', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse([buildMember({ disciplineIds: ['disc-1', 'disc-2'] })]));
+    render(<MembersPage today={TODAY} catalog={readyCatalog(basket, volley)} />);
+
+    expect(await screen.findByRole('cell', { name: 'Básquet, Vóley' })).toBeInTheDocument();
+  });
+
+  it('combines the discipline filter with search and status', async () => {
+    fetchMock.mockImplementation(async () => jsonResponse([lucia]));
+    const user = userEvent.setup();
+    render(<MembersPage today={TODAY} catalog={readyCatalog(basket, volley)} />);
+    await screen.findByText('Lucía Ríos');
+
+    await user.click(screen.getByRole('radio', { name: 'Activos' }));
+    await user.type(screen.getByRole('searchbox', { name: /Buscar socio/ }), 'rios{Enter}');
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Filtrar por disciplina' }), 'disc-2');
+
+    await waitFor(() =>
+      expect(requestedUrls()).toContain('/api/members?search=rios&status=active&disciplineId=disc-2'),
+    );
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Filtrar por disciplina' }), '');
+    await waitFor(() => expect(requestedUrls().at(-1)).toBe('/api/members?search=rios&status=active'));
+  });
+
   it('forwards the Alta de socio action', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse([lucia]));
     const onCreate = vi.fn();
@@ -168,5 +210,35 @@ describe('MembersPage', () => {
     await user.click(screen.getByRole('button', { name: 'Alta de socio' }));
 
     expect(onCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a catalog notice with retry, keeps the members and disables the discipline filter', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse([lucia]));
+    const retry = vi.fn();
+    const catalog: DisciplineCatalog = { state: { phase: 'error', message: 'Catalog down' }, retry };
+    const user = userEvent.setup();
+    render(<MembersPage today={TODAY} catalog={catalog} />);
+
+    expect(await screen.findByText('Lucía Ríos')).toBeInTheDocument();
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('No se pudieron cargar las disciplinas');
+    expect(alert).toHaveTextContent('Catalog down');
+    expect(screen.getByRole('combobox', { name: 'Filtrar por disciplina' })).toBeDisabled();
+
+    await user.click(within(alert).getByRole('button', { name: 'Reintentar' }));
+    expect(retry).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows no catalog notice while the catalog loads or once it is ready', async () => {
+    fetchMock.mockImplementation(async () => jsonResponse([lucia]));
+    const loading: DisciplineCatalog = { state: { phase: 'loading' }, retry: vi.fn() };
+    const { rerender } = render(<MembersPage today={TODAY} catalog={loading} />);
+    await screen.findByText('Lucía Ríos');
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Filtrar por disciplina' })).toBeDisabled();
+
+    rerender(<MembersPage today={TODAY} catalog={readyCatalog(basket)} />);
+    expect(screen.getByRole('combobox', { name: 'Filtrar por disciplina' })).toBeEnabled();
   });
 });

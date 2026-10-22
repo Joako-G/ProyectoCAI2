@@ -22,6 +22,7 @@ function adultForm(overrides: Partial<MemberFormValues> = {}): MemberFormValues 
     email: '',
     guardianName: '',
     guardianContact: '',
+    disciplineIds: ['disc-1'],
     ...overrides,
   };
 }
@@ -57,7 +58,25 @@ describe('validateMemberForm', () => {
       category: 'Mayor',
       memberSince: '2015-02-01',
       whatsapp: '1155551234',
+      disciplineIds: ['disc-1'],
     });
+  });
+
+  it('requires at least one discipline', () => {
+    const { errors, input } = validateMemberForm(adultForm({ disciplineIds: [] }), TODAY);
+
+    expect(errors.disciplineIds).toBe('Elegí al menos una disciplina.');
+    expect(input).toBeUndefined();
+  });
+
+  it('rejects a repeated discipline and keeps several distinct ones', () => {
+    expect(validateMemberForm(adultForm({ disciplineIds: ['disc-1', 'disc-1'] }), TODAY).errors.disciplineIds).toBe(
+      'No repitas disciplinas.',
+    );
+    expect(validateMemberForm(adultForm({ disciplineIds: ['disc-1', 'disc-2'] }), TODAY).input?.disciplineIds).toEqual([
+      'disc-1',
+      'disc-2',
+    ]);
   });
 
   it('trims text, normalizes DNI and phones, and keeps a valid email', () => {
@@ -176,7 +195,20 @@ describe('validateMemberForm', () => {
 
 describe('form values', () => {
   it('starts an empty form with today as the member-since date', () => {
-    expect(emptyMemberForm(TODAY)).toMatchObject({ firstName: '', category: '', memberSince: TODAY });
+    expect(emptyMemberForm(TODAY)).toMatchObject({
+      firstName: '',
+      category: '',
+      memberSince: TODAY,
+      disciplineIds: [],
+    });
+  });
+
+  it('maps the assigned disciplines, including none for a legacy member', () => {
+    expect(memberToFormValues(buildMember({ disciplineIds: ['disc-1', 'disc-2'] })).disciplineIds).toEqual([
+      'disc-1',
+      'disc-2',
+    ]);
+    expect(memberToFormValues(buildMember({ disciplineIds: [] })).disciplineIds).toEqual([]);
   });
 
   it('maps a member (with optional fields) to form values', () => {
