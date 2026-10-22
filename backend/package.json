@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.test.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
     "start": "node dist/server.js",
     "seed": "tsc -p tsconfig.json && node dist/scripts/seed.js",
-    "test": "vitest run"
+    "test": "pnpm run build && node --test tests/auth.test.mjs tests/users.test.mjs && vitest run tests/config tests/json-store.test.ts tests/members tests/disciplines tests/shared tests/scripts"
   },
   "dependencies": {
     "express": "5.1.0"

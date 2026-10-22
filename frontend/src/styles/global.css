@@ -267,20 +267,24 @@ a:hover {
 .members-toolbar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 14px;
   padding: 16px 20px;
   border-bottom: 1px solid var(--color-border);
 }
 
 .members-toolbar__search {
-  flex: 1;
+  flex: 1 1 30rem;
+  min-width: min(100%, 24rem);
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 8px;
 }
 
 .members-toolbar__search-field {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -295,19 +299,89 @@ a:hover {
   letter-spacing: 0;
 }
 
-.members-toolbar__search-field input {
+.members-toolbar__search .members-toolbar__search-field input {
   flex: 1;
   min-width: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
   border: 0;
   background: none;
   outline: none;
+  box-shadow: none;
   font: 400 13px var(--font-sans);
   color: var(--color-text);
+}
+
+.members-toolbar__search .members-toolbar__search-field input:focus {
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .segmented {
   display: flex;
   gap: 6px;
+}
+
+@media (max-width: 720px) {
+  .members-toolbar {
+    align-items: stretch;
+  }
+
+  .members-toolbar__search {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+
+  .segmented {
+    flex: 1 1 auto;
+    flex-wrap: wrap;
+    align-self: center;
+  }
+
+  .members-toolbar > .button--primary {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .members-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px;
+  }
+
+  .members-toolbar__search {
+    width: 100%;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .members-toolbar__search-field {
+    width: 100%;
+  }
+
+  .members-toolbar__search > .button {
+    width: 100%;
+  }
+
+  .segmented {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .segmented__option {
+    padding-inline: 8px;
+    text-align: center;
+  }
+
+  .members-toolbar > .button--primary {
+    width: 100%;
+    margin-left: 0;
+  }
 }
 
 .segmented__option {

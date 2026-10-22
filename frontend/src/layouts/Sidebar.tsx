@@ -1,4 +1,4 @@
-export type Section = 'members' | 'disciplines';
+export type Section = 'members' | 'disciplines' | 'users';
 
 interface SidebarProps {
   current?: Section;
@@ -8,6 +8,7 @@ interface SidebarProps {
 const SECTIONS: ReadonlyArray<{ id: Section; label: string }> = [
   { id: 'members', label: 'Socios' },
   { id: 'disciplines', label: 'Disciplinas' },
+  { id: 'users', label: 'Usuarios' },
 ];
 
 export function Sidebar({ current = 'members', onNavigate }: SidebarProps) {

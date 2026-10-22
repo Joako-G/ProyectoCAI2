@@ -36,6 +36,13 @@ describe('AppShell', () => {
     expect(link).toHaveAttribute('aria-current', 'page');
   });
 
+  it('shows Usuarios alongside Socios and marks the requested section active', () => {
+    render(<AppShell title="Usuarios" section="users"><p>Page content</p></AppShell>);
+    const nav = screen.getByRole('navigation', { name: 'Navegación principal' });
+    expect(within(nav).getByRole('link', { name: /Socios/ })).toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: /Usuarios/ })).toHaveAttribute('aria-current', 'page');
+  });
+
   it('renders the screen title and subtitle in the page header', () => {
     renderShell();
 
