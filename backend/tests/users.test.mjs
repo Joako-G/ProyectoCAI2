@@ -9,6 +9,7 @@ let storePath;
 let server;
 let baseUrl;
 let createApp;
+let sessionCookie;
 
 before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'club-socios-users-'));
@@ -17,6 +18,7 @@ before(async () => {
   server = createApp({ storePath }).listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
+  sessionCookie = await signInAt(baseUrl);
 });
 
 after(async () => {
@@ -24,10 +26,19 @@ after(async () => {
   if (directory) await rm(directory, { recursive: true, force: true });
 });
 
+async function signInAt(url) {
+  const login = await fetch(`${url}/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: 'demo@club.test', password: 'DemoPass123!' }),
+  });
+  return login.headers.get('set-cookie').split(';')[0];
+}
+
 async function request(path, method = 'GET', body) {
   return fetch(`${baseUrl}${path}`, {
     method,
-    headers: body ? { 'content-type': 'application/json' } : undefined,
+    headers: { cookie: sessionCookie, ...(body ? { 'content-type': 'application/json' } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
 }
@@ -99,7 +110,8 @@ test('DELETE deactivates and a newly loaded app reads the same persistent users'
   const reloadedServer = reloaded.listen(0);
   await new Promise((resolve) => reloadedServer.once('listening', resolve));
   try {
-    const response = await fetch(`http://127.0.0.1:${reloadedServer.address().port}/users`);
+    const reloadedUrl = `http://127.0.0.1:${reloadedServer.address().port}`;
+    const response = await fetch(`${reloadedUrl}/users`, { headers: { cookie: await signInAt(reloadedUrl) } });
     const users = await response.json();
     assert.equal(users.find((candidate) => candidate.id === user.id).active, false);
   } finally {
@@ -116,25 +128,26 @@ test('failed persistence does not expose a created user or persistence details',
   await new Promise((resolve) => failingServer.once('listening', resolve));
   try {
     const url = `http://127.0.0.1:${failingServer.address().port}`;
+    const cookie = await signInAt(url);
     const createResponse = await fetch(`${url}/users`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ name: 'Failure User', email: 'failure@club.test', role: 'member', password: 'ValidPass123!' }),
     });
     assert.equal(createResponse.status, 500);
     assert.deepEqual(await createResponse.json(), { error: 'Unable to save users' });
 
-    const before = await (await fetch(`${url}/users`)).json();
+    const before = await (await fetch(`${url}/users`, { headers: { cookie } })).json();
     const existing = before[0];
     const patchResponse = await fetch(`${url}/users/${existing.id}`, {
-      method: 'PATCH', headers: { 'content-type': 'application/json' },
+      method: 'PATCH', headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ name: 'Uncommitted Name' }),
     });
     assert.equal(patchResponse.status, 500);
-    const deleteResponse = await fetch(`${url}/users/${existing.id}`, { method: 'DELETE' });
+    const deleteResponse = await fetch(`${url}/users/${existing.id}`, { method: 'DELETE', headers: { cookie } });
     assert.equal(deleteResponse.status, 500);
 
-    const listResponse = await fetch(`${url}/users`);
+    const listResponse = await fetch(`${url}/users`, { headers: { cookie } });
     assert.equal(listResponse.status, 200);
     const after = await listResponse.json();
     assert.equal(after.some((user) => user.email === 'failure@club.test'), false);

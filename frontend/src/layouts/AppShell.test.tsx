@@ -90,3 +90,41 @@ describe('AppShell', () => {
     expect(onNavigate).toHaveBeenCalledWith('disciplines');
   });
 });
+
+describe('AppShell session panel', () => {
+  const user = { id: '1', name: 'Manuel Mendoza', email: 'manum@gmail.com', role: 'admin' };
+
+  it('shows the initial, name, email and role of the signed-in user at the foot of the sidebar', () => {
+    render(<AppShell title="Socios" user={user} onLogout={vi.fn()}><p>Page content</p></AppShell>);
+
+    const session = screen.getByRole('region', { name: 'Sesión actual' });
+    expect(within(session).getByText('M')).toBeInTheDocument();
+    expect(within(session).getByText('Manuel Mendoza')).toBeInTheDocument();
+    expect(within(session).getByText('manum@gmail.com')).toBeInTheDocument();
+    expect(within(session).getByText('Administrador')).toBeInTheDocument();
+  });
+
+  it('keeps the full name and email available when they are truncated', () => {
+    const long = { ...user, name: 'Maria de los Angeles Fernandez Gonzalez de la Vega', email: 'maria.de.los.angeles.fernandez@clubindependiente.example' };
+    render(<AppShell title="Socios" user={long} onLogout={vi.fn()}><p>Page content</p></AppShell>);
+
+    expect(screen.getByText(long.name)).toHaveAttribute('title', long.name);
+    expect(screen.getByText(long.email)).toHaveAttribute('title', long.email);
+  });
+
+  it('calls onLogout from the Cerrar sesión button', async () => {
+    const onLogout = vi.fn();
+    render(<AppShell title="Socios" user={user} onLogout={onLogout}><p>Page content</p></AppShell>);
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Cerrar sesión' }));
+
+    expect(onLogout).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders no session panel without a signed-in user', () => {
+    renderShell();
+
+    expect(screen.queryByRole('region', { name: 'Sesión actual' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cerrar sesión' })).not.toBeInTheDocument();
+  });
+});

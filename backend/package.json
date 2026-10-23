@@ -10,9 +10,11 @@
     "test": "pnpm run build && node --test tests/auth.test.mjs tests/users.test.mjs && vitest run tests/config tests/json-store.test.ts tests/members tests/disciplines tests/shared tests/scripts"
   },
   "dependencies": {
+    "cors": "2.8.5",
     "express": "5.1.0"
   },
   "devDependencies": {
+    "@types/cors": "2.8.19",
     "@types/express": "5.0.3",
     "@types/node": "24.3.1",
     "typescript": "5.9.2",

@@ -16,18 +16,38 @@ afterEach(() => {
 });
 
 describe('App', () => {
-  it('shows login initially and does not request members or users before authentication', () => {
+  it('shows login initially and does not request members or users before authentication', async () => {
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: 'Bienvenido/a de nuevo' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Bienvenido/a de nuevo' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Socios' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Usuarios' })).not.toBeInTheDocument();
-    expect(fetch).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledWith('/auth/me', { credentials: 'include' });
+  });
+
+  it('restores the server session on load so a refresh does not go back to login', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => input === '/auth/me'
+      ? new Response(JSON.stringify({ user: { id: '1', name: 'Demo', email: 'demo@example.com', role: 'admin' } }), { headers: { 'Content-Type': 'application/json' } })
+      : new Response('[]', { headers: { 'Content-Type': 'application/json' } })));
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Socios' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Bienvenido/a de nuevo' })).not.toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith('/auth/me', { credentials: 'include' });
+  });
+
+  it('falls back to login when the session check fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network down'); }));
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Bienvenido/a de nuevo' })).toBeInTheDocument();
   });
 
   it('keeps rejected credentials on login and does not request protected data', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 401 })));
     render(<App />);
+    await screen.findByLabelText('Correo electrónico');
 
     fireEvent.change(screen.getByLabelText('Correo electrónico'), { target: { value: 'bad@example.com' } });
     fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'wrong' } });
@@ -35,8 +55,8 @@ describe('App', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo iniciar sesión');
     expect(screen.getByRole('heading', { name: 'Bienvenido/a de nuevo' })).toBeInTheDocument();
-    expect(fetch).toHaveBeenCalledTimes(1);
-    expect(fetch).toHaveBeenCalledWith('/auth/login', expect.anything());
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledWith('/auth/login', expect.objectContaining({ credentials: 'include' }));
   });
 
   it('opens Socios after successful login', async () => {
@@ -47,6 +67,7 @@ describe('App', () => {
       return new Response('[]', { headers: { 'Content-Type': 'application/json' } });
     }));
     render(<App />);
+    await screen.findByLabelText('Correo electrónico');
 
     fireEvent.change(screen.getByLabelText('Correo electrónico'), { target: { value: 'demo@example.com' } });
     fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'password' } });
@@ -54,7 +75,7 @@ describe('App', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Socios' })).toBeInTheDocument();
     expect(await screen.findByText(/No hay socios/)).toBeInTheDocument();
-    expect(fetch).toHaveBeenCalledWith('/auth/login', expect.objectContaining({ method: 'POST' }));
+    expect(fetch).toHaveBeenCalledWith('/auth/login', expect.objectContaining({ method: 'POST', credentials: 'include' }));
   });
 
   it('renders the members list inside the main region after login', async () => {
@@ -62,6 +83,7 @@ describe('App', () => {
       ? new Response(JSON.stringify({ user: { id: '1', name: 'Demo', email: 'demo@example.com', role: 'admin' } }), { headers: { 'Content-Type': 'application/json' } })
       : new Response('[]', { headers: { 'Content-Type': 'application/json' } })));
     render(<App />);
+    await screen.findByLabelText('Correo electrónico');
     fireEvent.change(screen.getByLabelText('Correo electrónico'), { target: { value: 'demo@example.com' } });
     fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'password' } });
     fireEvent.click(screen.getByRole('button', { name: /Ingresar/ }));
@@ -84,6 +106,7 @@ describe('App', () => {
       return new Response(JSON.stringify(users), { headers: { 'Content-Type': 'application/json' } });
     }));
     render(<App />);
+    await screen.findByLabelText('Correo electrónico');
     fireEvent.change(screen.getByLabelText('Correo electrónico'), { target: { value: 'demo@example.com' } });
     fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'password' } });
     fireEvent.click(screen.getByRole('button', { name: /Ingresar/ }));
@@ -93,7 +116,7 @@ describe('App', () => {
     fireEvent.click(within(nav).getByRole('link', { name: /Usuarios/ }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Usuarios' })).toBeInTheDocument();
     expect(within(nav).getByRole('link', { name: /Usuarios/ })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByText('Administrador')).toBeInTheDocument();
+    expect(within(screen.getByRole('main')).getByText('Administrador')).toBeInTheDocument();
     expect(screen.getAllByText('Socio', { selector: '.role-pill' })).toHaveLength(2);
     expect(screen.getByText('Sesión actual')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Desactivar' })).toBeInTheDocument();
@@ -120,6 +143,7 @@ describe('App', () => {
       : new Response('[]', { headers: { 'Content-Type': 'application/json' } })));
     const user = userEvent.setup();
     render(<App />);
+    await screen.findByLabelText('Correo electrónico');
     fireEvent.change(screen.getByLabelText('Correo electrónico'), { target: { value: 'demo@example.com' } });
     fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'password' } });
     fireEvent.click(screen.getByRole('button', { name: /Ingresar/ }));
@@ -138,5 +162,47 @@ describe('App', () => {
     await user.click(within(nav).getByRole('link', { name: /Socios/ }));
 
     expect(screen.getByRole('heading', { level: 1, name: 'Socios' })).toBeInTheDocument();
+  });
+});
+
+describe('App session panel', () => {
+  const sessionUser = { id: '1', name: 'Demo', email: 'demo@example.com', role: 'admin' };
+
+  function stubSession(logout: () => Response = () => new Response(null, { status: 204 })) {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (input === '/auth/me') return new Response(JSON.stringify({ user: sessionUser }), { headers: { 'Content-Type': 'application/json' } });
+      if (input === '/auth/logout') return logout();
+      return new Response('[]', { headers: { 'Content-Type': 'application/json' } });
+    }));
+  }
+
+  it('shows the data of the real session in the sidebar', async () => {
+    stubSession();
+    render(<App />);
+
+    const session = await screen.findByRole('region', { name: 'Sesión actual' });
+    expect(within(session).getByText('Demo')).toBeInTheDocument();
+    expect(within(session).getByText('demo@example.com')).toBeInTheDocument();
+    expect(within(session).getByText('Administrador')).toBeInTheDocument();
+  });
+
+  it('ends the server session and returns to login on Cerrar sesión', async () => {
+    stubSession();
+    render(<App />);
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Cerrar sesión' }));
+
+    expect(await screen.findByRole('heading', { name: 'Bienvenido/a de nuevo' })).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith('/auth/logout', { method: 'POST', credentials: 'include' });
+    expect(screen.queryByRole('region', { name: 'Sesión actual' })).not.toBeInTheDocument();
+  });
+
+  it('still returns to login when the server cannot be reached on logout', async () => {
+    stubSession(() => { throw new Error('network down'); });
+    render(<App />);
+
+    await userEvent.setup().click(await screen.findByRole('button', { name: 'Cerrar sesión' }));
+
+    expect(await screen.findByRole('heading', { name: 'Bienvenido/a de nuevo' })).toBeInTheDocument();
   });
 });
