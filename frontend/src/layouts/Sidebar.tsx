@@ -1,8 +1,14 @@
+import { SessionPanel } from '../features/auth/components/SessionPanel';
+import type { AuthUser } from '../features/auth/types/auth';
+
 export type Section = 'members' | 'disciplines' | 'users';
 
 interface SidebarProps {
   current?: Section;
   onNavigate?: (section: Section) => void;
+  /** Signed-in account shown at the foot of the sidebar; omitted renders no session panel. */
+  user?: AuthUser;
+  onLogout?: () => void;
 }
 
 const SECTIONS: ReadonlyArray<{ id: Section; label: string }> = [
@@ -11,7 +17,7 @@ const SECTIONS: ReadonlyArray<{ id: Section; label: string }> = [
   { id: 'users', label: 'Usuarios' },
 ];
 
-export function Sidebar({ current = 'members', onNavigate }: SidebarProps) {
+export function Sidebar({ current = 'members', onNavigate, user, onLogout }: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
@@ -37,6 +43,7 @@ export function Sidebar({ current = 'members', onNavigate }: SidebarProps) {
           </a>
         ))}
       </nav>
+      {user && onLogout && <SessionPanel user={user} onLogout={onLogout} />}
     </aside>
   );
 }

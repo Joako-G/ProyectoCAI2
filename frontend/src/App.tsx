@@ -17,18 +17,22 @@ const PAGES: Record<Section, { title: string; subtitle: string }> = {
 };
 
 export function App() {
-  const { user, restoring, signIn } = useSession();
+  const { user, restoring, signIn, signOut } = useSession();
   const [view, setView] = useState<Section>('members');
 
   function handleLogin(signedIn: AuthUser) {
     signIn(signedIn); setView('members');
   }
 
+  async function handleLogout() {
+    await signOut(); setView('members');
+  }
+
   if (restoring) return null;
   if (!user) return <LoginScreen onLogin={handleLogin} />;
 
   const { title, subtitle } = PAGES[view];
-  return <AppShell title={title} subtitle={subtitle} section={view} onNavigate={setView}>
+  return <AppShell title={title} subtitle={subtitle} section={view} onNavigate={setView} user={user} onLogout={handleLogout}>
     {view === 'members' ? <MembersView /> : view === 'disciplines' ? <DisciplinesView /> : <UsersView currentUserId={user.id} />}
   </AppShell>;
 }

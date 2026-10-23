@@ -150,6 +150,77 @@ a:hover {
   opacity: 0.6;
 }
 
+/* Sidebar session */
+
+.sidebar__session {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: auto;
+  padding: 14px 18px 18px;
+  border-top: 1px solid var(--color-sidebar-border);
+}
+
+.sidebar__session-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar__session-user .user-avatar {
+  flex: none;
+}
+
+.sidebar__session-details {
+  min-width: 0;
+}
+
+.sidebar__session-details p {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar__session-name {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sidebar__session-email {
+  color: var(--color-sidebar-text);
+  font-size: 12px;
+}
+
+.sidebar__session-role {
+  color: var(--color-sidebar-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.sidebar__logout {
+  padding: 9px 12px;
+  border: 1px solid var(--color-sidebar-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-sidebar-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.sidebar__logout:hover {
+  background: var(--color-sidebar-hover);
+  color: #fff;
+}
+
+.sidebar__logout:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
 /* Page header */
 
 .page-header {
