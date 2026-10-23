@@ -1,10 +1,17 @@
 import { verifyPassword } from '../users/password.js';
 import type { UserRepository } from '../users/user.repository.js';
+import type { DemoUser } from '../users/user.types.js';
 import type { AuthenticatedUser } from './auth.types.js';
 
 export interface AuthService {
   /** Returns the signed-in user, or null for any invalid input, unknown or inactive account, or wrong password. */
   login(input: unknown): AuthenticatedUser | null;
+  /** Returns the account for a session's user id, or null when it no longer exists or is inactive. */
+  getActiveUser(id: string): AuthenticatedUser | null;
+}
+
+function toAuthenticatedUser({ id, name, email, role }: DemoUser): AuthenticatedUser {
+  return { id, name, email, role };
 }
 
 export function createAuthService(repository: UserRepository): AuthService {
@@ -16,8 +23,11 @@ export function createAuthService(repository: UserRepository): AuthService {
       const user = repository.list().find((candidate) => candidate.email.toLowerCase() === email.toLowerCase());
       if (!user || !user.active || !verifyPassword(password, user.passwordHash)) return null;
 
-      const { id, name, role } = user;
-      return { id, name, email: user.email, role };
+      return toAuthenticatedUser(user);
+    },
+    getActiveUser(id) {
+      const user = repository.list().find((candidate) => candidate.id === id);
+      return user?.active ? toAuthenticatedUser(user) : null;
     },
   };
 }
