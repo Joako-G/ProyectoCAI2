@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import './app.css';
 import { LoginScreen } from './features/auth/components/LoginScreen';
+import { useSession } from './features/auth/hooks/useSession';
 import type { AuthUser } from './features/auth/types/auth';
 import { DisciplinesView } from './features/disciplines/components/DisciplinesView';
 import { MembersView } from './features/members/components/MembersView';
@@ -16,13 +17,14 @@ const PAGES: Record<Section, { title: string; subtitle: string }> = {
 };
 
 export function App() {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const { user, restoring, signIn } = useSession();
   const [view, setView] = useState<Section>('members');
 
   function handleLogin(signedIn: AuthUser) {
-    setUser(signedIn); setView('members');
+    signIn(signedIn); setView('members');
   }
 
+  if (restoring) return null;
   if (!user) return <LoginScreen onLogin={handleLogin} />;
 
   const { title, subtitle } = PAGES[view];
