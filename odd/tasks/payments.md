@@ -90,6 +90,9 @@ Let the club secretariat register member payments end to end: look up a member b
   - `R3-enrollment-date-unbounded` / `R4-001`: `calculateCharge` rejects an `enrollmentDate` after the payment date with a `ValidationError`. Not done: rejecting periods before the enrollment period, because that depends on the open re-registration debt rule.
   - `R2-001`: the `enrollment?.day ?? 1` fallback is gone. The activity line computes `enrollmentDay` only for the enrollment month, and proration and the surcharge exemption read it explicitly.
   - RED: two new tests failed with "expected function to throw an error, but it didn't". GREEN: backend 311/311; `pnpm -r typecheck` and `git diff --check` pass.
+  - Committed as `d2c3578`. Gentle-AI review (consent granted, lineage `review-6a4228ebfc0a909d`, base `0461a06`, 3 files, 46 lines, high risk, four lenses): approved and acknowledged; reviewed boundary is now `d2c3578`. Non-blocking SUGGESTION findings (later work):
+    - `R4-raw-string-date-order`, `R2-001`, `R3-string-compare-relies-on-format`: the guard compares the raw date strings, which is correct only because `parseClubDate` enforces zero-padded `YYYY-MM-DD` first. Compare the parsed values instead.
+    - `R3-reject-assertion-unpinned`: the rejection tests only check `ValidationError`; assert the `enrollmentDate` field too.
 
 ## Next step
 1. Ask the owners what happens to the old debt when a deregistered member re-registers.
