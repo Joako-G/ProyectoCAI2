@@ -16,7 +16,9 @@ interface MembersToolbarProps {
   onSearchSubmit: (search: string) => void;
   onStatusChange: (status: MemberStatusFilter) => void;
   onDisciplineChange: (disciplineId: string) => void;
-  /** Opens the member creation flow (wired in a later task). */
+  /** Whether to offer the create action. */
+  canCreate?: boolean;
+  /** Opens the member creation flow. */
   onCreate?: () => void;
 }
 
@@ -41,6 +43,7 @@ export function MembersToolbar({
   onSearchSubmit,
   onStatusChange,
   onDisciplineChange,
+  canCreate = true,
   onCreate,
 }: MembersToolbarProps) {
   const [draft, setDraft] = useState(search);
@@ -98,9 +101,11 @@ export function MembersToolbar({
         ))}
       </select>
 
-      <button type="button" className="button button--primary" onClick={onCreate}>
-        Alta de socio
-      </button>
+      {canCreate ? (
+        <button type="button" className="button button--primary" onClick={onCreate}>
+          Alta de socio
+        </button>
+      ) : null}
     </div>
   );
 }

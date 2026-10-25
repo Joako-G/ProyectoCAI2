@@ -6,6 +6,8 @@ interface DisciplinesToolbarProps {
   status: DisciplineStatusFilter;
   onSearchSubmit: (search: string) => void;
   onStatusChange: (status: DisciplineStatusFilter) => void;
+  /** Whether to offer the create action. */
+  canCreate?: boolean;
   onCreate: () => void;
 }
 
@@ -17,8 +19,9 @@ export function DisciplinesToolbar({
   status,
   onSearchSubmit,
   onStatusChange,
+  canCreate = true,
   onCreate,
-}: DisciplinesToolbarProps) {
+}:DisciplinesToolbarProps) {
   const [draft, setDraft] = useState(search);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -59,9 +62,11 @@ export function DisciplinesToolbar({
         ))}
       </div>
 
-      <button type="button" className="button button--primary" onClick={onCreate}>
-        Nueva disciplina
-      </button>
+      {canCreate ? (
+        <button type="button" className="button button--primary" onClick={onCreate}>
+          Nueva disciplina
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 import { buildMember } from './features/members/test/fixtures';
 
+const HEAD = ['members:read', 'members:write', 'disciplines:read', 'disciplines:write', 'users:manage'];
+
 beforeEach(() => {
   vi.stubGlobal(
     'fetch',
@@ -28,7 +30,7 @@ describe('App', () => {
 
   it('restores the server session on load so a refresh does not go back to login', async () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => input === '/auth/me'
-      ? new Response(JSON.stringify({ user: { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' } }), { headers: { 'Content-Type': 'application/json' } })
+      ? new Response(JSON.stringify({ user: { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' }, capabilities: HEAD }), { headers: { 'Content-Type': 'application/json' } })
       : new Response('[]', { headers: { 'Content-Type': 'application/json' } })));
     render(<App />);
 
@@ -62,7 +64,7 @@ describe('App', () => {
   it('opens Socios after successful login', async () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
       if (input === '/auth/login') {
-        return new Response(JSON.stringify({ user: { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' } }), { headers: { 'Content-Type': 'application/json' } });
+        return new Response(JSON.stringify({ user: { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' }, capabilities: HEAD }), { headers: { 'Content-Type': 'application/json' } });
       }
       return new Response('[]', { headers: { 'Content-Type': 'application/json' } });
     }));
@@ -80,7 +82,7 @@ describe('App', () => {
 
   it('renders the members list inside the main region after login', async () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => input === '/auth/login'
-      ? new Response(JSON.stringify({ user: { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' } }), { headers: { 'Content-Type': 'application/json' } })
+      ? new Response(JSON.stringify({ user: { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' }, capabilities: HEAD }), { headers: { 'Content-Type': 'application/json' } })
       : new Response('[]', { headers: { 'Content-Type': 'application/json' } })));
     render(<App />);
     await screen.findByLabelText('Correo electrónico');
@@ -100,7 +102,7 @@ describe('App', () => {
       { id: '3', name: 'Cuenta inactiva', email: 'inactivo@example.com', role: 'teacher', active: false },
     ];
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (input === '/auth/login') return new Response(JSON.stringify({ user: users[0] }), { headers: { 'Content-Type': 'application/json' } });
+      if (input === '/auth/login') return new Response(JSON.stringify({ user: users[0], capabilities: HEAD }), { headers: { 'Content-Type': 'application/json' } });
       if (input === '/users' && init?.method === 'POST') return new Response(JSON.stringify(users[0]), { status: 201, headers: { 'Content-Type': 'application/json' } });
       if (input === '/api/members') return new Response(JSON.stringify([buildMember()]), { headers: { 'Content-Type': 'application/json' } });
       return new Response(JSON.stringify(users), { headers: { 'Content-Type': 'application/json' } });
@@ -140,7 +142,7 @@ describe('App', () => {
 
   it('switches to the Disciplinas screen from the sidebar and back', async () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => input === '/auth/login'
-      ? new Response(JSON.stringify({ user: { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' } }), { headers: { 'Content-Type': 'application/json' } })
+      ? new Response(JSON.stringify({ user: { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' }, capabilities: HEAD }), { headers: { 'Content-Type': 'application/json' } })
       : new Response('[]', { headers: { 'Content-Type': 'application/json' } })));
     const user = userEvent.setup();
     render(<App />);
@@ -171,7 +173,7 @@ describe('App session panel', () => {
 
   function stubSession(logout: () => Response = () => new Response(null, { status: 204 })) {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
-      if (input === '/auth/me') return new Response(JSON.stringify({ user: sessionUser }), { headers: { 'Content-Type': 'application/json' } });
+      if (input === '/auth/me') return new Response(JSON.stringify({ user: sessionUser, capabilities: HEAD }), { headers: { 'Content-Type': 'application/json' } });
       if (input === '/auth/logout') return logout();
       return new Response('[]', { headers: { 'Content-Type': 'application/json' } });
     }));

@@ -108,6 +108,20 @@ describe('MemberDetail', () => {
     expect(onBack).toHaveBeenCalledTimes(1);
   });
 
+  it('hides every write action when the user cannot write members', () => {
+    for (const member of [buildMember(), buildMember({ status: 'inactive', deactivation: { date: '2026-09-30', reason: 'Mudanza' } })]) {
+      const { unmount } = render(
+        <MemberDetail member={member} today={TODAY} canWrite={false} onBack={vi.fn()} onEdit={vi.fn()} onDeactivate={vi.fn()} onReactivate={vi.fn()} />,
+      );
+
+      expect(screen.getByRole('button', { name: 'Volver al listado' })).toBeInTheDocument();
+      for (const name of ['Editar', 'Dar de baja', 'Reactivar']) {
+        expect(screen.queryByRole('button', { name })).not.toBeInTheDocument();
+      }
+      unmount();
+    }
+  });
+
   it('offers Reactivar, not Dar de baja, for an inactive member', async () => {
     const { user, onReactivate } = renderDetail(
       buildMember({ status: 'inactive', deactivation: { date: '2026-09-30', reason: 'Mudanza' } }),

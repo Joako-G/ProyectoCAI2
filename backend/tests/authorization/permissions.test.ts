@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { permissions, type Capability } from '../../src/modules/auth/permissions.js';
+import { capabilitiesFor, permissions, type Capability } from '../../src/modules/auth/permissions.js';
 import { roles } from '../../src/modules/users/user.types.js';
 
 describe('permission policy', () => {
@@ -15,6 +15,15 @@ describe('permission policy', () => {
     for (const capability of ['members:read', 'members:write', 'disciplines:read', 'memberships:read', 'config:read'] as const) {
       expect(allowed(capability)).toEqual(['head_secretary', 'secretary']);
     }
+  });
+
+  it('derives the capabilities of a role from the policy and gives unknown roles none', () => {
+    expect(capabilitiesFor('head_secretary')).toEqual(Object.keys(permissions));
+    expect(capabilitiesFor('secretary')).toContain('members:write');
+    expect(capabilitiesFor('secretary')).not.toContain('disciplines:write');
+    expect(capabilitiesFor('secretary')).not.toContain('users:manage');
+    expect(capabilitiesFor('teacher')).toEqual([]);
+    expect(capabilitiesFor('treasurer')).toEqual([]);
   });
 
   it('gives the teacher no capability yet and only declares known roles', () => {

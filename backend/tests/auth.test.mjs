@@ -32,9 +32,10 @@ test('authenticates a synthetic active user and returns only safe fields', async
 
   assert.equal(response.status, 200);
   const payload = await response.json();
-  assert.deepEqual(payload, {
-    user: { id: 'demo-head-secretary', name: 'Demo Head Secretary', email: 'demo@club.test', role: 'head_secretary' },
+  assert.deepEqual(payload.user, {
+    id: 'demo-head-secretary', name: 'Demo Head Secretary', email: 'demo@club.test', role: 'head_secretary',
   });
+  assert.ok(payload.capabilities.includes('users:manage'));
   assert.equal(JSON.stringify(payload).includes('password'), false);
 });
 
@@ -101,9 +102,11 @@ test('/auth/me returns the session user with the cookie and 401 without it', asy
 
   const withCookie = await fetch(`${baseUrl}/auth/me`, { headers: { cookie } });
   assert.equal(withCookie.status, 200);
-  assert.deepEqual(await withCookie.json(), {
-    user: { id: 'demo-head-secretary', name: 'Demo Head Secretary', email: 'demo@club.test', role: 'head_secretary' },
+  const payload = await withCookie.json();
+  assert.deepEqual(payload.user, {
+    id: 'demo-head-secretary', name: 'Demo Head Secretary', email: 'demo@club.test', role: 'head_secretary',
   });
+  assert.ok(payload.capabilities.includes('users:manage'));
 
   assert.equal((await fetch(`${baseUrl}/auth/me`)).status, 401);
   assert.equal((await fetch(`${baseUrl}/auth/me`, { headers: { cookie: 'club_session=forged' } })).status, 401);
@@ -134,6 +137,26 @@ test('demo accounts log in with the three current roles and /users is limited to
     const status = (await fetch(`${baseUrl}/users`, { headers: { cookie: login.headers.get('set-cookie').split(';')[0] } })).status;
     assert.equal(status, role === 'head_secretary' ? 200 : 403);
   }
+});
+
+test('login and /auth/me report the capabilities of each role', async () => {
+  const expected = {
+    'demo@club.test': { includes: ['members:write', 'disciplines:write', 'users:manage'], excludes: [] },
+    'secretary@club.test': { includes: ['members:read', 'members:write', 'disciplines:read'], excludes: ['disciplines:write', 'users:manage'] },
+    'teacher@club.test': { includes: [], excludes: ['members:read', 'disciplines:read', 'users:manage'] },
+  };
+  for (const [email, { includes, excludes }] of Object.entries(expected)) {
+    const login = await signIn(email);
+    const loginCapabilities = (await login.json()).capabilities;
+    const cookie = login.headers.get('set-cookie').split(';')[0];
+    const meCapabilities = (await (await fetch(`${baseUrl}/auth/me`, { headers: { cookie } })).json()).capabilities;
+
+    assert.deepEqual(meCapabilities, loginCapabilities);
+    for (const capability of includes) assert.ok(loginCapabilities.includes(capability), `${email} should have ${capability}`);
+    for (const capability of excludes) assert.ok(!loginCapabilities.includes(capability), `${email} should not have ${capability}`);
+  }
+  const teacher = await signIn('teacher@club.test');
+  assert.deepEqual((await teacher.json()).capabilities, []);
 });
 
 test('/users requires a session and unwired API routes still answer 404', async () => {

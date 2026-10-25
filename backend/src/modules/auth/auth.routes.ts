@@ -1,5 +1,6 @@
 import { Router, type CookieOptions } from 'express';
 import type { AuthService } from './auth.service.js';
+import { capabilitiesFor } from './permissions.js';
 import { SESSION_COOKIE, readSessionToken, type Authenticator, type SessionStore } from './auth.session.js';
 
 const cookieOptions: CookieOptions = {
@@ -19,7 +20,7 @@ export function createAuthRouter(service: AuthService, sessions: SessionStore, a
       return;
     }
     response.cookie(SESSION_COOKIE, sessions.create(user.id), cookieOptions);
-    response.json({ user });
+    response.json({ user, capabilities: capabilitiesFor(user.role) });
   });
 
   router.get('/me', (request, response) => {
@@ -28,7 +29,7 @@ export function createAuthRouter(service: AuthService, sessions: SessionStore, a
       response.status(401).json({ error: 'Authentication required' });
       return;
     }
-    response.json({ user });
+    response.json({ user, capabilities: capabilitiesFor(user.role) });
   });
 
   router.post('/logout', (request, response) => {

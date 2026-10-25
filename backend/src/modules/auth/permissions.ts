@@ -21,3 +21,9 @@ export const permissions = {
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Capability = keyof typeof permissions;
+
+/** Every capability granted to a role; an unknown role gets none. */
+export function capabilitiesFor(role: string): Capability[] {
+  return (Object.keys(permissions) as Capability[]).filter((capability) =>
+    (permissions[capability] as readonly string[]).includes(role));
+}

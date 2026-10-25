@@ -14,6 +14,8 @@ interface DisciplinesPageProps {
   /** Search and status filters; owned by the parent so they survive the create / edit form. */
   query: DisciplineListQuery;
   onQueryChange: (query: DisciplineListQuery) => void;
+  /** Whether to offer create, edit, deactivate and reactivate. */
+  canWrite?: boolean;
   onCreate: () => void;
   onEdit: (discipline: Discipline) => void;
 }
@@ -28,7 +30,7 @@ function resultsLabel(count: number): string {
 }
 
 /** Container: fetches the disciplines, composes toolbar and table and runs the status actions. */
-export function DisciplinesPage({ query, onQueryChange, onCreate, onEdit }: DisciplinesPageProps) {
+export function DisciplinesPage({ query, onQueryChange, canWrite = true, onCreate, onEdit }: DisciplinesPageProps) {
   const { search, status } = query;
   const { state, reload } = useDisciplinesList(query);
   const [pending, setPending] = useState<PendingAction | null>(null);
@@ -79,6 +81,7 @@ export function DisciplinesPage({ query, onQueryChange, onCreate, onEdit }: Disc
         status={status}
         onSearchSubmit={submitSearch}
         onStatusChange={(next) => onQueryChange({ ...query, status: next })}
+        canCreate={canWrite}
         onCreate={onCreate}
       />
 
@@ -122,6 +125,7 @@ export function DisciplinesPage({ query, onQueryChange, onCreate, onEdit }: Disc
       {state.phase === 'ready' && state.disciplines.length > 0 ? (
         <DisciplinesTable
           disciplines={state.disciplines}
+          canWrite={canWrite}
           onEdit={onEdit}
           onDeactivate={(discipline) => setPending({ action: 'deactivate', discipline })}
           onReactivate={(discipline) => setPending({ action: 'reactivate', discipline })}
