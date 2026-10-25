@@ -81,8 +81,13 @@ Let the club secretariat register member payments end to end: look up a member b
   - GREEN: backend 308/308 vitest, 17/17 node; `pnpm -r typecheck`, `pnpm -r build` and `git diff --check` pass (with the pnpm workaround).
   - About 470 authored lines (source ~190, tests ~280), over the advisory budget because of the tests.
   - Rule gaps: old debt on re-registration after deregistration is unknown; whether `enrollmentDate` may be after `paymentDate`; only one carnet replacement per charge (writer's choice).
+  - Committed as `0461a06`. Gentle-AI review (consent granted, lineage `review-d8c598013be3a7a3`, base `735fb70`, committed only, 8 files, 507 lines, high risk, four lenses): approved and acknowledged; reviewed boundary is now `0461a06`. Non-blocking findings (later work):
+    - WARNING `R3-enrollment-date-unbounded` and SUGGESTION `R4-001`: an `enrollmentDate` after the payment date, or activity periods before the enrollment period, are accepted and give an inconsistent charge. Reject them with a test.
+    - WARNING `R2-001`: the `enrollment?.day ?? 1` fallback relies implicitly on the `isNewMember` gate.
+    - SUGGESTION `R2-002`: `parseClubDate`'s comment understates what it returns.
+    - SUGGESTION `R2-003`: proration and surcharge exemption share one `inEnrollmentPeriod` flag; split them into named rules.
 
 ## Next step
 1. Ask the owners what happens to the old debt when a deregistered member re-registers.
 2. Next tasks: T4 (memberships; confirm ownership with the teammate) or P2 (role authorization) before T3/T5/T6.
-2. In parallel, ask the teammate about P1/P2 status and ownership of `memberships`.
+3. In parallel, ask the teammate about P1/P2 status and ownership of `memberships`.
