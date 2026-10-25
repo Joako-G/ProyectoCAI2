@@ -22,19 +22,20 @@ Let the club secretariat register member payments end to end: look up a member b
 - Persistence follows the project pattern: JSON files behind a repository interface (`createJsonStore`), one file per module. Demo only.
 
 ## Authorized scope and constraints
-- Edit only this repository, on branch `feat/payments` cut from `manu`. No push, pull request or remote operation without explicit authorization.
+- Edit only this repository, directly on branch `manu` (user decision, 2026-10-25: no new branch). No push, pull request or remote operation without explicit authorization.
 - Synthetic data only. No real club records or credentials.
 - Do not implement biometric access or PostgreSQL.
 - Do not encode a rule that is not in the handoff or the approved requirements; stop and ask instead.
 - TDD: ON. Source: explicit user choice for this project (Engram decision "TDD on with Vitest for club-socios", reused by `members-abm`). Runner: Vitest per package, `corepack pnpm --filter <package> test`. Every behavior task records observed RED, then GREEN, then REFACTOR.
-- Delivery strategy: ask-on-risk. Forecast: about 3,500–4,500 authored changed lines across all tasks, above the ~400-line budget. Chain strategy is not chosen yet; ask the user before the first commit of T1 (`stacked-to-main`, `feature-branch-chain` or a single PR into `manu` as done for members).
+- Delivery strategy: ask-on-risk, resolved as `exception-ok`. Forecast: about 3,500–4,500 authored changed lines across all tasks, above the ~400-line budget. User decision (2026-10-25): work-unit commits directly on `manu`, no feature branch and no chain; the user decides any later push or PR.
+- Never stage `.atl/` registry files (machine-local; see review finding `R3-registry-machine-local`).
 
 ## Prerequisites (outside this feature; verify before the tasks that need them)
 - P1 — Frontend routing and authentication-based route protection (listed as unfinished in the handoff). Needed before T7 and T8.
 - P2 — Backend role-based authorization. `requireAuth` only checks the session and protects `/users`; `role` is a free `string` on users and members/disciplines are still open. Needed before T5–T6 (annulment) and T3 (configuration writes). Confirm the exact role names, including "Head of Secretariat", with the owners and the teammate who owns `users`.
 
 ## Tasks
-- [ ] T1 — Pricing domain (pure). Types for `Money`, `Tariff` (with effective date), `SurchargeTier` and `ProrationRule`, plus functions that resolve the tariff in force for a period, the surcharge for a payment day, and the new-member proration. Tests cover the handbook examples ($60,000; $63,000; $66,000; $70,000; $74,000; $50,000; $60,000 new-member; $20,000 added activity), day 31, and a tariff change between two months. Route: delegated direct writer. Acceptance: tests written first and passing; no I/O.
+- [x] T1 — Pricing domain (pure). Types for `Money`, `Tariff` (with effective date), `SurchargeTier` and `ProrationRule`, plus functions that resolve the tariff in force for a period, the surcharge for a payment day, and the new-member proration. Tests cover the handbook examples ($60,000; $63,000; $66,000; $70,000; $74,000; $50,000; $60,000 new-member; $20,000 added activity), day 31, and a tariff change between two months. Route: delegated direct writer. Acceptance: tests written first and passing; no I/O.
 - [ ] T2 — Charge calculation. `calculateCharge(member state, enrolled disciplines, payment date, selected concepts)` returns line items (enrollment, social fee, activity fee per discipline, surcharge per activity, carnet) and a total. Handles: new vs existing member, proration, added activity, overdue months at their own tariff, deregistration after more than 3 unpaid months. Route: delegated direct writer. Acceptance: table-driven tests from the handoff examples; paying one concept never settles another.
 - [ ] T3 — Configuration domain and API. Repository (JSON, `config.json`) for tariffs with effective dates, surcharge tiers, proration rule, discounts and promos; admin-only routes to read and update; validation that rejects overlapping or gapped tiers and negative amounts. Route: delegated direct writer. Depends on P2. Acceptance: API tests including a non-admin being rejected; a tariff edit does not change already-issued payments.
 - [ ] T4 — Memberships (member to discipline enrollment). Domain, repository and API linking a member to disciplines with start date and status, so T2 knows which activities a member owes. Route: delegated direct writer. Acceptance: tests first; a member can enroll in and leave a discipline; inactive members are excluded. Confirm the module is not already owned by a teammate before starting.
@@ -59,7 +60,14 @@ Let the club secretariat register member payments end to end: look up a member b
 
 ## Progress
 - 2026-10-25: Rules clarified with the owner and committed in the handoff (`c2fba42`). This feature document created from `manu`; no source written yet.
+- 2026-10-25, T1 (route: delegated direct writer, because it touches 2+ non-trivial files):
+  - Files: `backend/src/modules/payments/pricing.types.ts`, `pricing.ts` (defaults, `assertMoney`, `resolveTariff`, `assertSurchargeTiers`, `surchargeForDay`, `prorateActivityFee`), `backend/tests/payments/pricing.test.ts`; `backend/package.json` adds `tests/payments` to the vitest list.
+  - RED: `vitest run tests/payments` failed with "Cannot find module '../../src/modules/payments/pricing.js'".
+  - GREEN: 45 payments tests; backend 260/260 vitest and 17/17 node tests (parent re-run 260/260). `pnpm -r typecheck`, `pnpm -r build` and `git diff --check` pass.
+  - Environment: `corepack pnpm` now fails the inner `pnpm run build` with `ERR_PNPM_BAD_PM_VERSION` (pinned 11.6.0, corepack provides 12.9.1). Checks run with `pnpm_config_pm_on_fail=ignore corepack pnpm --pm-on-fail=ignore ...`.
+  - Design choices: tiers are re-validated on every call; proration rounds half up to whole pesos; `activityPercent` is a whole number 0–100; `afterDay` is strict (enrolling on the 15th pays full); tariffs start on month boundaries (`YYYY-MM`).
+  - About 371 authored lines.
 
 ## Next step
-1. Choose the delivery chain strategy, then create `feat/payments` and start T1 (pure pricing domain, no dependency on P1 or P2).
+1. Start T2 on `manu` (charge calculation; confirm the overdue-month surcharge assumption first).
 2. In parallel, ask the teammate about P1/P2 status and ownership of `memberships`.
