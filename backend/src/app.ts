@@ -9,6 +9,8 @@ import { createDisciplinesRouter } from './modules/disciplines/discipline.routes
 import type { DisciplineService } from './modules/disciplines/discipline.service.js';
 import { createMembersRouter } from './modules/members/member.routes.js';
 import type { MemberService } from './modules/members/member.service.js';
+import { createMembershipsRouter } from './modules/memberships/membership.routes.js';
+import type { MembershipService } from './modules/memberships/membership.service.js';
 import { UserRepository, defaultUsersFilePath } from './modules/users/user.repository.js';
 import { createUsersRouter } from './modules/users/user.routes.js';
 import { createUserService } from './modules/users/user.service.js';
@@ -18,6 +20,7 @@ export interface AppDependencies {
   memberService?: MemberService;
   // Optional so apps that only exercise members (tests) can omit the catalog.
   disciplineService?: DisciplineService;
+  membershipService?: MembershipService;
   storePath?: string;
   // Origin allowed to send credentialed requests; defaults to the Vite dev server.
   frontendOrigin?: string;
@@ -42,9 +45,10 @@ const authenticate = createAuthenticator(sessions, authService);
 app.use('/auth', createAuthRouter(authService, sessions, authenticate));
 app.use('/users', requireAuth(authenticate), createUsersRouter(createUserService(repository)));
 
-// requireAuth currently protects only /users; members and disciplines stay open for now.
+// requireAuth currently protects only /users; members, disciplines and memberships stay open for now.
 if (options.memberService) app.use('/api/members', createMembersRouter(options.memberService));
 if (options.disciplineService) app.use('/api/disciplines', createDisciplinesRouter(options.disciplineService));
+if (options.membershipService) app.use('/api/memberships', createMembershipsRouter(options.membershipService));
 app.use('/api', apiNotFound);
 app.use(errorHandler);
 return app;

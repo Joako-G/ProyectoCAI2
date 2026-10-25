@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError, ValidationError } from '../../shared/errors.js';
 import { toIsoDate } from '../../shared/date.js';
+import type { DisciplineHistory } from './discipline-history.js';
 import type { DisciplineLookup } from './discipline-lookup.js';
 import type { MemberRepository } from './member.repository.js';
 import type { Member, MemberInput, MemberListQuery } from './member.types.js';
@@ -9,6 +10,8 @@ import { assertDisciplinesAssignable, validateMemberInput } from './member.valid
 export interface MemberServiceDeps {
   repository: MemberRepository;
   disciplineLookup: DisciplineLookup;
+  // Optional: when absent, discipline changes are simply not recorded anywhere else.
+  disciplineHistory?: DisciplineHistory;
   now?: () => Date;
 }
 
@@ -78,15 +81,31 @@ function replaceAt(members: Member[], index: number, member: Member): Member[] {
   return members.map((current, i) => (i === index ? member : current));
 }
 
-export function createMemberService({ repository, disciplineLookup, now = () => new Date() }: MemberServiceDeps) {
+export function createMemberService({
+  repository,
+  disciplineLookup,
+  disciplineHistory,
+  now = () => new Date(),
+}: MemberServiceDeps) {
   const timestamp = () => now().toISOString();
   const today = () => toIsoDate(now());
+
+  // Runs only after the member write succeeded. The two JSON files cannot be written together, so a
+  // failure here is logged, not raised: the member is saved and the startup reconcile repairs the history.
+  async function recordDisciplines(member: Member): Promise<Member> {
+    try {
+      await disciplineHistory?.onDisciplinesChanged(member.id, member.disciplineIds, today());
+    } catch (error) {
+      console.error('Could not record the discipline history of member', member.id, error);
+    }
+    return member;
+  }
 
   return {
     async create(raw: MemberInput): Promise<Member> {
       const input = validateMemberInput(raw, today());
       assertDisciplinesAssignable(input.disciplineIds, await disciplineLookup.findByIds(input.disciplineIds));
-      return repository.mutate((members) => {
+      const created = await repository.mutate((members) => {
         assertDniAvailable(members, input.dni);
         const at = timestamp();
         const member: Member = {
@@ -99,12 +118,13 @@ export function createMemberService({ repository, disciplineLookup, now = () => 
         };
         return { members: [...members, member], result: member };
       });
+      return recordDisciplines(created);
     },
 
     async update(id: string, raw: MemberInput): Promise<Member> {
       const input = validateMemberInput(raw, today());
       const found = await disciplineLookup.findByIds(input.disciplineIds);
-      return repository.mutate((members) => {
+      const updated = await repository.mutate((members) => {
         const index = findIndex(members, id);
         assertDisciplinesAssignable(input.disciplineIds, found, members[index]!.disciplineIds);
         assertDniAvailable(members, input.dni, id);
@@ -112,6 +132,7 @@ export function createMemberService({ repository, disciplineLookup, now = () => 
         const member: Member = { ...current, ...input, updatedAt: timestamp() };
         return { members: replaceAt(members, index, member), result: member };
       });
+      return recordDisciplines(updated);
     },
 
     async deactivate(id: string, reason: string): Promise<Member> {
