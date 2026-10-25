@@ -145,6 +145,24 @@ describe('calculateCharge: first-time registration', () => {
     expect(() => charge({ registration: registration(day(3)), concepts: [social] })).toThrow(ValidationError);
   });
 
+  it.each([
+    ['later the same month', day(20), day(10)],
+    ['in a later month', '2026-11-02', '2026-10-30'],
+  ])('rejects an enrollment date after the payment date (%s)', (_label, enrollmentDate, paymentDate) => {
+    expect(() =>
+      charge({ registration: registration(enrollmentDate), paymentDate, concepts: [enrollment, social] }),
+    ).toThrow(ValidationError);
+  });
+
+  it('accepts an enrollment date equal to the payment date', () => {
+    const result = charge({
+      registration: registration(day(10)),
+      paymentDate: day(10),
+      concepts: [enrollment, social, activity('d1')],
+    });
+    expect(result.total).toBe(60_000);
+  });
+
   it('rejects a duplicate enrollment concept', () => {
     expect(() => charge({ registration: registration(day(3)), concepts: [enrollment, enrollment] })).toThrow(
       ValidationError,

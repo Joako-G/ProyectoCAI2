@@ -86,6 +86,10 @@ Let the club secretariat register member payments end to end: look up a member b
     - WARNING `R2-001`: the `enrollment?.day ?? 1` fallback relies implicitly on the `isNewMember` gate.
     - SUGGESTION `R2-002`: `parseClubDate`'s comment understates what it returns.
     - SUGGESTION `R2-003`: proration and surcharge exemption share one `inEnrollmentPeriod` flag; split them into named rules.
+- 2026-10-25, T2 findings fix (user-approved; route: direct inline, one source file plus its test):
+  - `R3-enrollment-date-unbounded` / `R4-001`: `calculateCharge` rejects an `enrollmentDate` after the payment date with a `ValidationError`. Not done: rejecting periods before the enrollment period, because that depends on the open re-registration debt rule.
+  - `R2-001`: the `enrollment?.day ?? 1` fallback is gone. The activity line computes `enrollmentDay` only for the enrollment month, and proration and the surcharge exemption read it explicitly.
+  - RED: two new tests failed with "expected function to throw an error, but it didn't". GREEN: backend 311/311; `pnpm -r typecheck` and `git diff --check` pass.
 
 ## Next step
 1. Ask the owners what happens to the old debt when a deregistered member re-registers.

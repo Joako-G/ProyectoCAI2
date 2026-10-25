@@ -77,6 +77,10 @@ function assertConcepts(concepts: readonly ChargeConcept[], paymentPeriod: Perio
 export function calculateCharge(input: ChargeInput): Charge {
   const payment = parseClubDate(input.paymentDate, 'paymentDate');
   const enrollment = input.registration ? parseClubDate(input.registration.enrollmentDate, 'enrollmentDate') : undefined;
+  // YYYY-MM-DD strings compare chronologically. A member cannot pay before enrolling.
+  if (input.registration && input.registration.enrollmentDate > input.paymentDate) {
+    fail('enrollmentDate', 'Must not be after the payment date');
+  }
   assertConcepts(input.concepts, payment.period, enrollment !== undefined);
 
   const paymentTariff = resolveTariff(input.tariffs, payment.period);
@@ -99,11 +103,12 @@ export function calculateCharge(input: ChargeInput): Charge {
         break;
       case 'activityFee': {
         const fee = resolveTariff(input.tariffs, concept.period).activityFee;
-        const inEnrollmentPeriod = enrollment !== undefined && enrollment.period === concept.period;
-        const amount = prorateActivityFee(fee, input.prorationRule, {
-          isNewMember: inEnrollmentPeriod,
-          enrollmentDay: enrollment?.day ?? 1,
-        });
+        // Only a new member's enrollment month is special: it may be prorated and is never surcharged.
+        const enrollmentDay = enrollment?.period === concept.period ? enrollment.day : undefined;
+        const amount =
+          enrollmentDay === undefined
+            ? fee
+            : prorateActivityFee(fee, input.prorationRule, { isNewMember: true, enrollmentDay });
         lines.push({
           kind: 'activityFee',
           period: concept.period,
@@ -111,7 +116,7 @@ export function calculateCharge(input: ChargeInput): Charge {
           amount,
           prorated: amount !== fee,
         });
-        const surcharge = inEnrollmentPeriod ? 0 : surchargeForDay(input.surchargeTiers, payment.day);
+        const surcharge = enrollmentDay === undefined ? surchargeForDay(input.surchargeTiers, payment.day) : 0;
         if (surcharge > 0) {
           lines.push({
             kind: 'activitySurcharge',
