@@ -15,7 +15,7 @@ function fail(field: string, message: string): never {
   throw new ValidationError({ [field]: message });
 }
 
-/** Validates a real calendar date; only used to reject impossible dates like 2026-02-30. */
+/** Parses a real calendar date into its period and day; rejects impossible dates like 2026-02-30. */
 function parseClubDate(value: ClubDate, field: string): ParsedDate {
   const match = DATE_PATTERN.exec(value);
   if (match) {
@@ -26,6 +26,11 @@ function parseClubDate(value: ClubDate, field: string): ParsedDate {
     }
   }
   return fail(field, 'Must be a real calendar date formatted as YYYY-MM-DD');
+}
+
+function isAfter(a: ParsedDate, b: ParsedDate): boolean {
+  // Parsed periods are validated YYYY-MM, which compare chronologically.
+  return a.period > b.period || (a.period === b.period && a.day > b.day);
 }
 
 /** Rejects malformed concepts and duplicates the system must never charge twice in one payment. */
@@ -77,8 +82,8 @@ function assertConcepts(concepts: readonly ChargeConcept[], paymentPeriod: Perio
 export function calculateCharge(input: ChargeInput): Charge {
   const payment = parseClubDate(input.paymentDate, 'paymentDate');
   const enrollment = input.registration ? parseClubDate(input.registration.enrollmentDate, 'enrollmentDate') : undefined;
-  // YYYY-MM-DD strings compare chronologically. A member cannot pay before enrolling.
-  if (input.registration && input.registration.enrollmentDate > input.paymentDate) {
+  // A member cannot pay before enrolling. Compares the parsed values, not the raw input strings.
+  if (enrollment && isAfter(enrollment, payment)) {
     fail('enrollmentDate', 'Must not be after the payment date');
   }
   assertConcepts(input.concepts, payment.period, enrollment !== undefined);

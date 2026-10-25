@@ -149,9 +149,15 @@ describe('calculateCharge: first-time registration', () => {
     ['later the same month', day(20), day(10)],
     ['in a later month', '2026-11-02', '2026-10-30'],
   ])('rejects an enrollment date after the payment date (%s)', (_label, enrollmentDate, paymentDate) => {
-    expect(() =>
-      charge({ registration: registration(enrollmentDate), paymentDate, concepts: [enrollment, social] }),
-    ).toThrow(ValidationError);
+    let error: unknown;
+    try {
+      charge({ registration: registration(enrollmentDate), paymentDate, concepts: [enrollment, social] });
+    } catch (caught) {
+      error = caught;
+    }
+    expect(error).toBeInstanceOf(ValidationError);
+    // Pins the rule: the rejection must come from the enrollment-date check, not another validator.
+    expect((error as ValidationError).fieldErrors).toEqual({ enrollmentDate: 'Must not be after the payment date' });
   });
 
   it('accepts an enrollment date equal to the payment date', () => {
