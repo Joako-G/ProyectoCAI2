@@ -1,5 +1,7 @@
 import { createApp } from './app.js';
-import { disciplinesFilePath, membershipsFilePath, membersFilePath } from './config/paths.js';
+import { disciplinesFilePath, membershipsFilePath, membersFilePath, pricingConfigFilePath } from './config/paths.js';
+import { createJsonPricingConfigRepository } from './modules/payments/json-pricing-config.repository.js';
+import { createPricingConfigService } from './modules/payments/pricing-config.service.js';
 import { createJsonDisciplineRepository } from './modules/disciplines/json-discipline.repository.js';
 import { createDisciplineService } from './modules/disciplines/discipline.service.js';
 import { createJsonMembershipRepository } from './modules/memberships/json-membership.repository.js';
@@ -26,7 +28,11 @@ const memberService = createMemberService({
       membershipService.syncMember(memberId, disciplineIds, date),
   },
 });
-const app = createApp({ memberService, disciplineService, membershipService });
+// Prices live in their own file; a missing file means the club defaults.
+const pricingConfigService = createPricingConfigService({
+  repository: createJsonPricingConfigRepository(pricingConfigFilePath()),
+});
+const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService });
 
 bootstrap({
   memberService,

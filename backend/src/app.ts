@@ -11,6 +11,8 @@ import { createMembersRouter } from './modules/members/member.routes.js';
 import type { MemberService } from './modules/members/member.service.js';
 import { createMembershipsRouter } from './modules/memberships/membership.routes.js';
 import type { MembershipService } from './modules/memberships/membership.service.js';
+import { createPricingConfigRouter } from './modules/payments/pricing-config.routes.js';
+import type { PricingConfigService } from './modules/payments/pricing-config.service.js';
 import { UserRepository, defaultUsersFilePath } from './modules/users/user.repository.js';
 import { createUsersRouter } from './modules/users/user.routes.js';
 import { createUserService, hasActiveHeadSecretary } from './modules/users/user.service.js';
@@ -21,6 +23,7 @@ export interface AppDependencies {
   // Optional so apps that only exercise members (tests) can omit the catalog.
   disciplineService?: DisciplineService;
   membershipService?: MembershipService;
+  pricingConfigService?: PricingConfigService;
   storePath?: string;
   // Origin allowed to send credentialed requests; defaults to the Vite dev server.
   frontendOrigin?: string;
@@ -59,6 +62,9 @@ if (options.disciplineService) {
 if (options.membershipService) {
   // Read-only guard for every method: memberships has no write routes. Add a write capability before adding one.
   app.use('/api/memberships', requireCapability(authenticate, 'memberships:read'), createMembershipsRouter(options.membershipService));
+}
+if (options.pricingConfigService) {
+  app.use('/api/pricing', requireCapabilityByMethod(authenticate, { read: 'config:read', write: 'config:manage' }), createPricingConfigRouter(options.pricingConfigService));
 }
 app.use('/api', apiNotFound);
 app.use(errorHandler);

@@ -1,8 +1,8 @@
 import { NotFoundError, ValidationError } from '../../shared/errors.js';
 import type { Money, Period, ProrationContext, ProrationRule, SurchargeTier, Tariff } from './pricing.types.js';
 
-// Defaults mirror the owner-confirmed rules in docs/team-handoff.md. They will later be replaced by
-// values read from the admin configuration section.
+// Defaults mirror the owner-confirmed rules in docs/team-handoff.md. They are what the pricing
+// configuration returns until an administrator saves a change.
 export const DEFAULT_TARIFF: Tariff = {
   effectiveFrom: '2026-01',
   enrollment: 20_000,
@@ -33,7 +33,7 @@ function assertDay(value: number, field: string): void {
   }
 }
 
-function assertPeriod(value: string, field: string): void {
+export function assertPeriod(value: string, field: string): void {
   if (!PERIOD_PATTERN.test(value)) fail(field, 'Must be a period formatted as YYYY-MM');
 }
 
@@ -41,7 +41,7 @@ export function assertMoney(value: number, field: string): asserts value is Mone
   if (!Number.isSafeInteger(value) || value < 0) fail(field, 'Must be a non-negative whole number of pesos');
 }
 
-function assertTariff(tariff: Tariff): void {
+export function assertTariff(tariff: Tariff): void {
   assertPeriod(tariff.effectiveFrom, 'effectiveFrom');
   assertMoney(tariff.enrollment, 'enrollment');
   assertMoney(tariff.socialFee, 'socialFee');
@@ -49,18 +49,24 @@ function assertTariff(tariff: Tariff): void {
   assertMoney(tariff.carnetReplacement, 'carnetReplacement');
 }
 
-/** Returns the tariff whose `effectiveFrom` is the latest one not after `period`. */
-export function resolveTariff(tariffs: readonly Tariff[], period: Period): Tariff {
-  assertPeriod(period, 'period');
-  let inForce: Tariff | undefined;
+/** Every tariff must be valid, and no two may start the same month (the price would depend on input order). */
+export function assertTariffs(tariffs: readonly Tariff[]): void {
   const seenEffectiveFrom = new Set<Period>();
   for (const tariff of tariffs) {
     assertTariff(tariff);
-    // Two tariffs starting the same month would make the price depend on input order.
     if (seenEffectiveFrom.has(tariff.effectiveFrom)) {
       fail('effectiveFrom', `More than one tariff starts on ${tariff.effectiveFrom}`);
     }
     seenEffectiveFrom.add(tariff.effectiveFrom);
+  }
+}
+
+/** Returns the tariff whose `effectiveFrom` is the latest one not after `period`. */
+export function resolveTariff(tariffs: readonly Tariff[], period: Period): Tariff {
+  assertPeriod(period, 'period');
+  assertTariffs(tariffs);
+  let inForce: Tariff | undefined;
+  for (const tariff of tariffs) {
     // YYYY-MM strings compare chronologically.
     if (tariff.effectiveFrom <= period && (!inForce || tariff.effectiveFrom > inForce.effectiveFrom)) {
       inForce = tariff;
@@ -94,7 +100,7 @@ export function surchargeForDay(tiers: readonly SurchargeTier[], paymentDay: num
   return amount;
 }
 
-function assertProrationRule(rule: ProrationRule): void {
+export function assertProrationRule(rule: ProrationRule): void {
   assertDay(rule.afterDay, 'afterDay');
   if (!Number.isInteger(rule.activityPercent) || rule.activityPercent < 0 || rule.activityPercent > 100) {
     fail('activityPercent', 'Must be a whole percentage between 0 and 100');

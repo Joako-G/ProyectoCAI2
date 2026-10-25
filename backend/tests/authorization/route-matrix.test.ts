@@ -5,6 +5,7 @@ import { createApp } from '../../src/app.js';
 import { createTestContext as createDisciplines } from '../disciplines/helpers.js';
 import { createTestContext as createMembers } from '../members/helpers.js';
 import { createTestContext as createMemberships } from '../memberships/helpers.js';
+import { createTestContext as createPricing } from '../payments/pricing-config.helpers.js';
 import { roles, type Role as RoleName } from '../../src/modules/users/user.types.js';
 import { createUsersFile, signIn } from './helpers.js';
 
@@ -31,6 +32,12 @@ const routes: Array<[string, string, readonly RoleName[]]> = [
   ['POST', '/api/disciplines/missing/reactivate', headOnly],
   ['GET', '/api/memberships', both],
   ['GET', '/api/memberships/missing', both],
+  ['GET', '/api/pricing', both],
+  ['POST', '/api/pricing/tariffs', headOnly],
+  ['PUT', '/api/pricing/tariffs/2030-01', headOnly],
+  ['DELETE', '/api/pricing/tariffs/2030-01', headOnly],
+  ['PUT', '/api/pricing/surcharge-tiers', headOnly],
+  ['PUT', '/api/pricing/proration-rule', headOnly],
 ];
 
 let baseUrl: string;
@@ -43,12 +50,14 @@ beforeAll(async () => {
   const members = await createMembers();
   const disciplines = await createDisciplines();
   const memberships = await createMemberships();
-  cleanups.push(users.cleanup, members.cleanup, disciplines.cleanup, memberships.cleanup);
+  const pricing = await createPricing();
+  cleanups.push(users.cleanup, members.cleanup, disciplines.cleanup, memberships.cleanup, pricing.cleanup);
   server = createApp({
     storePath: users.storePath,
     memberService: members.service,
     disciplineService: disciplines.service,
     membershipService: memberships.service,
+    pricingConfigService: pricing.service,
   }).listen(0);
   await new Promise<void>((resolve) => server.once('listening', resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
