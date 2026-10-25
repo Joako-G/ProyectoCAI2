@@ -16,7 +16,7 @@ function renderDetail(member = buildMember(), disciplines: Discipline[] = []) {
     onReactivate: vi.fn(),
   };
   const user = userEvent.setup();
-  render(<MemberDetail member={member} today={TODAY} disciplines={disciplines} {...handlers} />);
+  render(<MemberDetail member={member} today={TODAY} disciplines={disciplines} canWrite {...handlers} />);
   return { user, ...handlers };
 }
 

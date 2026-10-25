@@ -7,7 +7,7 @@ interface DisciplinesToolbarProps {
   onSearchSubmit: (search: string) => void;
   onStatusChange: (status: DisciplineStatusFilter) => void;
   /** Whether to offer the create action. */
-  canCreate?: boolean;
+  canCreate: boolean;
   onCreate: () => void;
 }
 
@@ -19,7 +19,7 @@ export function DisciplinesToolbar({
   status,
   onSearchSubmit,
   onStatusChange,
-  canCreate = true,
+  canCreate,
   onCreate,
 }:DisciplinesToolbarProps) {
   const [draft, setDraft] = useState(search);

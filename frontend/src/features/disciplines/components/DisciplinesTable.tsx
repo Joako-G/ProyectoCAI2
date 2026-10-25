@@ -3,7 +3,7 @@ import type { Discipline } from '../types/discipline';
 interface DisciplinesTableProps {
   disciplines: Discipline[];
   /** Whether to show the actions column. */
-  canWrite?: boolean;
+  canWrite: boolean;
   onEdit: (discipline: Discipline) => void;
   onDeactivate: (discipline: Discipline) => void;
   onReactivate: (discipline: Discipline) => void;
@@ -16,7 +16,7 @@ function otherTeachers(discipline: Discipline): string[] {
   return discipline.teachers.filter((teacher) => teacher !== discipline.leadTeacher);
 }
 
-export function DisciplinesTable({ disciplines, canWrite = true, onEdit, onDeactivate, onReactivate }: DisciplinesTableProps) {
+export function DisciplinesTable({ disciplines, canWrite, onEdit, onDeactivate, onReactivate }: DisciplinesTableProps) {
   return (
     <table className="members-table">
       <caption className="visually-hidden">Listado de disciplinas</caption>

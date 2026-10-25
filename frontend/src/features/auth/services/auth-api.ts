@@ -7,7 +7,9 @@ interface SessionPayload {
 
 // The server sends the capabilities next to the user; a missing list means the user can do nothing.
 function toAuthUser({ user, capabilities }: SessionPayload): AuthUser | null {
-  return user ? { ...user, capabilities: capabilities ?? [] } : null;
+  if (!user) return null;
+  if (!capabilities) console.warn('The session response has no capabilities; treating the user as having none.');
+  return { ...user, capabilities: capabilities ?? [] };
 }
 
 // The session lives in an httpOnly cookie, so every auth request must send credentials.

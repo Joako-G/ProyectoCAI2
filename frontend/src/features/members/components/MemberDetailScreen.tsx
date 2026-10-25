@@ -13,7 +13,7 @@ interface MemberDetailScreenProps {
   /** Discipline catalog used to name the member's disciplines; a failure is reported with a retry. */
   catalog: DisciplineCatalog;
   /** Whether to offer edit, deactivate and reactivate. */
-  canWrite?: boolean;
+  canWrite: boolean;
   onBack: () => void;
   onEdit: (id: string) => void;
 }
@@ -21,7 +21,7 @@ interface MemberDetailScreenProps {
 type Dialog = 'deactivate' | 'reactivate' | null;
 
 /** Container: loads the member and runs the deactivate / reactivate actions. */
-export function MemberDetailScreen({ id, today, catalog, canWrite = true, onBack, onEdit }: MemberDetailScreenProps) {
+export function MemberDetailScreen({ id, today, catalog, canWrite, onBack, onEdit }: MemberDetailScreenProps) {
   const { state, retry, replace } = useMemberDetail(id);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [saving, setSaving] = useState(false);

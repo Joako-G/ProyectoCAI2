@@ -39,8 +39,8 @@ export function App() {
 
   if (!view) {
     return <AppShell title="Club Independiente" {...shellProps}>
-      <section className="card members-page" aria-label="Sin secciones disponibles">
-        <p className="members-page__notice">Tu rol todavía no tiene secciones disponibles.</p>
+      <section className="card no-sections" aria-label="Sin secciones disponibles">
+        <p className="no-sections__notice">Tu rol todavía no tiene secciones disponibles.</p>
       </section>
     </AppShell>;
   }

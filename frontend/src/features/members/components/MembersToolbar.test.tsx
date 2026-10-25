@@ -17,6 +17,7 @@ function setup(overrides: Partial<ComponentProps<typeof MembersToolbar>> = {}) {
     onSearchSubmit: vi.fn(),
     onStatusChange: vi.fn(),
     onDisciplineChange: vi.fn(),
+    canCreate: true,
     onCreate: vi.fn(),
     ...overrides,
   };

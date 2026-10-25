@@ -11,7 +11,7 @@ interface MemberDetailProps {
   /** Discipline catalog used to resolve the member's discipline ids to names. */
   disciplines?: Discipline[];
   /** Whether to offer edit, deactivate and reactivate. */
-  canWrite?: boolean;
+  canWrite: boolean;
   onBack: () => void;
   onEdit: () => void;
   onDeactivate: () => void;
@@ -35,7 +35,7 @@ export function MemberDetail({
   member,
   today,
   disciplines = [],
-  canWrite = true,
+  canWrite,
   onBack,
   onEdit,
   onDeactivate,

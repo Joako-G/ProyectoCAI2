@@ -15,7 +15,7 @@ interface MembersPageProps {
   /** Discipline catalog for the filter and the row names; without it the filter stays empty. */
   catalog?: DisciplineCatalog;
   /** Whether to offer the create action. */
-  canCreate?: boolean;
+  canCreate: boolean;
   onCreate?: () => void;
   /** Opens a member's detail. */
   onOpen?: (id: string) => void;
@@ -33,7 +33,7 @@ export function MembersPage({
   query,
   onQueryChange,
   catalog,
-  canCreate = true,
+  canCreate,
   onCreate,
   onOpen,
 }: MembersPageProps) {

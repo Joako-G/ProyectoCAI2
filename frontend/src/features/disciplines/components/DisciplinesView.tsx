@@ -7,7 +7,7 @@ import { DisciplinesPage } from './DisciplinesPage';
 type View = { name: 'list' } | { name: 'create' } | { name: 'edit'; discipline: Discipline };
 
 /** Container of the disciplines feature: switches between the list and the create / edit form. */
-export function DisciplinesView({ canWrite = true }: { canWrite?: boolean }) {
+export function DisciplinesView({ canWrite }: { canWrite: boolean }) {
   const [view, setView] = useState<View>({ name: 'list' });
   // Kept here, not in the list, so the filters survive going to the form and back.
   const [query, setQuery] = useState<DisciplineListQuery>({ search: '', status: 'all' });

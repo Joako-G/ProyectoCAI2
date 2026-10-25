@@ -15,7 +15,7 @@ interface DisciplinesPageProps {
   query: DisciplineListQuery;
   onQueryChange: (query: DisciplineListQuery) => void;
   /** Whether to offer create, edit, deactivate and reactivate. */
-  canWrite?: boolean;
+  canWrite: boolean;
   onCreate: () => void;
   onEdit: (discipline: Discipline) => void;
 }
@@ -30,7 +30,7 @@ function resultsLabel(count: number): string {
 }
 
 /** Container: fetches the disciplines, composes toolbar and table and runs the status actions. */
-export function DisciplinesPage({ query, onQueryChange, canWrite = true, onCreate, onEdit }: DisciplinesPageProps) {
+export function DisciplinesPage({ query, onQueryChange, canWrite, onCreate, onEdit }: DisciplinesPageProps) {
   const { search, status } = query;
   const { state, reload } = useDisciplinesList(query);
   const [pending, setPending] = useState<PendingAction | null>(null);

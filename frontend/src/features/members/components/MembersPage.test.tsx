@@ -10,9 +10,9 @@ import type { MemberListQuery } from '../types/member';
 import { MembersPage as ControlledMembersPage } from './MembersPage';
 
 /** Holds the query like `MembersView` does, so the page can be exercised on its own. */
-function MembersPage(props: Omit<ComponentProps<typeof ControlledMembersPage>, 'query' | 'onQueryChange'>) {
+function MembersPage(props: Omit<ComponentProps<typeof ControlledMembersPage>, 'query' | 'onQueryChange' | 'canCreate'> & { canCreate?: boolean }) {
   const [query, setQuery] = useState<MemberListQuery>({ search: '', status: 'all', disciplineId: '' });
-  return <ControlledMembersPage {...props} query={query} onQueryChange={setQuery} />;
+  return <ControlledMembersPage canCreate={props.canCreate ?? true} {...props} query={query} onQueryChange={setQuery} />;
 }
 
 function readyCatalog(...disciplines: Discipline[]): DisciplineCatalog {
