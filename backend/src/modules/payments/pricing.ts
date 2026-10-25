@@ -53,8 +53,14 @@ function assertTariff(tariff: Tariff): void {
 export function resolveTariff(tariffs: readonly Tariff[], period: Period): Tariff {
   assertPeriod(period, 'period');
   let inForce: Tariff | undefined;
+  const seenEffectiveFrom = new Set<Period>();
   for (const tariff of tariffs) {
     assertTariff(tariff);
+    // Two tariffs starting the same month would make the price depend on input order.
+    if (seenEffectiveFrom.has(tariff.effectiveFrom)) {
+      fail('effectiveFrom', `More than one tariff starts on ${tariff.effectiveFrom}`);
+    }
+    seenEffectiveFrom.add(tariff.effectiveFrom);
     // YYYY-MM strings compare chronologically.
     if (tariff.effectiveFrom <= period && (!inForce || tariff.effectiveFrom > inForce.effectiveFrom)) {
       inForce = tariff;

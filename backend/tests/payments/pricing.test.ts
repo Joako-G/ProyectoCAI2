@@ -50,6 +50,12 @@ describe('resolveTariff', () => {
     expect(() => resolveTariff([], '2026-01')).toThrow(NotFoundError);
   });
 
+  it('rejects two tariffs sharing the same effective period instead of depending on input order', () => {
+    const clash = { ...OLD_TARIFF, activityFee: 21_000 };
+    expect(() => resolveTariff([OLD_TARIFF, clash], '2026-02')).toThrow(ValidationError);
+    expect(() => resolveTariff([clash, OLD_TARIFF], '2026-02')).toThrow(ValidationError);
+  });
+
   it('rejects a malformed period', () => {
     expect(() => resolveTariff(tariffs, '2026-13')).toThrow(ValidationError);
     expect(() => resolveTariff(tariffs, '2026-7')).toThrow(ValidationError);

@@ -36,7 +36,7 @@ Let the club secretariat register member payments end to end: look up a member b
 
 ## Tasks
 - [x] T1 — Pricing domain (pure). Types for `Money`, `Tariff` (with effective date), `SurchargeTier` and `ProrationRule`, plus functions that resolve the tariff in force for a period, the surcharge for a payment day, and the new-member proration. Tests cover the handbook examples ($60,000; $63,000; $66,000; $70,000; $74,000; $50,000; $60,000 new-member; $20,000 added activity), day 31, and a tariff change between two months. Route: delegated direct writer. Acceptance: tests written first and passing; no I/O.
-- [ ] T2 — Charge calculation. `calculateCharge(member state, enrolled disciplines, payment date, selected concepts)` returns line items (enrollment, social fee, activity fee per discipline, surcharge per activity, carnet) and a total. Handles: new vs existing member, proration, added activity, overdue months at their own tariff, deregistration after more than 3 unpaid months. Route: delegated direct writer. Acceptance: table-driven tests from the handoff examples; paying one concept never settles another.
+- [x] T2 — Charge calculation. `calculateCharge(member state, enrolled disciplines, payment date, selected concepts)` returns line items (enrollment, social fee, activity fee per discipline, surcharge per activity, carnet) and a total. Handles: new vs existing member, proration, added activity, overdue months at their own tariff, deregistration after more than 3 unpaid months. Route: delegated direct writer. Acceptance: table-driven tests from the handoff examples; paying one concept never settles another.
 - [ ] T3 — Configuration domain and API. Repository (JSON, `config.json`) for tariffs with effective dates, surcharge tiers, proration rule, discounts and promos; admin-only routes to read and update; validation that rejects overlapping or gapped tiers and negative amounts. Route: delegated direct writer. Depends on P2. Acceptance: API tests including a non-admin being rejected; a tariff edit does not change already-issued payments.
 - [ ] T4 — Memberships (member to discipline enrollment). Domain, repository and API linking a member to disciplines with start date and status, so T2 knows which activities a member owes. Route: delegated direct writer. Acceptance: tests first; a member can enroll in and leave a discipline; inactive members are excluded. Confirm the module is not already owned by a teammate before starting.
 - [ ] T5 — Payments domain and repository. Append-only payment records with line items, method (cash, debit, QR, transfer), atomic correlative receipt number, annulment record (reason, author), and derivation of unpaid concepts, balance and member status (up to date, debtor, deregistered). Route: delegated direct writer. Depends on T2 and T4. Acceptance: receipt numbers never repeat under concurrent writes; balance recomputes after payment and after annulment.
@@ -53,7 +53,7 @@ Let the club secretariat register member payments end to end: look up a member b
 
 ## Open items
 - The owners must confirm the handoff rules and update the approved requirements source (PDFs hold older amounts).
-- Assumption to confirm in T2: when an overdue month is paid late, the surcharge is the one for the current payment day only, with no extra for the missed month.
+- Resolved (user, 2026-10-25): an overdue month carries only the surcharge for the day it is actually paid, with no extra for the missed month.
 - Role names for the Head of Secretariat and administrator (P2).
 - Whether the carnet replacement and discounts/promos need their own receipt line types beyond the concepts above.
 - Whether `memberships` is owned by the teammate (T4).
@@ -72,7 +72,17 @@ Let the club secretariat register member payments end to end: look up a member b
     - `R2-001`: name the `50`/`100` rounding constants in `prorateActivityFee`.
     - `R2-002`: the initial `amount = tiers[0].amount` in `surchargeForDay` is redundant.
     - `R2-003`: `Money` and `Period` are plain aliases, so the types do not enforce their invariants.
+- 2026-10-25, T2 (route: delegated direct writer, because it touches 2+ non-trivial files; the parent made the follow-up rule fix inline):
+  - Files: `backend/src/modules/payments/charge.ts` (`calculateCharge`), `charge.types.ts`, `standing.ts` (`isDeregistered`, threshold 3), `backend/tests/payments/charge.test.ts`. `resolveTariff` now rejects a duplicate `effectiveFrom` (fixes `R3-duplicate-tariff-effective-from`).
+  - Input: tariffs, surcharge tiers, proration rule, club-local `paymentDate` (`YYYY-MM-DD`), optional `registration { enrollmentDate }` for a first-time registration, and concepts (enrollment, social fee per period, activity fee per period and discipline, carnet replacement). Output: line items (with separate surcharge lines) and an integer total.
+  - Rejected: empty charge, duplicate concepts, enrollment without registration and the reverse, periods after the payment month, unknown concepts, empty discipline id.
+  - Owner decision (2026-10-25) found by the parent's diff review: a new member's enrollment month is never surcharged (the writer had surcharged it, giving $70,000 instead of $60,000). Recorded in `docs/team-handoff.md`.
+  - RED (writer): "Cannot find module '../../src/modules/payments/charge.js'"; duplicate tariff test "expected function to throw an error, but it didn't". RED (parent fix): "expected 70000 to be 60000" and "expected 63000 to be 60000".
+  - GREEN: backend 308/308 vitest, 17/17 node; `pnpm -r typecheck`, `pnpm -r build` and `git diff --check` pass (with the pnpm workaround).
+  - About 470 authored lines (source ~190, tests ~280), over the advisory budget because of the tests.
+  - Rule gaps: old debt on re-registration after deregistration is unknown; whether `enrollmentDate` may be after `paymentDate`; only one carnet replacement per charge (writer's choice).
 
 ## Next step
-1. Start T2 on `manu` (charge calculation; confirm the overdue-month surcharge assumption first).
+1. Ask the owners what happens to the old debt when a deregistered member re-registers.
+2. Next tasks: T4 (memberships; confirm ownership with the teammate) or P2 (role authorization) before T3/T5/T6.
 2. In parallel, ask the teammate about P1/P2 status and ownership of `memberships`.
