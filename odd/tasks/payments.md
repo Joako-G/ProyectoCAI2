@@ -115,6 +115,14 @@ Let the club secretariat register member payments end to end: look up a member b
     - WARNING `R4-derived-file-blocks-startup`: a malformed `memberships.json` or a reconcile write error stops the whole server, including auth and members.
     - WARNING `R1-memberships-unauthenticated-read`: `/api/memberships` is open like members/disciplines; protect it with P2 before payments relies on it.
     - SUGGESTIONS: `R2-port-name-vs-call-site` (port is called on every save; document idempotency or rename), `R2-unused-query-helpers` (`listByMember`/`listByDiscipline` unused), `R3-startup-reconcile-untested` (extract and test the bootstrap).
+- 2026-10-25, T4 resilience fix (user-approved; route: delegated direct writer, same writer):
+  - Race: history syncs run on a per-member promise chain and re-read the member's current record, so out-of-order saves converge on the latest disciplines.
+  - Dating: `Member.disciplinesChangedOn` (system-set, inside the same member write, changed only when the set of disciplines changes) is passed to the port; `reconcile` uses it instead of the restart day for members with history.
+  - Startup: new `backend/src/startup.ts` `bootstrap` logs a failed reconcile and still listens. The port comment states it runs on every save and must be idempotent; `listByMember`/`listByDiscipline` were removed.
+  - RED: "expected [ 'disc-basket' ] to deeply equal [ 'disc-volley' ]" (race), "expected 3 to be 1" (serialization), "expected undefined to be '2026-10-05'" (stamp), reconcile `endDate` mismatch, "Cannot find module '../../src/startup.js'".
+  - GREEN: backend 377/377 vitest (21 files) and 17/17 node (parent re-run); `pnpm -r typecheck` and `git diff --check` pass.
+  - Runtime smoke (parent, scratch files, port 3918, malformed `memberships.json`): server starts and logs the reconcile error; `/api/members` and `/health` return 200; `/api/memberships` returns 500; the broken file is left untouched. Server stopped.
+  - Remaining gaps: members created before this change have no `disciplinesChangedOn`, so their repair falls back to the restart date; several changes during an outage collapse into the latest one; the sync chain is per process (fits the demo storage).
 
 ## Next step
 1. Ask the owners what happens to the old debt when a deregistered member re-registers.

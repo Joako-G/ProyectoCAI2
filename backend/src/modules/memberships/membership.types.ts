@@ -26,4 +26,6 @@ export interface MemberDisciplines {
   id: string;
   disciplineIds: readonly string[];
   memberSince: string;
+  // When the disciplines last changed; used to date repairs of members that already have history.
+  disciplinesChangedOn?: string;
 }

@@ -76,11 +76,12 @@ export function createMembershipService({ repository, now = () => new Date() }: 
 
     // Aligns the history with the members' current disciplines (used at startup, because the members
     // and memberships files cannot be written atomically together). A member with no history yet is
-    // backfilled from their memberSince date; everyone else is synced as of `date`.
+    // backfilled from their memberSince date; everyone else is synced as of the date their disciplines last
+    // changed (disciplinesChangedOn), or `date` when that is unknown (legacy records).
     async reconcile(members: readonly MemberDisciplines[], date: string): Promise<void> {
       const withHistory = new Set((await repository.list()).map((membership) => membership.memberId));
       for (const member of members) {
-        await syncMember(member.id, member.disciplineIds, withHistory.has(member.id) ? date : member.memberSince);
+        await syncMember(member.id, member.disciplineIds, withHistory.has(member.id) ? (member.disciplinesChangedOn ?? date) : member.memberSince);
       }
     },
 
@@ -90,14 +91,6 @@ export function createMembershipService({ repository, now = () => new Date() }: 
     },
 
     list,
-
-    listByMember(memberId: string, { activeOnly = false }: { activeOnly?: boolean } = {}): Promise<Membership[]> {
-      return list({ memberId, status: activeOnly ? 'active' : undefined });
-    },
-
-    listByDiscipline(disciplineId: string): Promise<Membership[]> {
-      return list({ disciplineId });
-    },
 
     // For the payments module: disciplines a member owes for a month (YYYY-MM).
     async activeDisciplineIdsForPeriod(memberId: string, period: string): Promise<string[]> {

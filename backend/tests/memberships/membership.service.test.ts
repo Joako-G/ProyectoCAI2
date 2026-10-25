@@ -106,6 +106,31 @@ describe('membership service: reconcile', () => {
     expect(await service.list()).toEqual(before);
   });
 
+  it('dates changes of members with history by disciplinesChangedOn, falling back to the given date', async () => {
+    const { service } = await contexts.create();
+    await service.syncMember(LUCIA, [BASKET], '2026-01-10');
+    await service.syncMember(TOMAS, [BASKET], '2026-01-10');
+    await service.reconcile(
+      [
+        { id: LUCIA, disciplineIds: [VOLLEY], memberSince: '2015-02-01', disciplinesChangedOn: '2026-10-05' },
+        { id: TOMAS, disciplineIds: [VOLLEY], memberSince: '2022-03-01' },
+      ],
+      '2026-11-20',
+    );
+    expect((await service.list({ memberId: LUCIA, disciplineId: BASKET }))[0]).toMatchObject({ endDate: '2026-10-05' });
+    expect((await service.list({ memberId: LUCIA, disciplineId: VOLLEY }))[0]).toMatchObject({ startDate: '2026-10-05' });
+    expect((await service.list({ memberId: TOMAS, disciplineId: BASKET }))[0]).toMatchObject({ endDate: '2026-11-20' });
+  });
+
+  it('still backfills members without history from memberSince, ignoring disciplinesChangedOn', async () => {
+    const { service } = await contexts.create();
+    await service.reconcile(
+      [{ id: LUCIA, disciplineIds: [BASKET], memberSince: '2015-02-01', disciplinesChangedOn: '2026-10-05' }],
+      '2026-11-20',
+    );
+    expect((await service.list())[0]).toMatchObject({ startDate: '2015-02-01' });
+  });
+
   it('ends memberships of disciplines the member no longer has', async () => {
     const { service } = await contexts.create();
     await service.syncMember(TOMAS, [SWIM, BASKET], '2026-01-01');
@@ -147,13 +172,6 @@ describe('membership service: queries', () => {
     expect(byDiscipline(await service.list({ disciplineId: BASKET }))).toEqual([BASKET, BASKET]);
     expect(byDiscipline(await service.list({ status: 'ended' }))).toEqual([VOLLEY]);
     expect(await service.list({ memberId: LUCIA, status: 'active' })).toHaveLength(1);
-  });
-
-  it('offers list by member (optionally only active) and list by discipline', async () => {
-    const { service } = await seeded();
-    expect(await service.listByMember(LUCIA)).toHaveLength(2);
-    expect(byDiscipline(await service.listByMember(LUCIA, { activeOnly: true }))).toEqual([BASKET]);
-    expect(await service.listByDiscipline(BASKET)).toHaveLength(2);
   });
 
   it('gets by id and reports an unknown id as not found', async () => {

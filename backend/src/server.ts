@@ -6,6 +6,7 @@ import { createJsonMembershipRepository } from './modules/memberships/json-membe
 import { createMembershipService } from './modules/memberships/membership.service.js';
 import { createJsonMemberRepository } from './modules/members/json-member.repository.js';
 import { createMemberService } from './modules/members/member.service.js';
+import { bootstrap } from './startup.js';
 import { toIsoDate } from './shared/date.js';
 
 const port = Number(process.env.PORT ?? 3001);
@@ -27,16 +28,14 @@ const memberService = createMemberService({
 });
 const app = createApp({ memberService, disciplineService, membershipService });
 
-async function main() {
-  // The members and memberships files cannot be written atomically together, so align them at startup.
-  // Members without history are backfilled from their memberSince date.
-  await membershipService.reconcile(await memberService.list(), toIsoDate(new Date()));
-  app.listen(port, () => {
-    console.log(`Server listening on port ${port}`);
-  });
-}
-
-main().catch((error: unknown) => {
-  console.error('Server failed to start', error);
-  process.exit(1);
+bootstrap({
+  memberService,
+  membershipService,
+  today: () => toIsoDate(new Date()),
+  listen: () => {
+    app.listen(port, () => {
+      console.log(`Server listening on port ${port}`);
+    });
+  },
+  log: (message, error) => console.error(message, error),
 });

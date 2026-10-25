@@ -77,6 +77,11 @@ function assertDniAvailable(members: Member[], dni: string, ownId?: string): voi
   }
 }
 
+function sameSet(a: readonly string[], b: readonly string[]): boolean {
+  const left = new Set(a);
+  return left.size === new Set(b).size && b.every((id) => left.has(id));
+}
+
 function replaceAt(members: Member[], index: number, member: Member): Member[] {
   return members.map((current, i) => (i === index ? member : current));
 }
@@ -90,15 +95,32 @@ export function createMemberService({
   const timestamp = () => now().toISOString();
   const today = () => toIsoDate(now());
 
-  // Runs only after the member write succeeded. The two JSON files cannot be written together, so a
-  // failure here is logged, not raised: the member is saved and the startup reconcile repairs the history.
-  async function recordDisciplines(member: Member): Promise<Member> {
-    try {
-      await disciplineHistory?.onDisciplinesChanged(member.id, member.disciplineIds, today());
-    } catch (error) {
-      console.error('Could not record the discipline history of member', member.id, error);
-    }
-    return member;
+  // History syncs run one at a time per member and always read the member's CURRENT record, so
+  // concurrent saves cannot leave the history behind a newer edit. The two JSON files cannot be written
+  // together, so a failure is logged, not raised: the member is saved and the startup reconcile repairs
+  // the history using disciplinesChangedOn.
+  const syncChains = new Map<string, Promise<void>>();
+
+  function recordDisciplines(memberId: string): Promise<void> {
+    if (!disciplineHistory) return Promise.resolve();
+    const run = (syncChains.get(memberId) ?? Promise.resolve()).then(async () => {
+      try {
+        const member = (await repository.list()).find((current) => current.id === memberId);
+        if (!member) return;
+        await disciplineHistory.onDisciplinesChanged(
+          member.id,
+          member.disciplineIds,
+          member.disciplinesChangedOn ?? today(),
+        );
+      } catch (error) {
+        console.error('Could not record the discipline history of member', memberId, error);
+      }
+    });
+    syncChains.set(memberId, run);
+    void run.then(() => {
+      if (syncChains.get(memberId) === run) syncChains.delete(memberId);
+    });
+    return run;
   }
 
   return {
@@ -113,12 +135,14 @@ export function createMemberService({
           id: randomUUID(),
           memberNumber: nextMemberNumber(members),
           status: 'active',
+          disciplinesChangedOn: today(),
           createdAt: at,
           updatedAt: at,
         };
         return { members: [...members, member], result: member };
       });
-      return recordDisciplines(created);
+      await recordDisciplines(created.id);
+      return created;
     },
 
     async update(id: string, raw: MemberInput): Promise<Member> {
@@ -129,10 +153,16 @@ export function createMemberService({
         assertDisciplinesAssignable(input.disciplineIds, found, members[index]!.disciplineIds);
         assertDniAvailable(members, input.dni, id);
         const { email: _email, guardian: _guardian, ...current } = members[index]!;
-        const member: Member = { ...current, ...input, updatedAt: timestamp() };
+        const member: Member = {
+          ...current,
+          ...input,
+          ...(!sameSet(current.disciplineIds, input.disciplineIds) && { disciplinesChangedOn: today() }),
+          updatedAt: timestamp(),
+        };
         return { members: replaceAt(members, index, member), result: member };
       });
-      return recordDisciplines(updated);
+      await recordDisciplines(updated.id);
+      return updated;
     },
 
     async deactivate(id: string, reason: string): Promise<Member> {
