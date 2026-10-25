@@ -11,6 +11,10 @@ export interface UserService {
   deactivate(id: string): UserResult;
 }
 
+export function hasActiveHeadSecretary(users: readonly DemoUser[]): boolean {
+  return users.some((user) => user.active && user.role === 'head_secretary');
+}
+
 export function toSafeUser({ id, name, email, role, active }: DemoUser): SafeUser { return { id, name, email, role, active }; }
 
 export function createUserService(repository: UserRepository): UserService {
@@ -25,8 +29,12 @@ export function createUserService(repository: UserRepository): UserService {
     return { ok: true, user: toSafeUser(user) };
   }
 
+  // Rejects a change that would leave nobody able to manage users (only when someone could before it).
   function replaceUser(updated: DemoUser): UserResult {
-    return commit(repository.list().map((candidate) => candidate.id === updated.id ? updated : candidate), updated);
+    const current = repository.list();
+    const next = current.map((candidate) => candidate.id === updated.id ? updated : candidate);
+    if (hasActiveHeadSecretary(current) && !hasActiveHeadSecretary(next)) return { ok: false, failure: 'last-head-secretary' };
+    return commit(next, updated);
   }
 
   return {

@@ -11,7 +11,7 @@ export function requireRole(authenticate: Authenticator, ...allowed: readonly Ro
       response.status(401).json({ error: 'Authentication required' });
       return;
     }
-    if (!allowed.includes(user.role)) {
+    if (!allowed.some((role) => role === user.role)) {
       response.status(403).json({ error: 'Forbidden' });
       return;
     }

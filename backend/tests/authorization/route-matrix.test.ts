@@ -5,16 +5,14 @@ import { createApp } from '../../src/app.js';
 import { createTestContext as createDisciplines } from '../disciplines/helpers.js';
 import { createTestContext as createMembers } from '../members/helpers.js';
 import { createTestContext as createMemberships } from '../memberships/helpers.js';
+import { roles, type Role as RoleName } from '../../src/modules/users/user.types.js';
 import { createUsersFile, signIn } from './helpers.js';
 
-type RoleName = 'head_secretary' | 'secretary' | 'teacher';
-const roles: RoleName[] = ['head_secretary', 'secretary', 'teacher'];
-
-const both: RoleName[] = ['head_secretary', 'secretary'];
-const headOnly: RoleName[] = ['head_secretary'];
+const both: readonly RoleName[] = ['head_secretary', 'secretary'];
+const headOnly: readonly RoleName[] = ['head_secretary'];
 
 // [method, path, roles allowed past the authorization layer]
-const routes: Array<[string, string, RoleName[]]> = [
+const routes: Array<[string, string, readonly RoleName[]]> = [
   ['GET', '/users', headOnly],
   ['POST', '/users', headOnly],
   ['PATCH', '/users/missing', headOnly],

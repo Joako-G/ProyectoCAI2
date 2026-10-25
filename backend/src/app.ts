@@ -13,7 +13,7 @@ import { createMembershipsRouter } from './modules/memberships/membership.routes
 import type { MembershipService } from './modules/memberships/membership.service.js';
 import { UserRepository, defaultUsersFilePath } from './modules/users/user.repository.js';
 import { createUsersRouter } from './modules/users/user.routes.js';
-import { createUserService } from './modules/users/user.service.js';
+import { createUserService, hasActiveHeadSecretary } from './modules/users/user.service.js';
 import type { DemoUser } from './modules/users/user.types.js';
 
 export interface AppDependencies {
@@ -29,6 +29,10 @@ export interface AppDependencies {
 
 export function createApp(options: AppDependencies) {
 const repository = new UserRepository(options.storePath ?? defaultUsersFilePath, options.persist);
+if (!hasActiveHeadSecretary(repository.list())) {
+  // No automatic promotion: an operator must restore a head_secretary account in the users file.
+  console.warn('Users store has no active head_secretary: nobody can manage users. Set an account role to "head_secretary" and active to true in the users file, then restart.');
+}
 const app = express();
 
 app.use(cors({ origin: options.frontendOrigin ?? process.env.FRONTEND_ORIGIN ?? 'http://localhost:5173', credentials: true }));
@@ -53,6 +57,7 @@ if (options.disciplineService) {
   app.use('/api/disciplines', requireCapabilityByMethod(authenticate, { read: 'disciplines:read', write: 'disciplines:write' }), createDisciplinesRouter(options.disciplineService));
 }
 if (options.membershipService) {
+  // Read-only guard for every method: memberships has no write routes. Add a write capability before adding one.
   app.use('/api/memberships', requireCapability(authenticate, 'memberships:read'), createMembershipsRouter(options.membershipService));
 }
 app.use('/api', apiNotFound);

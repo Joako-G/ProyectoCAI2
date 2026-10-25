@@ -9,12 +9,13 @@ export interface DemoUser {
   name: string;
   email: string;
   passwordHash: string;
-  role: Role;
+  // Stored text: may be a legacy or unknown role from an old file; narrow it with validRole before trusting it.
+  role: string;
   active: boolean;
 }
 
 export type SafeUser = Omit<DemoUser, 'passwordHash'>;
 
-export type UserFailure = 'invalid' | 'duplicate-email' | 'not-found' | 'save-failed';
+export type UserFailure = 'invalid' | 'duplicate-email' | 'not-found' | 'save-failed' | 'last-head-secretary';
 
 export type UserResult = { ok: true; user: SafeUser } | { ok: false; failure: UserFailure };

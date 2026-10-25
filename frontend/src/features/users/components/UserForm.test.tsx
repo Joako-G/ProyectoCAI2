@@ -15,4 +15,18 @@ describe('UserForm role select', () => {
     ]);
     expect(select).toHaveValue('teacher');
   });
+
+  const account = { id: '7', name: 'Ana', email: 'ana@club.test', role: 'head_secretary', active: true };
+  const renderEditing = (currentUserId: string) => render(<UserForm form={{ ...emptyUserForm, role: 'head_secretary' }} editing={account}
+    currentUserId={currentUserId} saving={false} onChange={() => {}} onSubmit={() => {}} onCancel={() => {}} />);
+
+  it('disables the role select when editing the signed-in account', () => {
+    renderEditing('7');
+    expect(screen.getByLabelText('Rol')).toBeDisabled();
+  });
+
+  it('keeps the role select enabled when editing another account', () => {
+    renderEditing('8');
+    expect(screen.getByLabelText('Rol')).toBeEnabled();
+  });
 });

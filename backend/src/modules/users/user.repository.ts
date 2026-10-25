@@ -16,7 +16,7 @@ export class UserRepository {
       writeFileSync(storePath, `${JSON.stringify(demoUsers, null, 2)}\n`, { flag: 'wx' });
     }
     this.users = (JSON.parse(readFileSync(storePath, 'utf8')) as DemoUser[])
-      .map((user) => ({ ...user, role: legacyRoles[user.role] ?? user.role }));
+      .map((user) => ({ ...user, role: Object.hasOwn(legacyRoles, user.role) ? legacyRoles[user.role]! : user.role }));
   }
 
   list(): DemoUser[] { return this.users; }

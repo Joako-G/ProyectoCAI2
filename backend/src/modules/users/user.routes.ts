@@ -7,6 +7,7 @@ const failureResponses: Record<UserFailure, { status: number; error: string }> =
   'duplicate-email': { status: 409, error: 'Email already exists' },
   'not-found': { status: 404, error: 'User not found' },
   'save-failed': { status: 500, error: 'Unable to save users' },
+  'last-head-secretary': { status: 409, error: 'At least one active head secretary is required' },
 };
 
 function send(response: Response, result: UserResult, successStatus = 200): void {

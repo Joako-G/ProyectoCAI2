@@ -23,7 +23,7 @@ export async function createUsersFile(roles: readonly string[] = ['head_secretar
 }
 
 /** Logs in over HTTP and returns the session cookie header value. */
-export async function signIn(baseUrl: string, role: Role | string = 'head_secretary'): Promise<string> {
+export async function signIn(baseUrl: string, role: Role = 'head_secretary'): Promise<string> {
   const response = await fetch(`${baseUrl}/auth/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

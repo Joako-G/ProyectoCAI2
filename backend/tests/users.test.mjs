@@ -140,7 +140,7 @@ test('failed persistence does not expose a created user or persistence details',
     assert.deepEqual(await createResponse.json(), { error: 'Unable to save users' });
 
     const before = await (await fetch(`${url}/users`, { headers: { cookie } })).json();
-    const existing = before[0];
+    const existing = before.find((user) => user.role !== 'head_secretary');
     const patchResponse = await fetch(`${url}/users/${existing.id}`, {
       method: 'PATCH', headers: { 'content-type': 'application/json', cookie },
       body: JSON.stringify({ name: 'Uncommitted Name' }),
@@ -157,6 +157,24 @@ test('failed persistence does not expose a created user or persistence details',
   } finally {
     await new Promise((resolve, reject) => failingServer.close((error) => error ? reject(error) : resolve()));
   }
+});
+
+test('answers 409 when an update or delete would leave no active head secretary', async () => {
+  const users = await (await request('/users')).json();
+  const head = users.find((user) => user.role === 'head_secretary' && user.active);
+  const others = users.filter((user) => user.role === 'head_secretary' && user.active && user.id !== head.id);
+  assert.equal(others.length, 0);
+  for (const attempt of [
+    () => request(`/users/${head.id}`, 'PATCH', { role: 'secretary' }),
+    () => request(`/users/${head.id}`, 'PATCH', { active: false }),
+    () => request(`/users/${head.id}`, 'DELETE'),
+  ]) {
+    const response = await attempt();
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), { error: 'At least one active head secretary is required' });
+  }
+  const after = await (await request('/users')).json();
+  assert.deepEqual(after.find((user) => user.id === head.id), head);
 });
 
 test('malformed store fails closed without replacing its contents', async () => {
