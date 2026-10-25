@@ -97,6 +97,9 @@ Let the club secretariat register member payments end to end: look up a member b
   - The enrollment guard compares the parsed `{ period, day }` values through `isAfter`, not the raw strings. `parseClubDate`'s comment now says it returns the period and day (also closes T2 `R2-002`).
   - The rejection tests assert `fieldErrors` equals `{ enrollmentDate: ... }`. They are characterization tests, green on first run. Mutation check: with the guard disabled, both fail (2 failed / 94 passed); restored, 96/96.
   - GREEN: backend 311/311; `pnpm -r typecheck` and `git diff --check` pass.
+  - Committed as `951ee15`. Gentle-AI review (consent granted, lineage `review-4e735ad1dc8646a5`, base `d2c3578`, 3 files, 30 lines, high risk, four lenses): approved and acknowledged; reviewed boundary is now `951ee15`. Non-blocking SUGGESTION findings:
+    - `R3-cross-year-order-unpinned`: add one cross-year rejection case (December payment, January enrollment) and one cross-year acceptance case.
+    - `R2-001`: the guard comment describes the old string comparison; keep only the rule.
 
 ## Next step
 1. Ask the owners what happens to the old debt when a deregistered member re-registers.
