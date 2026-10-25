@@ -67,6 +67,11 @@ Let the club secretariat register member payments end to end: look up a member b
   - Environment: `corepack pnpm` now fails the inner `pnpm run build` with `ERR_PNPM_BAD_PM_VERSION` (pinned 11.6.0, corepack provides 12.9.1). Checks run with `pnpm_config_pm_on_fail=ignore corepack pnpm --pm-on-fail=ignore ...`.
   - Design choices: tiers are re-validated on every call; proration rounds half up to whole pesos; `activityPercent` is a whole number 0–100; `afterDay` is strict (enrolling on the 15th pays full); tariffs start on month boundaries (`YYYY-MM`).
   - About 371 authored lines.
+  - Committed as `735fb70`. Gentle-AI review (consent granted, lineage `review-3f2b13461623542b`, base `48d9257`, committed only: handoff + plan + T1, 6 files, 470 lines, high risk, four lenses): approved and acknowledged; reviewed boundary is now `735fb70`. Non-blocking SUGGESTION findings (later work):
+    - `R3-duplicate-tariff-effective-from`: `resolveTariff` keeps the first of two tariffs with the same `effectiveFrom`, so the price depends on input order. Reject duplicates with a `ValidationError` and a test (do it before T3, since tariffs become admin-editable).
+    - `R2-001`: name the `50`/`100` rounding constants in `prorateActivityFee`.
+    - `R2-002`: the initial `amount = tiers[0].amount` in `surchargeForDay` is redundant.
+    - `R2-003`: `Money` and `Period` are plain aliases, so the types do not enforce their invariants.
 
 ## Next step
 1. Start T2 on `manu` (charge calculation; confirm the overdue-month surcharge assumption first).
