@@ -38,4 +38,8 @@ bootstrap({
     });
   },
   log: (message, error) => console.error(message, error),
+}).catch((error: unknown) => {
+  // Anything bootstrap does not degrade on (an unreadable members file, a throwing listen) is fatal.
+  console.error('Server failed to start', error);
+  process.exit(1);
 });

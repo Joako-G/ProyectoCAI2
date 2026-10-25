@@ -89,14 +89,14 @@ describe('startup bootstrap', () => {
     expect(d.log).toHaveBeenCalledWith(expect.stringContaining('reconcile'), expect.any(Error));
   });
 
-  it('logs a failing members read and still listens', async () => {
+  it('fails startup without listening when the members (primary data) cannot be read', async () => {
     const calls: string[] = [];
     const d = deps(async () => undefined, calls);
     d.memberService.list = async () => {
       throw new Error('bad members file');
     };
-    await bootstrap(d);
-    expect(calls).toEqual(['listen']);
-    expect(d.log).toHaveBeenCalled();
+    await expect(bootstrap(d)).rejects.toThrow('bad members file');
+    expect(calls).toEqual([]);
+    expect(d.log).not.toHaveBeenCalled();
   });
 });
