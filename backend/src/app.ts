@@ -1,7 +1,7 @@
 import cors from 'cors';
 import express from 'express';
 import { apiNotFound, errorHandler } from './middlewares/error-handler.js';
-import { requireAuth } from './middlewares/require-auth.js';
+import { requireCapability, requireCapabilityByMethod } from './middlewares/require-role.js';
 import { createAuthRouter } from './modules/auth/auth.routes.js';
 import { createAuthService } from './modules/auth/auth.service.js';
 import { createAuthenticator, createSessionStore } from './modules/auth/auth.session.js';
@@ -43,12 +43,18 @@ const sessions = createSessionStore();
 const authenticate = createAuthenticator(sessions, authService);
 
 app.use('/auth', createAuthRouter(authService, sessions, authenticate));
-app.use('/users', requireAuth(authenticate), createUsersRouter(createUserService(repository)));
+app.use('/users', requireCapability(authenticate, 'users:manage'), createUsersRouter(createUserService(repository)));
 
-// requireAuth currently protects only /users; members, disciplines and memberships stay open for now.
-if (options.memberService) app.use('/api/members', createMembersRouter(options.memberService));
-if (options.disciplineService) app.use('/api/disciplines', createDisciplinesRouter(options.disciplineService));
-if (options.membershipService) app.use('/api/memberships', createMembershipsRouter(options.membershipService));
+// Every route below needs a session and a role allowed by modules/auth/permissions.ts; only /auth and /health are public.
+if (options.memberService) {
+  app.use('/api/members', requireCapabilityByMethod(authenticate, { read: 'members:read', write: 'members:write' }), createMembersRouter(options.memberService));
+}
+if (options.disciplineService) {
+  app.use('/api/disciplines', requireCapabilityByMethod(authenticate, { read: 'disciplines:read', write: 'disciplines:write' }), createDisciplinesRouter(options.disciplineService));
+}
+if (options.membershipService) {
+  app.use('/api/memberships', requireCapability(authenticate, 'memberships:read'), createMembershipsRouter(options.membershipService));
+}
 app.use('/api', apiNotFound);
 app.use(errorHandler);
 return app;

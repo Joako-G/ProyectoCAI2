@@ -3,6 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import type { MembershipService } from '../../src/modules/memberships/membership.service.js';
+import { createUsersFile, signIn } from '../authorization/helpers.js';
 import { BASKET, createTestContext, LUCIA, TOMAS, VOLLEY } from './helpers.js';
 
 const cleanups: Array<() => Promise<void> | void> = [];
@@ -11,21 +12,24 @@ afterEach(async () => {
   while (cleanups.length > 0) await cleanups.pop()!();
 });
 
-async function listen(membershipService?: MembershipService): Promise<string> {
-  const server: Server = createApp({ membershipService }).listen(0);
+async function listen(membershipService?: MembershipService): Promise<{ baseUrl: string; cookie: string }> {
+  const users = await createUsersFile();
+  cleanups.push(users.cleanup);
+  const server: Server = createApp({ membershipService, storePath: users.storePath }).listen(0);
   await new Promise<void>((resolve) => server.once('listening', resolve));
   cleanups.push(() => new Promise<void>((resolve) => server.close(() => resolve())));
-  return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  return { baseUrl, cookie: await signIn(baseUrl, 'secretary') };
 }
 
 async function startApi() {
   const context = await createTestContext();
   cleanups.push(context.cleanup);
-  const baseUrl = await listen(context.service);
+  const { baseUrl, cookie } = await listen(context.service);
   const send = (method: string, path: string, body?: unknown) =>
     fetch(`${baseUrl}${path}`, {
       method,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', cookie },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   return { send, ...context };
@@ -84,7 +88,7 @@ describe('memberships API (read-only)', () => {
   });
 
   it('answers 404 under /api/memberships when the service is not wired', async () => {
-    const baseUrl = await listen();
-    expect((await fetch(`${baseUrl}/api/memberships`)).status).toBe(404);
+    const { baseUrl, cookie } = await listen();
+    expect((await fetch(`${baseUrl}/api/memberships`, { headers: { cookie } })).status).toBe(404);
   });
 });

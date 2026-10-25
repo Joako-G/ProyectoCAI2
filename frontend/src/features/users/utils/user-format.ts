@@ -1,8 +1,14 @@
 import type { ManagedUser, UserFormValues, UserPayload, UserRole } from '../types/user';
 
-const roleLabels: Record<string, string> = { member: 'Socio', admin: 'Administrador' };
+export const roleOptions: ReadonlyArray<{ value: UserRole; label: string }> = [
+  { value: 'secretary', label: 'Secretaria' },
+  { value: 'head_secretary', label: 'Jefa de secretaría' },
+  { value: 'teacher', label: 'Docente' },
+];
 
-export const emptyUserForm: UserFormValues = { name: '', email: '', role: 'member', password: '', active: true };
+const roleLabels: Record<string, string> = Object.fromEntries(roleOptions.map(({ value, label }) => [value, label]));
+
+export const emptyUserForm: UserFormValues = { name: '', email: '', role: 'secretary', password: '', active: true };
 
 export function roleLabel(role: string): string {
   return roleLabels[role] ?? role;

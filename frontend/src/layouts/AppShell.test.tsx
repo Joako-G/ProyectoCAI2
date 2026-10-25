@@ -92,7 +92,7 @@ describe('AppShell', () => {
 });
 
 describe('AppShell session panel', () => {
-  const user = { id: '1', name: 'Manuel Mendoza', email: 'manum@gmail.com', role: 'admin' };
+  const user = { id: '1', name: 'Manuel Mendoza', email: 'manum@gmail.com', role: 'head_secretary' };
 
   it('shows the initial, name, email and role of the signed-in user at the foot of the sidebar', () => {
     render(<AppShell title="Socios" user={user} onLogout={vi.fn()}><p>Page content</p></AppShell>);
@@ -101,7 +101,7 @@ describe('AppShell session panel', () => {
     expect(within(session).getByText('M')).toBeInTheDocument();
     expect(within(session).getByText('Manuel Mendoza')).toBeInTheDocument();
     expect(within(session).getByText('manum@gmail.com')).toBeInTheDocument();
-    expect(within(session).getByText('Administrador')).toBeInTheDocument();
+    expect(within(session).getByText('Jefa de secretaría')).toBeInTheDocument();
   });
 
   it('keeps the full name and email available when they are truncated', () => {

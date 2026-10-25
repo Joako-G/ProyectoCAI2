@@ -51,7 +51,7 @@ test('lists safe user fields and creates users with a server-generated scrypt ha
   assert.ok(initialUsers.every((user) => Object.keys(user).sort().join(',') === 'active,email,id,name,role'));
 
   const created = await request('/users', 'POST', {
-    name: 'New Member', email: 'new@club.test', role: 'member', password: 'ValidPass123!',
+    name: 'New Member', email: 'new@club.test', role: 'secretary', password: 'ValidPass123!',
     passwordHash: 'attacker-controlled-hash',
   });
   assert.equal(created.status, 201);
@@ -69,20 +69,22 @@ test('lists safe user fields and creates users with a server-generated scrypt ha
 test('rejects invalid fields and case-insensitive duplicate email', async () => {
   for (const body of [
     { name: '', email: 'bad', role: 'owner', password: 'short' },
-    { name: 'Valid Name', email: 'not-an-email', role: 'member', password: 'ValidPass123!' },
+    { name: 'Valid Name', email: 'not-an-email', role: 'secretary', password: 'ValidPass123!' },
     { name: 'Valid Name', email: 'valid@club.test', role: 'owner', password: 'ValidPass123!' },
-    { name: 'Valid Name', email: 'valid@club.test', role: 'member', password: 'short' },
+    { name: 'Valid Name', email: 'valid@club.test', role: 'admin', password: 'ValidPass123!' },
+    { name: 'Valid Name', email: 'valid@club.test', role: 'member', password: 'ValidPass123!' },
+    { name: 'Valid Name', email: 'valid@club.test', role: 'secretary', password: 'short' },
   ]) {
     assert.equal((await request('/users', 'POST', body)).status, 400);
   }
   assert.equal((await request('/users', 'POST', {
-    name: 'Duplicate', email: 'DEMO@CLUB.TEST', role: 'member', password: 'ValidPass123!',
+    name: 'Duplicate', email: 'DEMO@CLUB.TEST', role: 'secretary', password: 'ValidPass123!',
   })).status, 409);
 });
 
 test('updates and logically deactivates users; safe update can reactivate', async () => {
   const created = await request('/users', 'POST', {
-    name: 'Lifecycle User', email: 'lifecycle@club.test', role: 'member', password: 'ValidPass123!',
+    name: 'Lifecycle User', email: 'lifecycle@club.test', role: 'secretary', password: 'ValidPass123!',
   });
   const user = await created.json();
   const updated = await request(`/users/${user.id}`, 'PATCH', { name: 'Updated User', active: false });
@@ -100,7 +102,7 @@ test('updates and logically deactivates users; safe update can reactivate', asyn
 
 test('DELETE deactivates and a newly loaded app reads the same persistent users', async () => {
   const created = await request('/users', 'POST', {
-    name: 'Persistent User', email: 'persistent@club.test', role: 'member', password: 'ValidPass123!',
+    name: 'Persistent User', email: 'persistent@club.test', role: 'secretary', password: 'ValidPass123!',
   });
   const user = await created.json();
   assert.equal((await request(`/users/${user.id}`, 'DELETE')).status, 200);
@@ -132,7 +134,7 @@ test('failed persistence does not expose a created user or persistence details',
     const createResponse = await fetch(`${url}/users`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', cookie },
-      body: JSON.stringify({ name: 'Failure User', email: 'failure@club.test', role: 'member', password: 'ValidPass123!' }),
+      body: JSON.stringify({ name: 'Failure User', email: 'failure@club.test', role: 'secretary', password: 'ValidPass123!' }),
     });
     assert.equal(createResponse.status, 500);
     assert.deepEqual(await createResponse.json(), { error: 'Unable to save users' });

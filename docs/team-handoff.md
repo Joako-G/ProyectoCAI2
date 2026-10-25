@@ -14,7 +14,7 @@ This is the shared, version-controlled project context for collaborators and cod
 | --- | --- |
 | Frontend | React + TypeScript + Vite. Existing feature areas include `auth`, `users`, `members`, and `disciplines`; `payments` and `memberships` are reserved for future work. Put feature code under `frontend/src/features/<feature>/`; use shared top-level folders only for genuinely cross-feature code. |
 | Backend | Express + TypeScript. Existing modules include `auth`, `users`, `members`, and `disciplines`; `payments` and `memberships` are reserved for future work. New domain behavior belongs under `backend/src/modules/<feature>/`; follow the actual route/service/repository pattern without adding controller layers automatically. |
-| Authentication and routing | Server-side sessions are implemented. The current protection scope and missing frontend route navigation are still project work; inspect current code before changing either. Authentication (signed-in status) and authorization (role permissions) are separate concerns. |
+| Authentication and routing | Server-side sessions are implemented. Every backend route except `/auth` and `/health` now requires a session and a role allowed by `backend/src/modules/auth/permissions.ts` (401 without a session, 403 for a disallowed role). Roles: `secretary` (Secretaria), `head_secretary` (Jefa de secretaría, the administrator) and `teacher` (Docente, no access yet). Old stored roles map `admin` → `head_secretary` and `member` → `secretary`. Frontend role-based navigation is still project work. |
 | Persistence and tests | Demo data uses JSON persistence and the session store is in memory; neither is production-grade storage. Frontend and backend have package test scripts; root provides build and typecheck, not a root test script. Use the exact commands in the coding guide. |
 | Delivery | Keep work reviewable and agree on API contracts before wiring a new frontend flow to the backend. |
 
@@ -71,6 +71,10 @@ PostgreSQL, migrations, Docker, and biometric access remain separate decisions; 
 ## Engram portability and safety
 
 `.engram/config.json` names this project `club-socios`. The shareable source is this reviewed handoff, not a native Engram export. Each contributor can manually save this file into their own local Engram database by following [the PowerShell instructions](../.engram/README.md); cloning does not synchronize local Engram memories. Do not import parent-project history or commit native exports containing local account or filesystem metadata. Importing this handoff changes a contributor's local Engram database, not the Git repository.
+
+## After pulling the role change
+
+A local `backend/data/users.json` created before the role change stores `demo@club.test` as `member`, which now maps to `secretary` and cannot open Usuarios. Delete that local file (it is gitignored demo data) so the backend reseeds it from `backend/src/database/demo-users.json`, where `demo@club.test` is `head_secretary` and `secretary@club.test` and `teacher@club.test` exist with the same demo password.
 
 ## Shared JSON store
 

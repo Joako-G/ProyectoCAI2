@@ -1,4 +1,4 @@
-export type UserRole = 'member' | 'admin';
+export type UserRole = 'secretary' | 'head_secretary' | 'teacher';
 
 /** A user account as returned by `GET /users` (never includes the password hash). */
 export interface ManagedUser {

@@ -49,7 +49,7 @@ export function createUserService(repository: UserRepository): UserService {
       const updated = { ...user };
       if (typeof body.name === 'string') updated.name = body.name.trim();
       if (typeof body.email === 'string') updated.email = body.email.trim();
-      if (typeof body.role === 'string') updated.role = body.role;
+      if (validRole(body.role)) updated.role = body.role;
       if (typeof body.active === 'boolean') updated.active = body.active;
       if (typeof body.password === 'string') updated.passwordHash = hashPassword(body.password);
       return replaceUser(updated);
