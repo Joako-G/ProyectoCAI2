@@ -30,6 +30,8 @@ export interface Payment {
   createdBy: string;
   /** ISO instant. */
   createdAt: string;
+  /** Client-generated idempotency key of the registration; absent on payments stored before it existed. */
+  requestId?: string;
   annulment?: PaymentAnnulment;
 }
 
@@ -60,6 +62,11 @@ export interface RegisterPaymentInput {
   concepts: readonly ChargeConcept[];
   method: PaymentMethod;
   registration?: RegistrationRequest;
+  /**
+   * Idempotency key (8 to 100 characters). The HTTP layer requires it; a service caller may omit it and
+   * then gets no duplicate protection.
+   */
+  requestId?: string;
 }
 
 export interface PreviewOptions {

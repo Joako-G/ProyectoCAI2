@@ -43,7 +43,9 @@ function send(method: string, path: string, role?: Role, body?: unknown) {
 }
 
 const social = (period: string) => ({ kind: 'socialFee', period });
-const pay = (concepts: unknown[], extra: Record<string, unknown> = {}) => ({ concepts, method: 'cash', ...extra });
+let sequence = 0;
+// Every call gets a fresh requestId, as the client does for each prepared cobro.
+const pay = (concepts: unknown[], extra: Record<string, unknown> = {}) => ({ concepts, method: 'cash', requestId: `request-${++sequence}`, ...extra });
 
 describe('payments API: authorization', () => {
   const routes: Array<[string, string, unknown]> = [
@@ -142,6 +144,25 @@ describe('payments API: register, receipts and annulment', () => {
     expect((await send('POST', '/api/payments', 'secretary', { memberId: 'nobody', ...pay([social('2026-10')]) })).status).toBe(404);
     expect((await send('GET', '/api/payments/receipts/9999', 'secretary')).status).toBe(404);
     expect((await send('GET', '/api/payments/receipts/abc', 'secretary')).status).toBe(400);
+  });
+
+  it('requires a requestId of 8 to 100 characters', async () => {
+    for (const requestId of [undefined, 'short', 'x'.repeat(101), 12345678]) {
+      const response = await send('POST', '/api/payments', 'secretary', { memberId: MEMBER_ID, ...pay([social('2026-10')], { requestId }) });
+      expect(response.status).toBe(400);
+    }
+  });
+
+  it('answers a repeated request with the same payment (201 both times) and 409 for a different body', async () => {
+    const body = { memberId: MEMBER_ID, ...pay([{ kind: 'carnetReplacement' }], { requestId: 'request-repeat' }) };
+    const first = await send('POST', '/api/payments', 'secretary', body);
+    const second = await send('POST', '/api/payments', 'secretary', body);
+    expect([first.status, second.status]).toEqual([201, 201]);
+    expect((await second.json()).id).toBe((await first.json()).id);
+    const history = await (await send('GET', `/api/payments/members/${MEMBER_ID}`, 'head_secretary')).json();
+    expect(history).toHaveLength(1);
+    const other = await send('POST', '/api/payments', 'secretary', { ...body, concepts: [social('2026-10')] });
+    expect(other.status).toBe(409);
   });
 
   it('lets the head secretary annul once, with a reason', async () => {

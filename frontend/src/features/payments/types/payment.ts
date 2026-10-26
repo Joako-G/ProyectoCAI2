@@ -71,6 +71,15 @@ export interface PreviewRequest {
   registration?: Record<string, never>;
 }
 
-export interface RegisterRequest extends PreviewRequest {
+/** What the form decides; the container adds the idempotency key. */
+export interface RegisterDraft extends PreviewRequest {
   method: PaymentMethod;
+}
+
+/**
+ * Body of `POST /api/payments`. `requestId` (8 to 100 characters) is one key per prepared cobro: a retry
+ * with the same key and concepts returns the payment already created instead of charging again.
+ */
+export interface RegisterRequest extends RegisterDraft {
+  requestId: string;
 }

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildDiscipline } from '../../disciplines/test/fixtures';
@@ -234,7 +234,7 @@ describe('PaymentsView collecting', () => {
     expect(receipt).toHaveTextContent('Recargo por pago tardío de Básquet 09/2026');
     expect(receipt).toHaveTextContent('Total$ 76.000');
     const sent = bodyOf(fetchMock, 'POST /api/payments');
-    expect(sent).toEqual({ memberId: 'member-1', concepts: buildAccount().owed.flatMap((entry) => entry.concepts), method: 'cash' });
+    expect(sent).toEqual({ memberId: 'member-1', concepts: buildAccount().owed.flatMap((entry) => entry.concepts), method: 'cash', requestId: expect.stringMatching(/^.{8,100}$/) });
     expect(String(callsTo(fetchMock, 'POST /api/payments')[0][1]?.body)).not.toMatch(/amount|total/i);
     expect(callsTo(fetchMock, ACCOUNT)).toHaveLength(2);
     expect(callsTo(fetchMock, HISTORY)).toHaveLength(2);
@@ -258,7 +258,7 @@ describe('PaymentsView collecting', () => {
     const owed = buildAccount().owed.flatMap((entry) => entry.concepts);
     const expected = { memberId: 'member-1', concepts: [...owed, { kind: 'enrollment' }, { kind: 'carnetReplacement' }], registration: {} };
     expect(bodyOf(fetchMock, 'POST /api/payments/preview')).toEqual(expected);
-    expect(bodyOf(fetchMock, 'POST /api/payments')).toEqual({ ...expected, method: 'qr' });
+    expect(bodyOf(fetchMock, 'POST /api/payments')).toEqual({ ...expected, method: 'qr', requestId: expect.stringMatching(/^.{8,100}$/) });
   });
 
   it('explains an already paid concept in Spanish and re-reads the account', async () => {
@@ -316,6 +316,148 @@ describe('PaymentsView collecting', () => {
     expect(screen.queryByRole('region', { name: 'Registrar cobro' })).not.toBeInTheDocument();
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.getByRole('list', { name: 'Conceptos adeudados' })).toHaveTextContent('Cuota de Básquet 09/2026');
+  });
+});
+
+async function prepare(user: ReturnType<typeof userEvent.setup>, method = 'Efectivo') {
+  await screen.findByRole('region', { name: 'Registrar cobro' });
+  await previewAll(user);
+  await user.click(within(formRegion()).getByRole('radio', { name: method }));
+}
+
+const confirm = (user: ReturnType<typeof userEvent.setup>) => user.click(within(formRegion()).getByRole('button', { name: 'Confirmar cobro' }));
+const requestIds = (fetchMock: ReturnType<typeof stubApi>) =>
+  callsTo(fetchMock, 'POST /api/payments').map(([, init]) => JSON.parse(String(init?.body)).requestId);
+
+describe('PaymentsView idempotent registration', () => {
+  const failFirst = () => {
+    let attempts = 0;
+    return () => { if (++attempts === 1) throw new TypeError('Failed to fetch'); return jsonResponse(issued, 201); };
+  };
+
+  it('keeps the same requestId when retrying after a network failure', async () => {
+    const fetchMock = stubApi({ 'POST /api/payments': failFirst() });
+    const user = await openMember();
+    await prepare(user);
+    await confirm(user);
+    await within(formRegion()).findByRole('alert');
+
+    await confirm(user);
+
+    expect(await screen.findByRole('region', { name: 'Comprobante' })).toBeInTheDocument();
+    const ids = requestIds(fetchMock);
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).toBe(ids[1]);
+  });
+
+  it('uses a new requestId when the selection changes after a failure', async () => {
+    const fetchMock = stubApi({ 'POST /api/payments': failFirst() });
+    const user = await openMember();
+    await prepare(user);
+    await confirm(user);
+    await within(formRegion()).findByRole('alert');
+
+    await user.click(within(formRegion()).getByRole('checkbox', { name: 'Cuota social 10/2026' }));
+    await previewAll(user);
+    await user.click(within(formRegion()).getByRole('radio', { name: 'Efectivo' }));
+    await confirm(user);
+
+    await screen.findByRole('region', { name: 'Comprobante' });
+    const ids = requestIds(fetchMock);
+    expect(ids[0]).not.toBe(ids[1]);
+  });
+
+  it('uses a new requestId for the next cobro after a confirmed one', async () => {
+    const fetchMock = stubApi();
+    const user = await openMember();
+    await prepare(user);
+    await confirm(user);
+    await screen.findByRole('region', { name: 'Comprobante' });
+
+    await user.click(within(formRegion()).getByRole('checkbox', { name: 'Reposición de carnet' }));
+    await previewAll(user);
+    await user.click(within(formRegion()).getByRole('radio', { name: 'Efectivo' }));
+    await confirm(user);
+
+    await waitFor(() => expect(requestIds(fetchMock)).toHaveLength(2));
+    const ids = requestIds(fetchMock);
+    expect(ids[0]).not.toBe(ids[1]);
+  });
+
+  it('disables every control while the registration is in flight and labels it correctly', async () => {
+    let release: () => void = () => {};
+    stubApi({ 'POST /api/payments': () => new Promise<Response>((resolve) => { release = () => resolve(jsonResponse(issued, 201)); }) });
+    const user = await openMember();
+    await prepare(user);
+    await confirm(user);
+
+    const form = within(formRegion());
+    expect(await form.findByRole('button', { name: 'Registrando…' })).toBeDisabled();
+    for (const control of [...form.getAllByRole('checkbox'), ...form.getAllByRole('radio'), form.getByRole('button', { name: 'Calcular total' })]) {
+      expect(control).toBeDisabled();
+    }
+    release();
+    expect(await screen.findByRole('region', { name: 'Comprobante' })).toBeInTheDocument();
+  });
+
+  it('re-reads the account after a 502 on register and shows generic Spanish copy', async () => {
+    const fetchMock = stubApi({ 'POST /api/payments': failure(502, 'Bad gateway') });
+    const user = await openMember();
+    await prepare(user);
+    await confirm(user);
+
+    const alert = await within(formRegion()).findByRole('alert');
+    expect(alert).toHaveTextContent('No se pudo completar la operación.');
+    expect(alert).not.toHaveTextContent('Bad gateway');
+    await waitFor(() => expect(callsTo(fetchMock, ACCOUNT)).toHaveLength(2));
+    expect(callsTo(fetchMock, HISTORY)).toHaveLength(2);
+  });
+
+  it('shows a neutral banner with a retry when the re-read after a failed write also fails', async () => {
+    let reads = 0;
+    const fetchMock = stubApi({
+      [ACCOUNT]: () => (++reads === 2 ? failure(500, 'Boom')() : jsonResponse(buildAccount())),
+      'POST /api/payments': () => { throw new TypeError('Failed to fetch'); },
+    });
+    const user = await openMember();
+    await prepare(user);
+    await confirm(user);
+
+    const banner = await screen.findByText('No se pudo actualizar la cuenta con los datos del servidor. Reintentá para verlos al día.');
+    expect(screen.queryByText(/se registró/)).not.toBeInTheDocument();
+    await user.click(within(banner.parentElement as HTMLElement).getByRole('button', { name: 'Reintentar' }));
+    await waitFor(() => expect(screen.queryByText(/No se pudo actualizar la cuenta/)).not.toBeInTheDocument());
+    expect(callsTo(fetchMock, ACCOUNT).length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('PaymentsView preview failures', () => {
+  it('shows a Spanish alert when the preview fails', async () => {
+    stubApi({ 'POST /api/payments/preview': failure(400, 'Unknown concept') });
+    const user = await openMember();
+    await screen.findByRole('region', { name: 'Registrar cobro' });
+    await user.click(within(formRegion()).getByRole('button', { name: 'Calcular total' }));
+
+    const alert = await within(formRegion()).findByRole('alert');
+    expect(alert).toHaveTextContent('El servidor rechazó los datos.');
+    expect(alert).not.toHaveTextContent('Unknown concept');
+    expect(screen.queryByRole('table', { name: 'Detalle del cobro' })).not.toBeInTheDocument();
+  });
+
+  it('ignores a preview that answers after the selection changed', async () => {
+    let release: () => void = () => {};
+    stubApi({ 'POST /api/payments/preview': () => new Promise<Response>((resolve) => { release = () => resolve(jsonResponse(buildCharge())); }) });
+    const user = await openMember();
+    await screen.findByRole('region', { name: 'Registrar cobro' });
+    await user.click(within(formRegion()).getByRole('button', { name: 'Calcular total' }));
+    expect(await within(formRegion()).findByRole('button', { name: 'Calculando…' })).toBeDisabled();
+
+    await user.click(within(formRegion()).getByRole('checkbox', { name: 'Cuota social 10/2026' }));
+    release();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(screen.queryByRole('table', { name: 'Detalle del cobro' })).not.toBeInTheDocument();
+    expect(within(formRegion()).getByRole('button', { name: 'Calcular total' })).toBeEnabled();
   });
 });
 

@@ -39,7 +39,7 @@ describe('payments api', () => {
   });
 
   it('registers a payment with POST and returns the receipt', async () => {
-    const request = { memberId: 'member-1', concepts: [{ kind: 'carnetReplacement' as const }], method: 'qr' as const };
+    const request = { memberId: 'member-1', concepts: [{ kind: 'carnetReplacement' as const }], method: 'qr' as const, requestId: 'request-0001' };
     const fetchMock = stubFetch(jsonResponse(buildPayment(), 201));
     expect(await registerPayment(request)).toEqual(buildPayment());
     expect(fetchMock).toHaveBeenCalledWith('/api/payments', jsonInit(request));
@@ -53,7 +53,7 @@ describe('payments api', () => {
 
   it('rejects with the shared ApiError when the server refuses', async () => {
     stubFetch(jsonResponse({ error: 'conflict', message: 'Already paid: socialFee:2026-09' }, 409));
-    await expect(registerPayment({ memberId: 'member-1', concepts: [], method: 'cash' })).rejects.toMatchObject({
+    await expect(registerPayment({ memberId: 'member-1', concepts: [], method: 'cash', requestId: 'request-0001' })).rejects.toMatchObject({
       status: 409,
       message: 'Already paid: socialFee:2026-09',
     });

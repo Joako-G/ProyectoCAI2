@@ -354,3 +354,65 @@ describe('stored lines round trip', () => {
     await expect(reopened.account(MEMBER_ID)).resolves.toMatchObject({ memberId: MEMBER_ID });
   });
 });
+
+describe('idempotent register (requestId)', () => {
+  const REQUEST_ID = 'request-0001';
+  const base = { concepts: [{ kind: 'carnetReplacement' } as ChargeConcept], method: 'cash' as const, requestId: REQUEST_ID };
+
+  it('returns the same payment and writes nothing when the same request is repeated', async () => {
+    const { service, repository } = await contexts.create();
+    const first = await service.register(MEMBER_ID, base, ACTOR);
+    const second = await service.register(MEMBER_ID, { ...base }, ACTOR);
+    expect(second).toEqual(first);
+    expect(first.requestId).toBe(REQUEST_ID);
+    expect(await repository.list()).toHaveLength(1);
+  });
+
+  it('keeps one payment under concurrent duplicates', async () => {
+    const { service, repository } = await contexts.create();
+    const results = await Promise.all(Array.from({ length: 5 }, () => service.register(MEMBER_ID, base, ACTOR)));
+    expect(new Set(results.map((payment) => payment.receiptNumber))).toEqual(new Set([1]));
+    expect(await repository.list()).toHaveLength(1);
+  });
+
+  it('rejects the same requestId with other concepts or for another member', async () => {
+    const { service, repository } = await contexts.create({ members: [{ id: MEMBER_ID, status: 'active' }, { id: 'member-two', status: 'active' }] });
+    await service.register(MEMBER_ID, base, ACTOR);
+    await expect(service.register(MEMBER_ID, { ...base, concepts: [social('2026-10')] }, ACTOR)).rejects.toBeInstanceOf(ConflictError);
+    await expect(service.register('member-two', base, ACTOR)).rejects.toBeInstanceOf(ConflictError);
+    expect(await repository.list()).toHaveLength(1);
+  });
+
+  it('treats the same concepts in another order as the same request', async () => {
+    const { service } = await contexts.create();
+    const input = { method: 'cash' as const, requestId: REQUEST_ID };
+    const first = await service.register(MEMBER_ID, { ...input, concepts: [social('2026-09'), social('2026-10')] }, ACTOR);
+    const second = await service.register(MEMBER_ID, { ...input, concepts: [social('2026-10'), social('2026-09')] }, ACTOR);
+    expect(second.id).toBe(first.id);
+  });
+
+  it('does not reuse an annulled payment: the same requestId registers again', async () => {
+    const { service, repository } = await contexts.create();
+    const first = await service.register(MEMBER_ID, base, ACTOR);
+    await service.annul(first.id, 'Mistake', ACTOR);
+    const again = await service.register(MEMBER_ID, base, ACTOR);
+    expect(again.id).not.toBe(first.id);
+    expect(await repository.list()).toHaveLength(2);
+  });
+
+  it('refuses a malformed requestId', async () => {
+    const { service } = await contexts.create();
+    for (const requestId of ['short', 'x'.repeat(101), 42 as unknown as string]) {
+      await expect(service.register(MEMBER_ID, { ...base, requestId }, ACTOR)).rejects.toBeInstanceOf(ValidationError);
+    }
+  });
+
+  it('reads old stored payments that have no requestId', async () => {
+    const { service, file } = await contexts.create();
+    await service.register(MEMBER_ID, { concepts: [social('2026-10')], method: 'cash' }, ACTOR);
+    expect((await service.history(MEMBER_ID))[0]!.requestId).toBeUndefined();
+    const stored = JSON.parse(await readFile(file, 'utf8'));
+    await writeFile(file, JSON.stringify([{ ...stored[0], requestId: 7 }]), 'utf8');
+    await expect(service.history(MEMBER_ID)).rejects.toThrow(/Invalid payments file/);
+  });
+});

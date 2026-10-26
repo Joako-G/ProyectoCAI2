@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../../members/services/members-api';
 import { buildDiscipline } from '../../disciplines/test/fixtures';
-import { conceptKey, conceptLabel, describePaymentError, describeReadError, lineLabel, methodLabel } from './payment-format';
+import { isAmbiguousWriteFailure, newRequestId, conceptKey, conceptLabel, describePaymentError, describeReadError, lineLabel, methodLabel } from './payment-format';
 
 const disciplines = [buildDiscipline()];
 
@@ -32,6 +32,29 @@ describe('labels', () => {
 
   it('names the payment methods in Spanish', () => {
     expect(['cash', 'debit', 'qr', 'transfer'].map((method) => methodLabel(method as 'cash'))).toEqual(['Efectivo', 'Débito', 'QR', 'Transferencia']);
+  });
+});
+
+describe('isAmbiguousWriteFailure', () => {
+  it('re-reads after network, 404, 409 and any 5xx, but not after 400 or 403', () => {
+    const api = (status: number) => new ApiError(status, 'x', 'm');
+    expect([new TypeError('x'), api(404), api(409), api(500), api(502)].map(isAmbiguousWriteFailure)).toEqual([true, true, true, true, true]);
+    expect([api(400), api(403)].map(isAmbiguousWriteFailure)).toEqual([false, false]);
+  });
+});
+
+describe('newRequestId', () => {
+  it('is 8 to 100 characters, unique, and works without crypto.randomUUID (insecure contexts)', () => {
+    expect(newRequestId()).not.toBe(newRequestId());
+    const original = crypto.randomUUID;
+    Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true });
+    try {
+      const id = newRequestId();
+      expect(id.length).toBeGreaterThanOrEqual(8);
+      expect(id.length).toBeLessThanOrEqual(100);
+    } finally {
+      Object.defineProperty(crypto, 'randomUUID', { value: original, configurable: true });
+    }
   });
 });
 

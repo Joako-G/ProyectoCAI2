@@ -51,6 +51,8 @@ export function conceptLabel(concept: ChargeConcept, disciplines: readonly Disci
 
 /** A line of a charge or receipt, in Spanish; surcharge and proration are called out. */
 export function lineLabel(line: ChargeLine, disciplines: readonly Discipline[]): string {
+  // The server always sets `disciplineId` on activity and surcharge lines (the payments file is refused
+  // otherwise); the empty fallback only satisfies the optional type and would show an empty name.
   if (line.kind === 'activitySurcharge') {
     return `Recargo por pago tardío de ${nameOf(line.disciplineId ?? '', disciplines)} ${formatPeriod(line.period)}`;
   }
@@ -69,8 +71,19 @@ export function describeReadError(error: unknown): string {
   return 'El servidor no pudo completar la consulta.';
 }
 
-/** A failed write whose outcome is unknown (network) or whose view is stale (404, 409): re-read the account. */
-export { isAmbiguousWriteFailure } from '../../pricing/utils/pricing-format';
+/**
+ * A failed write whose outcome is unknown (network, 5xx) or whose view is stale (404, 409): re-read the
+ * account. Unlike pricing, a 5xx counts too, because a payment may have been stored before the failure.
+ */
+export function isAmbiguousWriteFailure(error: unknown): boolean {
+  return !(error instanceof ApiError) || error.status === 404 || error.status === 409 || error.status >= 500;
+}
+
+/** Idempotency key for one prepared cobro. `randomUUID` only exists in secure contexts, so fall back to random bytes. */
+export function newRequestId(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
 
 /** Spanish copy for a failed preview, payment or annulment. */
 export function describePaymentError(error: unknown): string {

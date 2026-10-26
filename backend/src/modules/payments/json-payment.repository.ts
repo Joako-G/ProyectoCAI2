@@ -25,6 +25,7 @@ function isWellShaped(value: unknown): value is Payment {
   if (!Number.isSafeInteger(value.total)) return false;
   if (!PAYMENT_METHODS.includes(value.method as never)) return false;
   if (!Array.isArray(value.lines) || !value.lines.every((line) => isRecord(line) && isWellShapedLine(line))) return false;
+  if (value.requestId !== undefined && typeof value.requestId !== 'string') return false;
   if (value.annulment === undefined) return true;
   const { annulment } = value;
   return (

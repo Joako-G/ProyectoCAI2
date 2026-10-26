@@ -23,6 +23,18 @@ function parseRegistration(value: unknown): RegistrationRequest | undefined {
   return {};
 }
 
+export const REQUEST_ID_MIN = 8;
+export const REQUEST_ID_MAX = 100;
+
+/** The idempotency key of a registration: required, so a retried request can never charge twice. */
+export function parseRequestId(value: unknown): string {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (text.length < REQUEST_ID_MIN || text.length > REQUEST_ID_MAX) {
+    throw new ValidationError({ requestId: `Required, ${REQUEST_ID_MIN} to ${REQUEST_ID_MAX} characters` });
+  }
+  return text;
+}
+
 export interface PreviewBody {
   memberId: string;
   concepts: ChargeConcept[];
@@ -31,6 +43,7 @@ export interface PreviewBody {
 
 export interface RegisterBody extends PreviewBody {
   method: PaymentMethod;
+  requestId: string;
 }
 
 // Only the fields the service reads are picked, so amounts, totals or actors in the body are never seen.
@@ -47,7 +60,7 @@ export function parsePreviewBody(body: unknown): PreviewBody {
 
 // `method` is passed through; the service rejects anything that is not a known payment method.
 export function parseRegisterBody(body: unknown): RegisterBody {
-  return { ...parsePreviewBody(body), method: asRecord(body).method as PaymentMethod };
+  return { ...parsePreviewBody(body), method: asRecord(body).method as PaymentMethod, requestId: parseRequestId(asRecord(body).requestId) };
 }
 
 // `reason` is passed through; the service requires non-blank text of a bounded length.

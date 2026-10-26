@@ -6,6 +6,7 @@ import { accountStanding, conceptKey, owedConcepts, settledKeys, type AccountMem
 import { calculateCharge } from './charge.js';
 import type { Charge, ChargeConcept, FirstTimeRegistration } from './charge.types.js';
 import type { PaymentRepository } from './payment.repository.js';
+import { parseRequestId } from './payment.validation.js';
 import {
   PAYMENT_METHODS,
   type MemberAccount,
@@ -63,6 +64,19 @@ function sanitizeConcepts(concepts: readonly ChargeConcept[]): ChargeConcept[] {
   });
 }
 
+// The concepts a stored payment settled, compared with a new request regardless of order. Surcharge
+// lines are derived from activity fees, so they are not concepts the client asked for.
+function sameConcepts(payment: Payment, concepts: readonly ChargeConcept[]): boolean {
+  const stored = payment.lines.filter((line) => line.kind !== 'activitySurcharge').map(lineKey).sort();
+  return JSON.stringify(stored) === JSON.stringify(concepts.map(conceptKey).sort());
+}
+
+function lineKey(line: Payment['lines'][number]): string {
+  if (line.kind === 'socialFee') return conceptKey({ kind: 'socialFee', period: line.period });
+  if (line.kind === 'activityFee') return conceptKey({ kind: 'activityFee', period: line.period, disciplineId: line.disciplineId ?? '' });
+  return line.kind;
+}
+
 function earliestTariffPeriod(config: PricingConfig): string {
   if (config.tariffs.length === 0) throw new ConflictError('No tariffs are configured');
   return config.tariffs.reduce((earliest, tariff) => (tariff.effectiveFrom < earliest ? tariff.effectiveFrom : earliest), config.tariffs[0]!.effectiveFrom);
@@ -109,10 +123,20 @@ export function createPaymentService({ repository, members, memberships, pricing
       }
       const actor = requireText(actorId, 'actorId', 100);
       const concepts = sanitizeConcepts(input.concepts);
+      const requestId = input.requestId === undefined ? undefined : parseRequestId(input.requestId);
       if (member.status !== 'active') throw new ConflictError('Inactive members cannot make payments');
       const config = await pricing.get();
       const registration = registrationFor(input.registration);
       return repository.mutate((payments) => {
+        // Idempotency: a repeated request returns the payment it already created and writes nothing. This
+        // runs before the already-paid check, because that payment is what settled the concepts.
+        const previous = requestId === undefined ? undefined : payments.find((payment) => payment.requestId === requestId && !payment.annulment);
+        if (previous) {
+          if (previous.memberId !== memberId || !sameConcepts(previous, concepts)) {
+            throw new ConflictError('Request id was already used for a different payment');
+          }
+          return { payments, result: previous };
+        }
         const settled = settledKeys(payments, memberId);
         const alreadyPaid = concepts.map(conceptKey).filter((key) => settled.has(key));
         if (alreadyPaid.length > 0) throw new ConflictError(`Already paid: ${alreadyPaid.join(', ')}`);
@@ -130,6 +154,7 @@ export function createPaymentService({ repository, members, memberships, pricing
           ...(registration ? { registration } : {}),
           createdBy: actor,
           createdAt: now().toISOString(),
+          ...(requestId === undefined ? {} : { requestId }),
         };
         return { payments: [...payments, payment], result: payment };
       });

@@ -71,7 +71,7 @@ Implemented backend side: `/api/pricing` (read: secretary and head secretary; wr
 Payments are stored append-only in `backend/data/payments.json` (or `PAYMENTS_FILE`); a payment snapshots its charge lines, and an annulment is a recorded reason, actor and date on the payment, never a deletion.
 Receipt numbers are correlative integers allocated in the same write as the payment, never reused (also not after an annulment). The service is wired in `server.ts` and served under `/api/payments` (secretary and head secretary; only the head secretary annuls). The signed-in user is always the actor; amounts and `registration.enrollmentDate` in a body are ignored (a first-time registration is charged on the day it is made):
 - `GET /members/:memberId/account` owed concepts and standing; `GET /members/:memberId` history; `GET /receipts/:receiptNumber` one receipt.
-- `POST /preview` `{ memberId, concepts, registration? }` prices without writing; `POST /` adds `method` and returns 201 with the stored payment; `POST /:id/annul` `{ reason }` (head secretary).
+- `POST /preview` `{ memberId, concepts, registration? }` prices without writing; `POST /` adds `method` and a client-generated `requestId` (8–100 characters, reused on every retry of the same cobro) and returns 201 with the stored payment; repeating a `requestId` for the same member and concepts returns the existing payment instead of charging again, and reusing it for a different payment gives 409; `POST /:id/annul` `{ reason }` (head secretary).
 - Find a member by DNI with `GET /api/members?search=<dni>`; payments has no search of its own.
 
 PostgreSQL, migrations, Docker, and biometric access remain separate decisions; do not use real club/member records or credentials for demonstrations.

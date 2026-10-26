@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import type { Discipline } from '../../disciplines/types/discipline';
 import { formatPeriod, formatPesos } from '../../pricing/utils/pricing-format';
-import type { Charge, ChargeConcept, MemberAccount, PaymentMethod, PreviewRequest, RegisterRequest } from '../types/payment';
+import type { Charge, ChargeConcept, MemberAccount, PaymentMethod, PreviewRequest, RegisterDraft } from '../types/payment';
 import { conceptKey, conceptLabel, describePaymentError, lineLabel, PAYMENT_METHODS } from '../utils/payment-format';
 
 interface PaymentFormProps {
@@ -12,7 +12,7 @@ interface PaymentFormProps {
   error?: string;
   onPreview: (request: PreviewRequest) => Promise<Charge>;
   /** Never rejects: the container reports its own failure through `error`. */
-  onRegister: (request: RegisterRequest) => Promise<void>;
+  onRegister: (draft: RegisterDraft) => Promise<void>;
 }
 
 /**
@@ -27,7 +27,9 @@ export function PaymentForm({ memberId, account, disciplines, error, onPreview, 
   const [method, setMethod] = useState<PaymentMethod | ''>('');
   const [preview, setPreview] = useState<Charge | null>(null);
   const [previewError, setPreviewError] = useState<string>();
-  const [busy, setBusy] = useState(false);
+  // Separate flags: previewing may be cancelled by a change; a registration in flight blocks every change.
+  const [previewing, setPreviewing] = useState(false);
+  const [registering, setRegistering] = useState(false);
   const latestPreview = useRef(0);
 
   const concepts: ChargeConcept[] = [
@@ -40,11 +42,12 @@ export function PaymentForm({ memberId, account, disciplines, error, onPreview, 
 
   // Any change to what is being paid invalidates the previewed total, so a stale total can never be confirmed.
   function change(update: () => void) {
+    if (registering) return;
     latestPreview.current += 1;
     update();
     setPreview(null);
     setPreviewError(undefined);
-    setBusy(false);
+    setPreviewing(false);
   }
 
   function toggleOwed(key: string) {
@@ -57,7 +60,7 @@ export function PaymentForm({ memberId, account, disciplines, error, onPreview, 
 
   async function handlePreview() {
     const id = ++latestPreview.current;
-    setBusy(true);
+    setPreviewing(true);
     setPreviewError(undefined);
     try {
       const charge = await onPreview(request);
@@ -65,20 +68,22 @@ export function PaymentForm({ memberId, account, disciplines, error, onPreview, 
     } catch (caught) {
       if (id === latestPreview.current) setPreviewError(describePaymentError(caught));
     } finally {
-      if (id === latestPreview.current) setBusy(false);
+      if (id === latestPreview.current) setPreviewing(false);
     }
   }
 
   async function handleConfirm() {
-    if (!method || !preview || busy) return;
-    setBusy(true);
+    if (!method || !preview || previewing || registering) return;
+    setRegistering(true);
     await onRegister({ ...request, method });
-    setBusy(false);
+    setRegistering(false);
   }
 
   return (
     <section className="card payments-section" aria-label="Registrar cobro">
       <h2 className="payments-section__title">Registrar cobro</h2>
+      {/* While a registration is in flight nothing can change, so the request id stays tied to one selection. */}
+      <fieldset className="payments-controls" disabled={registering}>
       {account.owed.length === 0 ? <p className="members-page__notice">No hay conceptos adeudados.</p> : null}
       {account.owed.map((entry) => (
         <fieldset key={entry.period} className="payments-period">
@@ -105,8 +110,8 @@ export function PaymentForm({ memberId, account, disciplines, error, onPreview, 
 
       {previewError ? <p className="form-alert" role="alert">{previewError}</p> : null}
       <div className="member-form__actions">
-        <button type="button" className="button button--secondary" disabled={busy || concepts.length === 0} onClick={handlePreview}>
-          Calcular total
+        <button type="button" className="button button--secondary" disabled={previewing || concepts.length === 0} onClick={handlePreview}>
+          {previewing ? 'Calculando…' : 'Calcular total'}
         </button>
       </div>
 
@@ -144,11 +149,12 @@ export function PaymentForm({ memberId, account, disciplines, error, onPreview, 
           </div>
         </>
       ) : null}
+      </fieldset>
 
       {error ? <p className="form-alert" role="alert">{error}</p> : null}
       <div className="member-form__actions">
-        <button type="button" className="button button--primary" disabled={!preview || !method || busy} onClick={handleConfirm}>
-          {busy && preview ? 'Registrando…' : 'Confirmar cobro'}
+        <button type="button" className="button button--primary" disabled={!preview || !method || previewing || registering} onClick={handleConfirm}>
+          {registering ? 'Registrando…' : 'Confirmar cobro'}
         </button>
       </div>
     </section>

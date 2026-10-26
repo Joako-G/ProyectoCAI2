@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { catalogDisciplines, useDisciplineCatalog } from '../../disciplines/hooks/useDisciplineCatalog';
 import type { Member } from '../../members/types/member';
 import { useMemberAccount } from '../hooks/useMemberAccount';
 import { annulPayment, previewCharge, registerPayment } from '../services/payments-api';
-import type { Payment, PreviewRequest, RegisterRequest } from '../types/payment';
-import { conceptKey, describePaymentError, isAmbiguousWriteFailure } from '../utils/payment-format';
+import type { Payment, PreviewRequest, RegisterDraft } from '../types/payment';
+import { conceptKey, describePaymentError, isAmbiguousWriteFailure, newRequestId } from '../utils/payment-format';
 import { AccountSummary } from './AccountSummary';
 import { PaymentForm } from './PaymentForm';
 import { PaymentHistory } from './PaymentHistory';
@@ -28,6 +28,9 @@ export function MemberPayments({ member, canCollect, canAnnul }: MemberPaymentsP
   const [annulError, setAnnulError] = useState<string>();
   // Bumped after a confirmed payment so the form starts clean even if the re-read fails.
   const [epoch, setEpoch] = useState(0);
+  // The idempotency key of the cobro being prepared. It lives here, not in the form, so it survives the
+  // form remounting after a re-read: a retry of the same concepts reuses it and can never charge twice.
+  const pending = useRef<{ signature: string; requestId: string } | undefined>(undefined);
 
   if (state.phase === 'loading') {
     return <p className="members-page__notice" role="status">Cargando cuenta…</p>;
@@ -44,6 +47,8 @@ export function MemberPayments({ member, canCollect, canAnnul }: MemberPaymentsP
 
   const { account, history } = state;
   const canPay = canCollect && member.status === 'active';
+  // The form restarts clean whenever anything it was built from changes: a confirmed payment (epoch), the
+  // owed concepts, or the history including annulments (an annulment makes concepts owed again).
   const formKey = [epoch, ...account.owed.flatMap((entry) => entry.concepts.map(conceptKey)), ...history.map((payment) => `${payment.id}${payment.annulment ? '!' : ''}`)].join('|');
 
   // Every write re-reads the account and history so the screen shows what the server holds. A failed write
@@ -59,10 +64,19 @@ export function MemberPayments({ member, canCollect, canAnnul }: MemberPaymentsP
     }
   }
 
-  async function handleRegister(request: RegisterRequest) {
+  // Same concepts means same cobro; changing the selection makes a new one. The method is not part of it:
+  // the server returns the payment it stored for the key, whatever method a retry names.
+  function requestIdFor(draft: RegisterDraft): string {
+    const signature = [draft.memberId, ...draft.concepts.map(conceptKey)].sort().join('|');
+    if (pending.current?.signature !== signature) pending.current = { signature, requestId: newRequestId() };
+    return pending.current.requestId;
+  }
+
+  async function handleRegister(draft: RegisterDraft) {
     setPaymentError(undefined);
     try {
-      const payment = await writeAndRefresh(registerPayment(request));
+      const payment = await writeAndRefresh(registerPayment({ ...draft, requestId: requestIdFor(draft) }));
+      pending.current = undefined;
       setReceipt(payment);
       setEpoch((current) => current + 1);
     } catch (error) {
