@@ -6,8 +6,9 @@ export function validRole(value: unknown): value is Role { return roles.some((ro
 export function validPassword(value: unknown): value is string { return typeof value === 'string' && value.length >= 8 && value.length <= 128; }
 
 const MAX_DISCIPLINE_IDS = 50;
+const MAX_DISCIPLINE_ID_LENGTH = 100;
 export function validDisciplineIds(value: unknown): value is string[] {
-  return Array.isArray(value) && value.length <= MAX_DISCIPLINE_IDS && value.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 100);
+  return Array.isArray(value) && value.length <= MAX_DISCIPLINE_IDS && value.every((id) => typeof id === 'string' && id.length > 0 && id.length <= MAX_DISCIPLINE_ID_LENGTH);
 }
 
 const updatableFields = new Set(['name', 'email', 'role', 'active', 'password', 'disciplineIds']);

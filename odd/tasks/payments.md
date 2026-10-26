@@ -57,6 +57,8 @@ Let the club secretariat register member payments end to end: look up a member b
   - GREEN: backend 570/570 vitest and 20/20 node, frontend 268/268 (parent re-run); `pnpm -r typecheck`, `pnpm -r build` (writer) and `git diff --check` pass. Not checked in a browser.
   - About 735 authored lines (about half tests).
   - Gaps: no retention rule for past students; a discipline deactivated after assignment still shows, a removed one is skipped.
+  - Committed as `f965018`. Gentle-AI review (consent granted, lineage `review-ecacf6a40fbffd71`, base `131885c`, 44 files, 796 lines, high risk, four lenses): approved and acknowledged; reviewed boundary is now `f965018`. The async-handler WARNINGs (`R4-async-users-handlers`, `R4-async-roster-handler`, `R3-async-handlers-unguarded`) do not apply: the backend uses Express 5.1.0, which forwards rejected promises to the error handler (checked in `backend/package.json` and `node_modules`).
+  - Follow-up (user-approved; same writer): WARNING `R3-removed-discipline-blocks-teacher-edit` fixed: on update, stored ids that no longer resolve are dropped silently and new unknown ids are still rejected; WARNING `R2-001` fixed with an explicit `Assignment` result and a single effective role; named `MAX_DISCIPLINE_ID_LENGTH`; `/api/roster` returns 401 when no user. New HTTP test through the real `createApp` wiring. RED: 2 tests failed (the stale id stayed on a name-only edit; re-sending the stored list gave `invalid`). GREEN: backend 574/574 vitest and 20/20 node (parent re-run); typecheck passes. Still open: the roster feature reuses members/disciplines helpers and CSS (move to shared).
   - Original decision: link teacher users to their disciplines and expose the roster of members per discipline to them. After P2. Decided (user, 2026-10-25): the head secretary assigns the disciplines a teacher user teaches in the user form (stored on the user, never matched by name against `discipline.teachers`); the teacher's "Mis disciplinas" section shows, per discipline, current and past students from the memberships history with name, member number, start date, end date if any and active/ended; no DNI, phone, email or debts (RNF-07).
 
 ## Open owner decisions
@@ -65,6 +67,7 @@ Let the club secretariat register member payments end to end: look up a member b
 ## Review log (findings kept as later work)
 - `6d36be6` (lineage `review-590c447fff785e7b`): approved, suggestions only: keep the R3 traceability ID in the T4 scope note (`R3-t4-acceptance-inactive-unproved`); a subprocess test that the entrypoint exits 1 on a fatal bootstrap, preferring `process.exitCode`; a test that a throwing `listen` rejects `bootstrap`.
 - `f97c7d0` (lineage `review-daeb6b4a5f1213a1`): approved, suggestions only: rename the "self-demotion" service test or move it to an HTTP test; extract `isCurrentAccount` in `UserForm`.
+- `131885c`, P1 follow-up (lineage `review-fa08aeed17091df4`): approved, suggestions only: the `MembersPage` test wrapper's default order; assert the login path also fails closed without capabilities.
 - `af64cac`, T3 (lineage `review-5fc179639aacdac0`, base `f97c7d0`, 813 lines, high risk): approved; WARNING `R2-t3-decided-read-capability-mismatch` fixed in the T3 entry wording (`config:read`); SUGGESTION: add an API test that a malformed pricing file gives 500 and stays untouched.
 
 ## Tasks

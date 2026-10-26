@@ -32,12 +32,15 @@ export interface UserServiceOptions {
 }
 
 export function createUserService(repository: UserRepository, { disciplineLookup }: UserServiceOptions = {}): UserService {
-  // The deduplicated ids when every one exists, otherwise null.
-  async function existingDisciplineIds(ids: string[]): Promise<string[] | null> {
-    const unique = [...new Set(ids)];
-    if (unique.length === 0) return unique;
+  // What a teacher ends up with. "requested" is the list sent (absent keeps the stored one). Ids already stored
+  // that no longer exist (a removed discipline) are dropped silently; a new unknown id is rejected.
+  type Assignment = { kind: 'not-teacher' } | { kind: 'invalid' } | { kind: 'valid'; ids: string[] };
+  async function teacherAssignment(requested: string[] | undefined, stored: readonly string[]): Promise<Assignment> {
+    const unique = [...new Set(requested ?? stored)];
+    if (unique.length === 0) return { kind: 'valid', ids: unique };
     const found = new Set((await disciplineLookup?.findByIds(unique) ?? []).map(({ id }) => id));
-    return unique.every((id) => found.has(id)) ? unique : null;
+    if (unique.some((id) => !found.has(id) && !stored.includes(id))) return { kind: 'invalid' };
+    return { kind: 'valid', ids: unique.filter((id) => found.has(id)) };
   }
 
   function emailTaken(email: string, exceptId?: string): boolean {
@@ -66,10 +69,10 @@ export function createUserService(repository: UserRepository, { disciplineLookup
       const { name, email, role, password, disciplineIds } = (input ?? {}) as Record<string, unknown>;
       if (!validName(name) || !validEmail(email) || !validRole(role) || !validPassword(password)) return { ok: false, failure: 'invalid' };
       if (disciplineIds !== undefined && !validDisciplineIds(disciplineIds)) return { ok: false, failure: 'invalid' };
-      const assigned = role === 'teacher' && disciplineIds ? await existingDisciplineIds(disciplineIds) : [];
-      if (!assigned) return { ok: false, failure: 'invalid' };
+      const assignment = role === 'teacher' ? await teacherAssignment(disciplineIds, []) : { kind: 'not-teacher' as const };
+      if (assignment.kind === 'invalid') return { ok: false, failure: 'invalid' };
       if (emailTaken(email)) return { ok: false, failure: 'duplicate-email' };
-      const user: DemoUser = { id: randomUUID(), name: name.trim(), email: email.trim(), role, passwordHash: hashPassword(password), active: true, ...(role === 'teacher' ? { disciplineIds: assigned } : {}) };
+      const user: DemoUser = { id: randomUUID(), name: name.trim(), email: email.trim(), role, passwordHash: hashPassword(password), active: true, ...(assignment.kind === 'valid' ? { disciplineIds: assignment.ids } : {}) };
       return commit([...repository.list(), user], user);
     },
 
@@ -78,17 +81,17 @@ export function createUserService(repository: UserRepository, { disciplineLookup
       const body = (input ?? {}) as Record<string, unknown>;
       if (!validUserUpdate(body)) return { ok: false, failure: 'invalid' };
       // Looked up before re-reading the user, so nothing changes between the last read and the write.
-      const assigned = validDisciplineIds(body.disciplineIds) ? await existingDisciplineIds(body.disciplineIds) : undefined;
+      const before = repository.list().find((candidate) => candidate.id === id);
+      const role = validRole(body.role) ? body.role : before?.role;
+      const assignment = role === 'teacher' ? await teacherAssignment(validDisciplineIds(body.disciplineIds) ? body.disciplineIds : undefined, before?.disciplineIds ?? []) : { kind: 'not-teacher' as const };
       const user = repository.list().find((candidate) => candidate.id === id);
-      if (!user) return { ok: false, failure: 'not-found' };
-      const role = validRole(body.role) ? body.role : user.role;
-      if (role === 'teacher' && assigned === null) return { ok: false, failure: 'invalid' };
+      if (!user || role === undefined) return { ok: false, failure: 'not-found' };
+      if (assignment.kind === 'invalid') return { ok: false, failure: 'invalid' };
       if (typeof body.email === 'string' && emailTaken(body.email, user.id)) return { ok: false, failure: 'duplicate-email' };
       const { disciplineIds: _previous, ...rest } = user;
-      const updated: DemoUser = { ...rest, ...(role === 'teacher' ? { disciplineIds: assigned ?? user.disciplineIds ?? [] } : {}) };
+      const updated: DemoUser = { ...rest, role, ...(assignment.kind === 'valid' ? { disciplineIds: assignment.ids } : {}) };
       if (typeof body.name === 'string') updated.name = body.name.trim();
       if (typeof body.email === 'string') updated.email = body.email.trim();
-      if (validRole(body.role)) updated.role = body.role;
       if (typeof body.active === 'boolean') updated.active = body.active;
       if (typeof body.password === 'string') updated.passwordHash = hashPassword(body.password);
       return replaceUser(updated);

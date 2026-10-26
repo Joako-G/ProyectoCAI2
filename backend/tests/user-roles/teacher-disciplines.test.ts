@@ -79,3 +79,29 @@ describe('teacher disciplines on users', () => {
     expect(auth.login({ email: emailFor('secretary'), password: TEST_PASSWORD })).not.toHaveProperty('disciplineIds');
   });
 });
+
+describe('stale disciplines on a teacher', () => {
+  async function withStale() {
+    const context = await setup();
+    context.repository.replace(context.repository.list().map((user) =>
+      user.id === 'user-teacher' ? { ...user, disciplineIds: ['d-basket', 'removed'] } : user));
+    return context;
+  }
+
+  it('lets a teacher with a removed stored discipline be edited, dropping the stale id', async () => {
+    const { service } = await withStale();
+    expect(await service.update('user-teacher', { name: 'Docente Editado' }))
+      .toMatchObject({ ok: true, user: { name: 'Docente Editado', disciplineIds: ['d-basket'] } });
+  });
+
+  it('accepts the full stored list back and drops only the stale id', async () => {
+    const { service } = await withStale();
+    expect(await service.update('user-teacher', { disciplineIds: ['d-basket', 'removed'] }))
+      .toMatchObject({ ok: true, user: { disciplineIds: ['d-basket'] } });
+  });
+
+  it('still rejects a new unknown id, even next to a stale stored one', async () => {
+    const { service } = await withStale();
+    expect(await service.update('user-teacher', { disciplineIds: ['d-basket', 'removed', 'never-existed'] })).toEqual({ ok: false, failure: 'invalid' });
+  });
+});
