@@ -33,7 +33,9 @@ export interface UserServiceOptions {
 
 export function createUserService(repository: UserRepository, { disciplineLookup }: UserServiceOptions = {}): UserService {
   type Assignment = { kind: 'not-teacher' } | { kind: 'invalid' } | { kind: 'valid'; ids: string[] };
-  type Existence = { kind: 'unknown' } | { kind: 'known'; ids: Set<string> };
+  // "unknown": no lookup is configured. "skipped": the lookup was not needed (no ids sent, or the body sets a
+  // non-teacher role), so the result must never decide a teacher assignment.
+  type Existence = { kind: 'unknown' } | { kind: 'skipped' } | { kind: 'known'; ids: Set<string> };
 
   // Which of the ids exist. Without a lookup that is unknown, which is not the same as "none exist".
   async function resolveExisting(ids: readonly string[]): Promise<Existence> {
@@ -47,6 +49,7 @@ export function createUserService(repository: UserRepository, { disciplineLookup
   // stored ids are kept and any new id is invalid.
   function assignDisciplines(sent: readonly string[] | undefined, stored: readonly string[], existence: Existence): Assignment {
     if (!sent) return { kind: 'valid', ids: [...stored] };
+    if (existence.kind === 'skipped') throw new Error('Discipline existence was skipped for a teacher assignment');
     const ids = [...new Set(sent)];
     const exists = (id: string) => existence.kind === 'known' && existence.ids.has(id);
     if (ids.some((id) => !exists(id) && !stored.includes(id))) return { kind: 'invalid' };
@@ -90,11 +93,11 @@ export function createUserService(repository: UserRepository, { disciplineLookup
       if (!repository.list().some((candidate) => candidate.id === id)) return { ok: false, failure: 'not-found' };
       const body = (input ?? {}) as Record<string, unknown>;
       if (!validUserUpdate(body)) return { ok: false, failure: 'invalid' };
-      // The lookup runs first, and only when ids are sent for a user who may stay a teacher; everything after it
-      // is one synchronous read and write.
+      // The lookup runs first, and only when ids are sent and the body does not set a non-teacher role (decided from
+      // the body alone, before the user is read); everything after it is one synchronous read and write.
       const sent = validDisciplineIds(body.disciplineIds) ? body.disciplineIds : undefined;
-      const becomesNonTeacher = validRole(body.role) && body.role !== 'teacher';
-      const existence: Existence = sent && !becomesNonTeacher ? await resolveExisting(sent) : { kind: 'unknown' };
+      const bodySetsNonTeacherRole = validRole(body.role) && body.role !== 'teacher';
+      const existence: Existence = sent && !bodySetsNonTeacherRole ? await resolveExisting(sent) : { kind: 'skipped' };
       const user = repository.list().find((candidate) => candidate.id === id);
       if (!user) return { ok: false, failure: 'not-found' };
       const role = validRole(body.role) ? body.role : user.role;
