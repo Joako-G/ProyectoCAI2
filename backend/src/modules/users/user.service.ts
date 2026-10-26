@@ -32,15 +32,23 @@ export interface UserServiceOptions {
 }
 
 export function createUserService(repository: UserRepository, { disciplineLookup }: UserServiceOptions = {}): UserService {
-  // What a teacher ends up with. "requested" is the list sent (absent keeps the stored one). Ids already stored
-  // that no longer exist (a removed discipline) are dropped silently; a new unknown id is rejected.
   type Assignment = { kind: 'not-teacher' } | { kind: 'invalid' } | { kind: 'valid'; ids: string[] };
-  async function teacherAssignment(requested: string[] | undefined, stored: readonly string[]): Promise<Assignment> {
-    const unique = [...new Set(requested ?? stored)];
-    if (unique.length === 0) return { kind: 'valid', ids: unique };
-    const found = new Set((await disciplineLookup?.findByIds(unique) ?? []).map(({ id }) => id));
-    if (unique.some((id) => !found.has(id) && !stored.includes(id))) return { kind: 'invalid' };
-    return { kind: 'valid', ids: unique.filter((id) => found.has(id)) };
+
+  // Which of the ids exist. Without a lookup nothing is known, so "undefined" is returned.
+  async function resolveExisting(ids: readonly string[]): Promise<Set<string> | undefined> {
+    if (!disciplineLookup || ids.length === 0) return undefined;
+    return new Set((await disciplineLookup.findByIds(ids)).map(({ id }) => id));
+  }
+
+  // A teacher's disciplines after "sent" (absent keeps "stored"). Stored ids that no longer exist are dropped
+  // silently when the list is sent back; a new id that does not exist is invalid. With no lookup nothing is
+  // known to be missing, so stored ids are kept and any new id is invalid.
+  function assignDisciplines(sent: readonly string[] | undefined, stored: readonly string[], existing: Set<string> | undefined): Assignment {
+    if (!sent) return { kind: 'valid', ids: [...stored] };
+    const ids = [...new Set(sent)];
+    const missing = (id: string) => !disciplineLookup || !existing?.has(id);
+    if (ids.some((id) => missing(id) && !stored.includes(id))) return { kind: 'invalid' };
+    return { kind: 'valid', ids: disciplineLookup ? ids.filter((id) => existing?.has(id)) : ids };
   }
 
   function emailTaken(email: string, exceptId?: string): boolean {
@@ -69,7 +77,7 @@ export function createUserService(repository: UserRepository, { disciplineLookup
       const { name, email, role, password, disciplineIds } = (input ?? {}) as Record<string, unknown>;
       if (!validName(name) || !validEmail(email) || !validRole(role) || !validPassword(password)) return { ok: false, failure: 'invalid' };
       if (disciplineIds !== undefined && !validDisciplineIds(disciplineIds)) return { ok: false, failure: 'invalid' };
-      const assignment = role === 'teacher' ? await teacherAssignment(disciplineIds, []) : { kind: 'not-teacher' as const };
+      const assignment = role === 'teacher' ? assignDisciplines(disciplineIds ?? [], [], await resolveExisting(disciplineIds ?? [])) : { kind: 'not-teacher' as const };
       if (assignment.kind === 'invalid') return { ok: false, failure: 'invalid' };
       if (emailTaken(email)) return { ok: false, failure: 'duplicate-email' };
       const user: DemoUser = { id: randomUUID(), name: name.trim(), email: email.trim(), role, passwordHash: hashPassword(password), active: true, ...(assignment.kind === 'valid' ? { disciplineIds: assignment.ids } : {}) };
@@ -80,18 +88,20 @@ export function createUserService(repository: UserRepository, { disciplineLookup
       if (!repository.list().some((candidate) => candidate.id === id)) return { ok: false, failure: 'not-found' };
       const body = (input ?? {}) as Record<string, unknown>;
       if (!validUserUpdate(body)) return { ok: false, failure: 'invalid' };
-      // Looked up before re-reading the user, so nothing changes between the last read and the write.
-      const before = repository.list().find((candidate) => candidate.id === id);
-      const role = validRole(body.role) ? body.role : before?.role;
-      const assignment = role === 'teacher' ? await teacherAssignment(validDisciplineIds(body.disciplineIds) ? body.disciplineIds : undefined, before?.disciplineIds ?? []) : { kind: 'not-teacher' as const };
+      // The lookup runs first, and only when ids are sent; everything after it is one synchronous read and write.
+      const sent = validDisciplineIds(body.disciplineIds) ? body.disciplineIds : undefined;
+      const existing = sent ? await resolveExisting(sent) : undefined;
       const user = repository.list().find((candidate) => candidate.id === id);
-      if (!user || role === undefined) return { ok: false, failure: 'not-found' };
+      if (!user) return { ok: false, failure: 'not-found' };
+      const role = validRole(body.role) ? body.role : user.role;
+      const assignment = role === 'teacher' ? assignDisciplines(sent, user.disciplineIds ?? [], existing) : { kind: 'not-teacher' as const };
       if (assignment.kind === 'invalid') return { ok: false, failure: 'invalid' };
       if (typeof body.email === 'string' && emailTaken(body.email, user.id)) return { ok: false, failure: 'duplicate-email' };
       const { disciplineIds: _previous, ...rest } = user;
-      const updated: DemoUser = { ...rest, role, ...(assignment.kind === 'valid' ? { disciplineIds: assignment.ids } : {}) };
+      const updated: DemoUser = { ...rest, ...(assignment.kind === 'valid' ? { disciplineIds: assignment.ids } : {}) };
       if (typeof body.name === 'string') updated.name = body.name.trim();
       if (typeof body.email === 'string') updated.email = body.email.trim();
+      if (validRole(body.role)) updated.role = body.role;
       if (typeof body.active === 'boolean') updated.active = body.active;
       if (typeof body.password === 'string') updated.passwordHash = hashPassword(body.password);
       return replaceUser(updated);

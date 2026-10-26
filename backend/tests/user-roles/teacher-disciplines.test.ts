@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { DisciplineIdLookup } from '../../src/modules/users/discipline-lookup.js';
 import { createAuthService } from '../../src/modules/auth/auth.service.js';
 import { UserRepository } from '../../src/modules/users/user.repository.js';
 import { createUserService } from '../../src/modules/users/user.service.js';
@@ -80,28 +81,66 @@ describe('teacher disciplines on users', () => {
   });
 });
 
-describe('stale disciplines on a teacher', () => {
-  async function withStale() {
-    const context = await setup();
-    context.repository.replace(context.repository.list().map((user) =>
+describe('stored disciplines on update', () => {
+  async function withStale(lookup?: DisciplineIdLookup | null) {
+    const file = await createUsersFile(['head_secretary', 'teacher', 'secretary']);
+    cleanups.push(file.cleanup);
+    const repository = new UserRepository(file.storePath);
+    repository.replace(repository.list().map((user) =>
       user.id === 'user-teacher' ? { ...user, disciplineIds: ['d-basket', 'removed'] } : user));
-    return context;
+    const findByIds = vi.fn(async (ids: readonly string[]) => ids.filter((id) => known.includes(id)).map((id) => ({ id })));
+    const disciplineLookup = lookup === null ? undefined : lookup ?? { findByIds };
+    return { repository, findByIds, service: createUserService(repository, { disciplineLookup }) };
   }
+  const stored = (repository: UserRepository, id = 'user-teacher') => repository.list().find((user) => user.id === id);
 
-  it('lets a teacher with a removed stored discipline be edited, dropping the stale id', async () => {
-    const { service } = await withStale();
+  it('keeps the stored ids and never calls the lookup when disciplineIds is not sent', async () => {
+    const { service, findByIds, repository } = await withStale();
     expect(await service.update('user-teacher', { name: 'Docente Editado' }))
-      .toMatchObject({ ok: true, user: { name: 'Docente Editado', disciplineIds: ['d-basket'] } });
+      .toMatchObject({ ok: true, user: { name: 'Docente Editado', disciplineIds: ['d-basket', 'removed'] } });
+    expect(findByIds).not.toHaveBeenCalled();
+    expect(stored(repository)?.disciplineIds).toEqual(['d-basket', 'removed']);
   });
 
-  it('accepts the full stored list back and drops only the stale id', async () => {
+  it('keeps the stored ids when no lookup is configured', async () => {
+    const { service } = await withStale(null);
+    expect(await service.update('user-teacher', { name: 'Sin Lookup' })).toMatchObject({ ok: true, user: { disciplineIds: ['d-basket', 'removed'] } });
+    expect(await service.update('user-teacher', { disciplineIds: ['d-basket', 'removed'] })).toMatchObject({ ok: true, user: { disciplineIds: ['d-basket', 'removed'] } });
+    expect(await service.update('user-teacher', { disciplineIds: ['d-basket', 'd-volley'] })).toEqual({ ok: false, failure: 'invalid' });
+  });
+
+  it('drops only the stale stored id when the full list is sent back', async () => {
     const { service } = await withStale();
-    expect(await service.update('user-teacher', { disciplineIds: ['d-basket', 'removed'] }))
-      .toMatchObject({ ok: true, user: { disciplineIds: ['d-basket'] } });
+    expect(await service.update('user-teacher', { disciplineIds: ['d-basket', 'removed'] })).toMatchObject({ ok: true, user: { disciplineIds: ['d-basket'] } });
   });
 
   it('still rejects a new unknown id, even next to a stale stored one', async () => {
     const { service } = await withStale();
     expect(await service.update('user-teacher', { disciplineIds: ['d-basket', 'removed', 'never-existed'] })).toEqual({ ok: false, failure: 'invalid' });
+  });
+
+  it('clears the ids when a teacher becomes a secretary, and gives a new teacher none or the sent ones', async () => {
+    const { service, repository } = await withStale();
+    const demoted = await service.update('user-teacher', { role: 'secretary' });
+    expect(demoted.ok && 'disciplineIds' in demoted.user).toBe(false);
+    expect(stored(repository)).not.toHaveProperty('disciplineIds');
+    expect(await service.update('user-teacher', { role: 'teacher' })).toMatchObject({ ok: true, user: { role: 'teacher', disciplineIds: [] } });
+    expect(await service.update('user-secretary', { role: 'teacher', disciplineIds: ['d-volley'] })).toMatchObject({ ok: true, user: { disciplineIds: ['d-volley'] } });
+  });
+
+  it('does not revert a role change made while the lookup was running', async () => {
+    let repository!: UserRepository;
+    const lookup: DisciplineIdLookup = {
+      findByIds: async (ids) => {
+        repository.replace(repository.list().map((user) => user.id === 'user-teacher' ? { ...user, role: 'secretary' } : user));
+        return ids.filter((id) => known.includes(id)).map((id) => ({ id }));
+      },
+    };
+    const context = await withStale(lookup);
+    repository = context.repository;
+    const result = await context.service.update('user-teacher', { disciplineIds: ['d-basket'] });
+    expect(result.ok && result.user.role).toBe('secretary');
+    expect(result.ok && 'disciplineIds' in result.user).toBe(false);
+    expect(stored(repository)?.role).toBe('secretary');
   });
 });
