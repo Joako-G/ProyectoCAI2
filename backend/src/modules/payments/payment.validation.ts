@@ -26,7 +26,10 @@ function parseRegistration(value: unknown): RegistrationRequest | undefined {
 export const REQUEST_ID_MIN = 8;
 export const REQUEST_ID_MAX = 100;
 
-/** The idempotency key of a registration: required, so a retried request can never charge twice. */
+/**
+ * Shape check of an idempotency key: trimmed text of 8 to 100 characters. It does not decide whether the key
+ * is required: the HTTP body parser (`parseRegisterBody`) requires it, while the service treats it as optional.
+ */
 export function parseRequestId(value: unknown): string {
   const text = typeof value === 'string' ? value.trim() : '';
   if (text.length < REQUEST_ID_MIN || text.length > REQUEST_ID_MAX) {

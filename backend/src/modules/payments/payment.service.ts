@@ -71,6 +71,8 @@ function sameConcepts(payment: Payment, concepts: readonly ChargeConcept[]): boo
   return JSON.stringify(stored) === JSON.stringify(concepts.map(conceptKey).sort());
 }
 
+// Stored activity lines always carry a disciplineId (the repository shape check refuses a file otherwise),
+// so the empty fallback only satisfies the optional type and can never cause a false match or a false 409.
 function lineKey(line: Payment['lines'][number]): string {
   if (line.kind === 'socialFee') return conceptKey({ kind: 'socialFee', period: line.period });
   if (line.kind === 'activityFee') return conceptKey({ kind: 'activityFee', period: line.period, disciplineId: line.disciplineId ?? '' });

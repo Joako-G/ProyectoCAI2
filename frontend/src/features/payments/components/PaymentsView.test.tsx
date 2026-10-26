@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildDiscipline } from '../../disciplines/test/fixtures';
@@ -413,6 +413,57 @@ describe('PaymentsView idempotent registration', () => {
     expect(callsTo(fetchMock, HISTORY)).toHaveLength(2);
   });
 
+  it.each([
+    ['a 502', () => failure(502, 'Bad gateway')()],
+    ['a network error', () => { throw new TypeError('Failed to fetch'); }],
+  ])('stores one payment when the response is lost (%s) and the operator confirms again after the form remounts', async (_name, lose) => {
+    // Fake server that dedupes by requestId like the backend: the first POST is saved, then its answer is lost.
+    const stored: Array<ReturnType<typeof buildPayment>> = [];
+    let posts = 0;
+    const fetchMock = stubApi({
+      [HISTORY]: () => jsonResponse(stored),
+      'POST /api/payments': () => {
+        const body = JSON.parse(String(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST' && String(init.body).includes('requestId')).at(-1)?.[1]?.body));
+        let payment = stored.find((entry) => (entry as { requestId?: string }).requestId === body.requestId);
+        if (!payment) {
+          payment = buildPayment({ id: 'pay-carnet', receiptNumber: 9, paymentDate: '2026-10-26', lines: [{ kind: 'carnetReplacement', period: '2026-10', amount: 13000 }], total: 13000, ...{ requestId: body.requestId } });
+          stored.push(payment);
+        }
+        return ++posts === 1 ? lose() : jsonResponse(payment, 201);
+      },
+      'POST /api/payments/preview': () => jsonResponse({ lines: [{ kind: 'carnetReplacement', period: '2026-10', amount: 13000 }], total: 13000 }),
+    });
+    const user = await openMember();
+    await screen.findByRole('region', { name: 'Registrar cobro' });
+
+    async function prepareCarnetOnly() {
+      for (const name of ['Cuota social 09/2026', 'Cuota de Básquet 09/2026', 'Cuota social 10/2026', 'Cuota de Básquet 10/2026']) {
+        const box = within(formRegion()).getByRole('checkbox', { name });
+        if ((box as HTMLInputElement).checked) await user.click(box);
+      }
+      await user.click(within(formRegion()).getByRole('checkbox', { name: 'Reposición de carnet' }));
+      await previewAll(user);
+      await user.click(within(formRegion()).getByRole('radio', { name: 'Efectivo' }));
+    }
+
+    await prepareCarnetOnly();
+    await confirm(user);
+    await within(formRegion()).findByRole('alert');
+    // The re-read shows the saved payment, so the form was rebuilt from scratch.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Ver comprobante 9' })).toBeInTheDocument());
+    expect(within(formRegion()).getByRole('checkbox', { name: 'Reposición de carnet' })).not.toBeChecked();
+
+    await prepareCarnetOnly();
+    await confirm(user);
+
+    const receipt = await screen.findByRole('region', { name: 'Comprobante' });
+    expect(receipt).toHaveTextContent('Comprobante N° 9');
+    const ids = requestIds(fetchMock);
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).toBe(ids[1]);
+    expect(stored).toHaveLength(1);
+  });
+
   it('shows a neutral banner with a retry when the re-read after a failed write also fails', async () => {
     let reads = 0;
     const fetchMock = stubApi({
@@ -446,15 +497,20 @@ describe('PaymentsView preview failures', () => {
 
   it('ignores a preview that answers after the selection changed', async () => {
     let release: () => void = () => {};
-    stubApi({ 'POST /api/payments/preview': () => new Promise<Response>((resolve) => { release = () => resolve(jsonResponse(buildCharge())); }) });
+    const late = jsonResponse(buildCharge());
+    stubApi({ 'POST /api/payments/preview': () => new Promise<Response>((resolve) => { release = () => resolve(late); }) });
     const user = await openMember();
     await screen.findByRole('region', { name: 'Registrar cobro' });
     await user.click(within(formRegion()).getByRole('button', { name: 'Calcular total' }));
     expect(await within(formRegion()).findByRole('button', { name: 'Calculando…' })).toBeDisabled();
 
     await user.click(within(formRegion()).getByRole('checkbox', { name: 'Cuota social 10/2026' }));
+    expect(within(formRegion()).getByRole('button', { name: 'Calcular total' })).toBeEnabled();
     release();
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    // Observable signal: the client has read the late response body. Flushing the queued work that follows
+    // it, the stale answer must not have produced a preview.
+    await waitFor(() => expect(late.bodyUsed).toBe(true));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
 
     expect(screen.queryByRole('table', { name: 'Detalle del cobro' })).not.toBeInTheDocument();
     expect(within(formRegion()).getByRole('button', { name: 'Calcular total' })).toBeEnabled();
