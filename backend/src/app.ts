@@ -12,6 +12,7 @@ import type { MemberService } from './modules/members/member.service.js';
 import { createMembershipsRouter } from './modules/memberships/membership.routes.js';
 import type { MembershipService } from './modules/memberships/membership.service.js';
 import { createPricingConfigRouter } from './modules/payments/pricing-config.routes.js';
+import type { PaymentService } from './modules/payments/payment.service.js';
 import type { PricingConfigService } from './modules/payments/pricing-config.service.js';
 import { createRosterRouter } from './modules/roster/roster.routes.js';
 import type { RosterService } from './modules/roster/roster.service.js';
@@ -26,6 +27,8 @@ export interface AppDependencies {
   disciplineService?: DisciplineService;
   membershipService?: MembershipService;
   pricingConfigService?: PricingConfigService;
+  // Accepted so the wiring is in place; the /api/payments routes are mounted by a later task.
+  paymentService?: PaymentService;
   rosterService?: RosterService;
   storePath?: string;
   // Origin allowed to send credentialed requests; defaults to the Vite dev server.

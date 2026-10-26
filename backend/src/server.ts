@@ -1,6 +1,14 @@
 import { createApp } from './app.js';
-import { disciplinesFilePath, membershipsFilePath, membersFilePath, pricingConfigFilePath } from './config/paths.js';
+import {
+  disciplinesFilePath,
+  membershipsFilePath,
+  membersFilePath,
+  paymentsFilePath,
+  pricingConfigFilePath,
+} from './config/paths.js';
 import { createJsonPricingConfigRepository } from './modules/payments/json-pricing-config.repository.js';
+import { createJsonPaymentRepository } from './modules/payments/json-payment.repository.js';
+import { createPaymentService } from './modules/payments/payment.service.js';
 import { createPricingConfigService } from './modules/payments/pricing-config.service.js';
 import { createJsonDisciplineRepository } from './modules/disciplines/json-discipline.repository.js';
 import { createDisciplineService } from './modules/disciplines/discipline.service.js';
@@ -33,9 +41,16 @@ const memberService = createMemberService({
 const pricingConfigService = createPricingConfigService({
   repository: createJsonPricingConfigRepository(pricingConfigFilePath()),
 });
+// Payments are append-only receipts; the HTTP routes arrive in a later task, so nothing mounts this yet.
+const paymentService = createPaymentService({
+  repository: createJsonPaymentRepository(paymentsFilePath()),
+  members: memberService,
+  memberships: membershipService,
+  pricing: pricingConfigService,
+});
 // A teacher's roster is composed from the three services through the roster module's own ports.
 const rosterService = createRosterService({ memberships: membershipService, members: memberService, disciplines: disciplineService });
-const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService, rosterService });
+const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService, paymentService, rosterService });
 
 bootstrap({
   memberService,

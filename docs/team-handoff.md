@@ -33,7 +33,7 @@ These are current project-owner clarifications for the demo flow. The spreadshee
 | Carnet | The first carnet is free. A replacement costs `$3,000`. |
 | Overdue months | Each overdue month is charged at the tariff that was in force for that month, so tariffs need an effective date. |
 | Deregistration | More than 3 unpaid months means deregistered. Re-registering requires paying everything again as a first-time member, enrollment included. |
-| Partial payments | Not accepted. Each concept is paid in full; there is no credit. A paid/unpaid state per concept is enough. |
+| Partial payments | Not accepted (confirmed by the club owners on 2026-10-26, overriding RF-12 of the requirements PDF). Each concept is paid in full; there is no credit. A paid/unpaid state per concept is enough. |
 | Advance payment | Paying months ahead is only a club custom (allowed up to the month before a price rise), not a system rule. |
 | Member account states | The working states are up to date (no debt), debtor, and deregistered. Track unpaid concepts and periods so balances remain accurate even when the member pays components in a flexible order. |
 
@@ -67,6 +67,9 @@ The user identified frontend routing and authentication-based route protection a
 Tariffs, late-surcharge tiers, the new-member proration (cutoff day and percentage), discounts, promotions, and price increases must not be hardcoded. Plan an administrator-only configuration section that edits them, with an effective date on each tariff so past and overdue periods keep the price in force at the time. Configuration depends on role-based authorization being in place first.
 
 Implemented backend side: `/api/pricing` (read: secretary and head secretary; writes: head secretary only), stored in `backend/data/pricing-config.json` (or `PRICING_CONFIG_FILE`; a missing file means the default prices). Tariffs of past months cannot be edited or deleted; a price rise is a new tariff with a later `effectiveFrom`. Discounts and promotions are not configurable yet.
+
+Payments are stored append-only in `backend/data/payments.json` (or `PAYMENTS_FILE`); a payment snapshots its charge lines, and an annulment is a recorded reason, actor and date on the payment, never a deletion.
+Receipt numbers are correlative integers allocated in the same write as the payment, never reused (also not after an annulment). The service is wired in `server.ts`; the HTTP routes come later.
 
 PostgreSQL, migrations, Docker, and biometric access remain separate decisions; do not use real club/member records or credentials for demonstrations.
 
