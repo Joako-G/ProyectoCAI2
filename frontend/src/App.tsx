@@ -5,6 +5,7 @@ import { useSession } from './features/auth/hooks/useSession';
 import type { AuthUser } from './features/auth/types/auth';
 import { can } from './features/auth/utils/can';
 import { DisciplinesView } from './features/disciplines/components/DisciplinesView';
+import { PricingView } from './features/pricing/components/PricingView';
 import { RosterView } from './features/roster/components/RosterView';
 import { MembersView } from './features/members/components/MembersView';
 import { UsersView } from './features/users/components/UsersView';
@@ -17,6 +18,7 @@ const PAGES: Record<Section, { title: string; subtitle: string }> = {
   disciplines: { title: 'Disciplinas', subtitle: 'Catálogo de disciplinas y sus profesores' },
   users: { title: 'Usuarios', subtitle: 'Administración de cuentas de demostración' },
   roster: { title: 'Mis disciplinas', subtitle: 'Alumnos actuales y anteriores de sus disciplinas' },
+  pricing: { title: 'Precios', subtitle: 'Tarifas, recargos por pago tardío y prorrateo' },
 };
 
 export function App() {
@@ -52,6 +54,7 @@ export function App() {
     {view === 'members' ? <MembersView canWrite={can(user, 'members:write')} />
       : view === 'disciplines' ? <DisciplinesView canWrite={can(user, 'disciplines:write')} />
         : view === 'roster' ? <RosterView />
-          : <UsersView currentUserId={user.id} />}
+          : view === 'pricing' ? <PricingView canWrite={can(user, 'config:manage')} />
+            : <UsersView currentUserId={user.id} />}
   </AppShell>;
 }

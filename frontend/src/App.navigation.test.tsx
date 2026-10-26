@@ -84,6 +84,35 @@ describe('role-based navigation', () => {
     expect(fetch).not.toHaveBeenCalledWith('/api/members', expect.anything());
   });
 
+  it('shows Precios to config:read holders, editable only with config:manage', async () => {
+    const config = { tariffs: [{ effectiveFrom: '2026-10', enrollment: 1, socialFee: 1, activityFee: 1, carnetReplacement: 1 }], surchargeTiers: [{ fromDay: 1, amount: 0 }], prorationRule: { afterDay: 15, activityPercent: 50 } };
+    const stub = (capabilities: Capability[]) => {
+      stubSession('secretary', capabilities);
+      const base = fetch as unknown as (input: RequestInfo | URL) => Promise<Response>;
+      vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => (input === '/api/pricing' ? json(config) : base(input))));
+    };
+    const user = userEvent.setup();
+
+    stub([...SECRETARY, 'config:read']);
+    const readOnly = render(<App />);
+    await user.click(await screen.findByRole('link', { name: /Precios/ }));
+    expect(await screen.findByRole('table', { name: 'Tarifas' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Agregar tarifa' })).not.toBeInTheDocument();
+    readOnly.unmount();
+
+    stub([...SECRETARY, 'config:read', 'config:manage']);
+    render(<App />);
+    await user.click(await screen.findByRole('link', { name: /Precios/ }));
+    expect(await screen.findByRole('button', { name: 'Agregar tarifa' })).toBeInTheDocument();
+  });
+
+  it('hides Precios from a role without config:read', async () => {
+    stubSession('teacher', ['roster:read']);
+    render(<App />);
+    await screen.findByRole('heading', { level: 1, name: 'Mis disciplinas' });
+    expect(screen.queryByRole('link', { name: /Precios/ })).not.toBeInTheDocument();
+  });
+
   it('shows a role without capabilities no sections, a neutral notice, and keeps the session panel', async () => {
     stubSession('unassigned', []);
     render(<App />);

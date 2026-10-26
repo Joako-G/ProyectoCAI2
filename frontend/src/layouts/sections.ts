@@ -1,7 +1,7 @@
 import type { AuthUser, Capability } from '../features/auth/types/auth';
 import { can } from '../features/auth/utils/can';
 
-export type Section = 'members' | 'disciplines' | 'users' | 'roster';
+export type Section = 'members' | 'disciplines' | 'users' | 'roster' | 'pricing';
 
 /** Navigation order; each section needs one capability to be reachable. */
 export const SECTIONS: ReadonlyArray<{ id: Section; label: string; capability: Capability }> = [
@@ -9,6 +9,7 @@ export const SECTIONS: ReadonlyArray<{ id: Section; label: string; capability: C
   { id: 'disciplines', label: 'Disciplinas', capability: 'disciplines:read' },
   { id: 'users', label: 'Usuarios', capability: 'users:manage' },
   { id: 'roster', label: 'Mis disciplinas', capability: 'roster:read' },
+  { id: 'pricing', label: 'Precios', capability: 'config:read' },
 ];
 
 /** The sections a user may open, in navigation order. */
