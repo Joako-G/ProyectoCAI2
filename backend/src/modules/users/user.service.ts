@@ -33,22 +33,24 @@ export interface UserServiceOptions {
 
 export function createUserService(repository: UserRepository, { disciplineLookup }: UserServiceOptions = {}): UserService {
   type Assignment = { kind: 'not-teacher' } | { kind: 'invalid' } | { kind: 'valid'; ids: string[] };
+  type Existence = { kind: 'unknown' } | { kind: 'known'; ids: Set<string> };
 
-  // Which of the ids exist. Without a lookup nothing is known, so "undefined" is returned.
-  async function resolveExisting(ids: readonly string[]): Promise<Set<string> | undefined> {
-    if (!disciplineLookup || ids.length === 0) return undefined;
-    return new Set((await disciplineLookup.findByIds(ids)).map(({ id }) => id));
+  // Which of the ids exist. Without a lookup that is unknown, which is not the same as "none exist".
+  async function resolveExisting(ids: readonly string[]): Promise<Existence> {
+    if (!disciplineLookup) return { kind: 'unknown' };
+    if (ids.length === 0) return { kind: 'known', ids: new Set() };
+    return { kind: 'known', ids: new Set((await disciplineLookup.findByIds(ids)).map(({ id }) => id)) };
   }
 
   // A teacher's disciplines after "sent" (absent keeps "stored"). Stored ids that no longer exist are dropped
-  // silently when the list is sent back; a new id that does not exist is invalid. With no lookup nothing is
-  // known to be missing, so stored ids are kept and any new id is invalid.
-  function assignDisciplines(sent: readonly string[] | undefined, stored: readonly string[], existing: Set<string> | undefined): Assignment {
+  // silently when the list is sent back; a new id that does not exist is invalid. When existence is unknown,
+  // stored ids are kept and any new id is invalid.
+  function assignDisciplines(sent: readonly string[] | undefined, stored: readonly string[], existence: Existence): Assignment {
     if (!sent) return { kind: 'valid', ids: [...stored] };
     const ids = [...new Set(sent)];
-    const missing = (id: string) => !disciplineLookup || !existing?.has(id);
-    if (ids.some((id) => missing(id) && !stored.includes(id))) return { kind: 'invalid' };
-    return { kind: 'valid', ids: disciplineLookup ? ids.filter((id) => existing?.has(id)) : ids };
+    const exists = (id: string) => existence.kind === 'known' && existence.ids.has(id);
+    if (ids.some((id) => !exists(id) && !stored.includes(id))) return { kind: 'invalid' };
+    return { kind: 'valid', ids: existence.kind === 'known' ? ids.filter(exists) : ids };
   }
 
   function emailTaken(email: string, exceptId?: string): boolean {
@@ -88,20 +90,22 @@ export function createUserService(repository: UserRepository, { disciplineLookup
       if (!repository.list().some((candidate) => candidate.id === id)) return { ok: false, failure: 'not-found' };
       const body = (input ?? {}) as Record<string, unknown>;
       if (!validUserUpdate(body)) return { ok: false, failure: 'invalid' };
-      // The lookup runs first, and only when ids are sent; everything after it is one synchronous read and write.
+      // The lookup runs first, and only when ids are sent for a user who may stay a teacher; everything after it
+      // is one synchronous read and write.
       const sent = validDisciplineIds(body.disciplineIds) ? body.disciplineIds : undefined;
-      const existing = sent ? await resolveExisting(sent) : undefined;
+      const becomesNonTeacher = validRole(body.role) && body.role !== 'teacher';
+      const existence: Existence = sent && !becomesNonTeacher ? await resolveExisting(sent) : { kind: 'unknown' };
       const user = repository.list().find((candidate) => candidate.id === id);
       if (!user) return { ok: false, failure: 'not-found' };
       const role = validRole(body.role) ? body.role : user.role;
-      const assignment = role === 'teacher' ? assignDisciplines(sent, user.disciplineIds ?? [], existing) : { kind: 'not-teacher' as const };
+      const assignment = role === 'teacher' ? assignDisciplines(sent, user.disciplineIds ?? [], existence) : { kind: 'not-teacher' as const };
       if (assignment.kind === 'invalid') return { ok: false, failure: 'invalid' };
       if (typeof body.email === 'string' && emailTaken(body.email, user.id)) return { ok: false, failure: 'duplicate-email' };
       const { disciplineIds: _previous, ...rest } = user;
-      const updated: DemoUser = { ...rest, ...(assignment.kind === 'valid' ? { disciplineIds: assignment.ids } : {}) };
+      // `role` comes from this same read, so writing it never reverts a concurrent role change.
+      const updated: DemoUser = { ...rest, role, ...(assignment.kind === 'valid' ? { disciplineIds: assignment.ids } : {}) };
       if (typeof body.name === 'string') updated.name = body.name.trim();
       if (typeof body.email === 'string') updated.email = body.email.trim();
-      if (validRole(body.role)) updated.role = body.role;
       if (typeof body.active === 'boolean') updated.active = body.active;
       if (typeof body.password === 'string') updated.passwordHash = hashPassword(body.password);
       return replaceUser(updated);

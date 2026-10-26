@@ -109,6 +109,13 @@ describe('stored disciplines on update', () => {
     expect(await service.update('user-teacher', { disciplineIds: ['d-basket', 'd-volley'] })).toEqual({ ok: false, failure: 'invalid' });
   });
 
+  it('does not call the lookup when the body sets a non-teacher role, even with disciplineIds', async () => {
+    const { service, findByIds, repository } = await withStale();
+    expect(await service.update('user-teacher', { role: 'secretary', disciplineIds: ['d-basket'] })).toMatchObject({ ok: true, user: { role: 'secretary' } });
+    expect(findByIds).not.toHaveBeenCalled();
+    expect(stored(repository)).not.toHaveProperty('disciplineIds');
+  });
+
   it('drops only the stale stored id when the full list is sent back', async () => {
     const { service } = await withStale();
     expect(await service.update('user-teacher', { disciplineIds: ['d-basket', 'removed'] })).toMatchObject({ ok: true, user: { disciplineIds: ['d-basket'] } });
@@ -122,6 +129,7 @@ describe('stored disciplines on update', () => {
   it('clears the ids when a teacher becomes a secretary, and gives a new teacher none or the sent ones', async () => {
     const { service, repository } = await withStale();
     const demoted = await service.update('user-teacher', { role: 'secretary' });
+    expect(demoted.ok).toBe(true);
     expect(demoted.ok && 'disciplineIds' in demoted.user).toBe(false);
     expect(stored(repository)).not.toHaveProperty('disciplineIds');
     expect(await service.update('user-teacher', { role: 'teacher' })).toMatchObject({ ok: true, user: { role: 'teacher', disciplineIds: [] } });
