@@ -13,8 +13,8 @@ export function PricingView({ canWrite }: { canWrite: boolean }) {
   // Every write re-reads the configuration so the screen shows what the server stored. A failed write
   // whose outcome is unknown or stale is re-read too, and its error still reaches the section.
   const writeAndRefresh = (write: Promise<unknown>) =>
-    write.then(refresh, async (error: unknown) => {
-      if (isAmbiguousWriteFailure(error)) await refresh();
+    write.then(() => refresh('after-save'), async (error: unknown) => {
+      if (isAmbiguousWriteFailure(error)) await refresh('after-failure');
       throw error;
     });
 
@@ -38,8 +38,13 @@ export function PricingView({ canWrite }: { canWrite: boolean }) {
     <div className="pricing-view">
       {stale ? (
         <div className="form-alert pricing-stale" role="alert">
-          <p>El cambio se guardó, pero no se pudo actualizar la lista. Reintentá para ver los datos al día.</p>
-          <button type="button" className="button button--secondary" onClick={refresh}>Reintentar</button>
+          {/* Only a write the server confirmed may be called saved. */}
+          <p>
+            {stale === 'after-save'
+              ? 'El cambio se guardó, pero no se pudo actualizar la lista. Reintentá para ver los datos al día.'
+              : 'No se pudo actualizar la lista con los datos del servidor. Reintentá para verlos al día.'}
+          </p>
+          <button type="button" className="button button--secondary" onClick={() => refresh(stale)}>Reintentar</button>
         </div>
       ) : null}
       <TariffsSection

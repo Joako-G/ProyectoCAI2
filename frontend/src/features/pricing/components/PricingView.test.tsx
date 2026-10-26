@@ -288,6 +288,57 @@ describe('PricingView', () => {
     expect(tariffsRegion()).toBeInTheDocument();
   });
 
+  it('never claims the change was saved when the write failed and the re-read failed too', async () => {
+    const config = buildPricingConfig();
+    let reads = 0;
+    vi.stubGlobal('fetch', vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') throw new TypeError('offline');
+      reads += 1;
+      if (reads > 1) throw new TypeError('offline');
+      return jsonResponse(config);
+    }));
+    const user = userEvent.setup();
+    render(<PricingView canWrite />);
+    await screen.findByRole('table', { name: 'Tarifas' });
+
+    await fillNewTariff(user);
+
+    expect(await within(tariffsRegion()).findByRole('alert')).toHaveTextContent('No se pudo conectar con el servidor.');
+    const banner = await screen.findByText(/No se pudo actualizar la lista/);
+    expect(banner).not.toHaveTextContent('se guardó');
+  });
+
+  it('keeps the newest re-read when an older one finishes later', async () => {
+    const config = buildPricingConfig();
+    const newer = buildPricingConfig();
+    newer.tariffs.push(buildTariff({ effectiveFrom: '2027-04' }));
+    let reads = 0;
+    let releaseOld: () => void = () => undefined;
+    vi.stubGlobal('fetch', vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'POST' || init?.method === 'PUT') return jsonResponse(JSON.parse(String(init.body)), init.method === 'POST' ? 201 : 200);
+      reads += 1;
+      if (reads === 1) return jsonResponse(config);
+      if (reads === 2) {
+        await new Promise<void>((resolve) => { releaseOld = resolve; });
+        throw new TypeError('offline');
+      }
+      return jsonResponse(newer);
+    }));
+    const user = userEvent.setup();
+    render(<PricingView canWrite />);
+    await screen.findByRole('table', { name: 'Tarifas' });
+
+    await fillNewTariff(user);
+    await user.click(within(screen.getByRole('region', { name: /prorrateo/i })).getByRole('button', { name: 'Guardar prorrateo' }));
+    expect(await screen.findByRole('row', { name: /04\/2027/ })).toBeInTheDocument();
+    releaseOld();
+    // Let the older, failing re-read settle; it must not raise the stale warning over the newer data.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(screen.queryByText(/actualizar la lista/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('row', { name: /04\/2027/ })).toBeInTheDocument();
+  });
+
   it('re-reads after a write that failed with a network error and keeps the error visible', async () => {
     const config = buildPricingConfig();
     const fetchMock = stubApi(config);
