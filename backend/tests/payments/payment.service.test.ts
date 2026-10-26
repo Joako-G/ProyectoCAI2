@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { ChargeConcept } from '../../src/modules/payments/charge.types.js';
+import { createJsonPaymentRepository } from '../../src/modules/payments/json-payment.repository.js';
 import { createPaymentService } from '../../src/modules/payments/payment.service.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../src/shared/errors.js';
 import { ACTOR, MEMBER_ID, membership, trackContexts } from './payment.helpers.js';
@@ -22,7 +23,7 @@ describe('preview', () => {
   it('prices a first-time registration with the enrollment fee', async () => {
     const { service } = await contexts.create();
     const charge = await service.preview(MEMBER_ID, [{ kind: 'enrollment' }, social('2026-10'), activity('2026-10')], {
-      registration: { enrollmentDate: '2026-10-05' },
+      registration: {},
     });
     expect(charge.total).toBe(60_000);
   });
@@ -295,11 +296,12 @@ describe('server-owned enrollment date', () => {
   it('ignores a backdated enrollmentDate in preview and register', async () => {
     const { service } = await contexts.create();
     const concepts = [{ kind: 'enrollment' as const }, social('2026-10'), activity('2026-10')];
-    const honest = await service.preview(MEMBER_ID, concepts, { registration: { enrollmentDate: '2026-10-05' } });
+    const honest = await service.preview(MEMBER_ID, concepts, { registration: {} });
     // A day-20 enrollment would prorate the activity fee; the server uses today (the 5th) instead.
-    const backdated = await service.preview(MEMBER_ID, concepts, { registration: { enrollmentDate: '2026-10-20' } });
+    const sentByClient = { enrollmentDate: '2026-10-20' };
+    const backdated = await service.preview(MEMBER_ID, concepts, { registration: sentByClient });
     expect(backdated).toEqual(honest);
-    const payment = await service.register(MEMBER_ID, { concepts, method: 'cash', registration: { enrollmentDate: '2026-01-01' } }, ACTOR);
+    const payment = await service.register(MEMBER_ID, { concepts, method: 'cash', registration: { enrollmentDate: '2026-01-01' } as object }, ACTOR);
     expect(payment.total).toBe(honest.total);
     expect(payment.registration).toEqual({ enrollmentDate: '2026-10-05' });
   });
@@ -307,7 +309,7 @@ describe('server-owned enrollment date', () => {
   it('uses the club-local today as the enrollment date', async () => {
     const { service } = await contexts.create({ now: () => new Date('2026-10-20T15:00:00Z') });
     const charge = await service.preview(MEMBER_ID, [{ kind: 'enrollment' }, social('2026-10'), activity('2026-10')], {
-      registration: { enrollmentDate: '2026-10-01' },
+      registration: {},
     });
     // Registered on the 20th: the activity fee is prorated to half; the social fee never is.
     expect(charge.lines.find((line) => line.kind === 'activityFee')!.amount).toBe(10_000);
@@ -324,5 +326,31 @@ describe('account without tariffs', () => {
       pricing: { get: async () => ({ tariffs: [], surchargeTiers: [], prorationRule: { afterDay: 15, activityPercent: 50 } }) },
     });
     await expect(service.account(MEMBER_ID)).rejects.toBeInstanceOf(ConflictError);
+  });
+});
+
+describe('stored lines round trip', () => {
+  it('reads back every kind of line the service writes through a fresh repository', async () => {
+    // Day 21: late payments carry the highest surcharge tier.
+    const context = await contexts.create({ now: () => new Date('2026-10-21T15:00:00Z') });
+    await context.service.register(MEMBER_ID, {
+      concepts: [{ kind: 'enrollment' }, social('2026-10'), activity('2026-10')], method: 'cash', registration: {},
+    }, ACTOR);
+    const late = await context.service.register(MEMBER_ID, { concepts: [activity('2026-09', 'volley')], method: 'qr' }, ACTOR);
+    await context.service.register(MEMBER_ID, { concepts: [{ kind: 'carnetReplacement' }], method: 'debit' }, ACTOR);
+    expect(late.lines.map((line) => line.kind)).toContain('activitySurcharge');
+
+    const reopened = createPaymentService({
+      repository: createJsonPaymentRepository(context.file),
+      now: () => new Date('2026-10-21T15:00:00Z'),
+      pricing: context.pricing,
+      members: { getById: async () => context.members[0]! },
+      memberships: { list: async () => context.memberships },
+    });
+    const history = await reopened.history(MEMBER_ID);
+    expect(history.map((entry) => entry.receiptNumber)).toEqual([1, 2, 3]);
+    const kinds = history.flatMap((entry) => entry.lines.map((line) => line.kind));
+    expect(kinds).toEqual(expect.arrayContaining(['enrollment', 'socialFee', 'activityFee', 'activitySurcharge', 'carnetReplacement']));
+    await expect(reopened.account(MEMBER_ID)).resolves.toMatchObject({ memberId: MEMBER_ID });
   });
 });

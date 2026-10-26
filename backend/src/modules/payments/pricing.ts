@@ -20,7 +20,7 @@ export const DEFAULT_SURCHARGE_TIERS: readonly SurchargeTier[] = [
 
 export const DEFAULT_PRORATION_RULE: ProrationRule = { afterDay: 15, activityPercent: 50 };
 
-const PERIOD_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
+export const PERIOD_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 const MAX_DAY_OF_MONTH = 31;
 
 function fail(field: string, message: string): never {

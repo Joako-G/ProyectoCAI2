@@ -1,6 +1,6 @@
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import type { Role } from '../../src/modules/users/user.types.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
@@ -12,7 +12,8 @@ const cookies = {} as Record<Role, string>;
 const cleanups: Array<() => Promise<void>> = [];
 
 // Today is 2026-10-05 in the test context. Lucia owes September and October (basket, active since 2026-09).
-beforeAll(async () => {
+// Every test gets its own server and files, so no test relies on a payment made by another one.
+beforeEach(async () => {
   const users = await createUsersFile();
   const context = await createTestContext({
     members: [
@@ -28,9 +29,9 @@ beforeAll(async () => {
   for (const role of ['head_secretary', 'secretary', 'teacher'] as const) cookies[role] = await signIn(baseUrl, role);
 });
 
-afterAll(async () => {
+afterEach(async () => {
   await new Promise<void>((resolve) => server.close(() => resolve()));
-  for (const cleanup of cleanups) await cleanup();
+  while (cleanups.length > 0) await cleanups.pop()!();
 });
 
 function send(method: string, path: string, role?: Role, body?: unknown) {
@@ -103,6 +104,11 @@ describe('payments API: account and preview', () => {
     expect(honest.total).toBe(60_000);
   });
 
+  it('trims the memberId', async () => {
+    const response = await send('POST', '/api/payments/preview', 'secretary', { memberId: ` ${MEMBER_ID} `, concepts: [social('2026-10')] });
+    expect(response.status).toBe(200);
+  });
+
   it('answers 400 for malformed bodies', async () => {
     expect((await send('POST', '/api/payments/preview', 'secretary', { concepts: [social('2026-10')] })).status).toBe(400);
     expect((await send('POST', '/api/payments/preview', 'secretary', { memberId: MEMBER_ID, concepts: 'x' })).status).toBe(400);
@@ -129,6 +135,8 @@ describe('payments API: register, receipts and annulment', () => {
   });
 
   it('answers 409 for an already settled concept and an inactive member, 404 for unknown ones', async () => {
+    const first = await send('POST', '/api/payments', 'secretary', { memberId: MEMBER_ID, ...pay([social('2026-10')]) });
+    expect(first.status).toBe(201);
     expect((await send('POST', '/api/payments', 'secretary', { memberId: MEMBER_ID, ...pay([social('2026-10')]) })).status).toBe(409);
     expect((await send('POST', '/api/payments', 'secretary', { memberId: 'member-old', ...pay([social('2026-08')]) })).status).toBe(409);
     expect((await send('POST', '/api/payments', 'secretary', { memberId: 'nobody', ...pay([social('2026-10')]) })).status).toBe(404);

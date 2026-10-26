@@ -4,7 +4,7 @@ import { ConflictError, NotFoundError, ValidationError } from '../../shared/erro
 import type { Membership } from '../memberships/membership.types.js';
 import { accountStanding, conceptKey, owedConcepts, settledKeys, type AccountMember } from './account.js';
 import { calculateCharge } from './charge.js';
-import type { Charge, ChargeConcept } from './charge.types.js';
+import type { Charge, ChargeConcept, FirstTimeRegistration } from './charge.types.js';
 import type { PaymentRepository } from './payment.repository.js';
 import {
   PAYMENT_METHODS,
@@ -71,16 +71,21 @@ function earliestTariffPeriod(config: PricingConfig): string {
 export function createPaymentService({ repository, members, memberships, pricing, now = () => new Date() }: PaymentServiceDeps) {
   const today = () => toIsoDate(now());
 
-  function chargeFor(config: PricingConfig, concepts: ChargeConcept[], registration: boolean): Charge {
+  function chargeFor(config: PricingConfig, concepts: ChargeConcept[], registration: FirstTimeRegistration | undefined): Charge {
     return calculateCharge({
       tariffs: config.tariffs,
       surchargeTiers: config.surchargeTiers,
       prorationRule: config.prorationRule,
       paymentDate: today(),
       concepts,
-      // A first-time registration is charged on the day it is made; a client-sent date is never trusted.
-      ...(registration ? { registration: { enrollmentDate: today() } } : {}),
+      ...(registration ? { registration } : {}),
     });
+  }
+
+  // A first-time registration is charged on the day it is made; a client-sent date is never trusted.
+  // The one place the enrollment date is decided, used for pricing and for the stored payment.
+  function registrationFor(request: PreviewOptions['registration']): FirstTimeRegistration | undefined {
+    return request ? { enrollmentDate: today() } : undefined;
   }
 
   async function findPayment(match: (payment: Payment) => boolean): Promise<Payment> {
@@ -93,7 +98,7 @@ export function createPaymentService({ repository, members, memberships, pricing
     // The charge for the given concepts as of today, without writing anything.
     async preview(memberId: string, concepts: readonly ChargeConcept[], options: PreviewOptions = {}): Promise<Charge> {
       await members.getById(memberId);
-      return chargeFor(await pricing.get(), sanitizeConcepts(concepts), options.registration !== undefined);
+      return chargeFor(await pricing.get(), sanitizeConcepts(concepts), registrationFor(options.registration));
     },
 
     // Recomputes the charge server-side and writes one payment with the next receipt number, atomically.
@@ -106,12 +111,12 @@ export function createPaymentService({ repository, members, memberships, pricing
       const concepts = sanitizeConcepts(input.concepts);
       if (member.status !== 'active') throw new ConflictError('Inactive members cannot make payments');
       const config = await pricing.get();
-      const registration = input.registration ? { enrollmentDate: today() } : undefined;
+      const registration = registrationFor(input.registration);
       return repository.mutate((payments) => {
         const settled = settledKeys(payments, memberId);
         const alreadyPaid = concepts.map(conceptKey).filter((key) => settled.has(key));
         if (alreadyPaid.length > 0) throw new ConflictError(`Already paid: ${alreadyPaid.join(', ')}`);
-        const charge = chargeFor(config, concepts, registration !== undefined);
+        const charge = chargeFor(config, concepts, registration);
         // Annulled payments stay in the list, so the maximum never goes back and numbers are never reused.
         const receiptNumber = payments.reduce((highest, payment) => Math.max(highest, payment.receiptNumber), 0) + 1;
         const payment: Payment = {

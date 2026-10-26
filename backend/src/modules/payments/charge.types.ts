@@ -24,7 +24,8 @@ export interface ChargeInput {
   concepts: readonly ChargeConcept[];
 }
 
-export type ChargeLineKind = 'enrollment' | 'socialFee' | 'activityFee' | 'activitySurcharge' | 'carnetReplacement';
+export const CHARGE_LINE_KINDS = ['enrollment', 'socialFee', 'activityFee', 'activitySurcharge', 'carnetReplacement'] as const;
+export type ChargeLineKind = (typeof CHARGE_LINE_KINDS)[number];
 
 export interface ChargeLine {
   kind: ChargeLineKind;

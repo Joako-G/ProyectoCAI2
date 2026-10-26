@@ -51,12 +51,10 @@ export interface MemberAccount {
 }
 
 /**
- * Asks for a first-time registration. Any `enrollmentDate` sent is ignored: the service always uses the
- * club-local date it takes the payment on, so a client cannot backdate the enrollment to dodge the proration.
+ * Asks for a first-time registration. It carries no date on purpose: the service charges the registration
+ * on the club-local day it takes the payment, so a client cannot backdate the enrollment to dodge the proration.
  */
-export interface RegistrationRequest {
-  enrollmentDate?: ClubDate;
-}
+export type RegistrationRequest = object;
 
 export interface RegisterPaymentInput {
   concepts: readonly ChargeConcept[];

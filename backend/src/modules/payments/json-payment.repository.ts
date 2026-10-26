@@ -1,4 +1,6 @@
 import { createJsonStore } from '../../database/json-store.js';
+import { CHARGE_LINE_KINDS } from './charge.types.js';
+import { PERIOD_PATTERN } from './pricing.js';
 import type { PaymentRepository } from './payment.repository.js';
 import { PAYMENT_METHODS, type Payment } from './payment.types.js';
 
@@ -6,11 +8,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-const LINE_KINDS = ['enrollment', 'socialFee', 'activityFee', 'activitySurcharge', 'carnetReplacement'];
-const PERIOD_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 function isWellShapedLine(line: Record<string, unknown>): boolean {
-  if (!LINE_KINDS.includes(line.kind as string)) return false;
+  if (!CHARGE_LINE_KINDS.includes(line.kind as never)) return false;
   if (typeof line.period !== 'string' || !PERIOD_PATTERN.test(line.period)) return false;
   if (!Number.isSafeInteger(line.amount) || (line.amount as number) < 0) return false;
   const needsDiscipline = line.kind === 'activityFee' || line.kind === 'activitySurcharge';
