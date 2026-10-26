@@ -7,6 +7,7 @@ export type Capability =
   | 'disciplines:write'
   | 'users:manage'
   | 'roster:read'
+  | 'payments:read'
   | 'payments:collect'
   | 'payments:annul'
   | 'cashcount:run'

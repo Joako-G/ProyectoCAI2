@@ -24,6 +24,12 @@ describe('sectionsFor', () => {
     expect(sectionsFor(userWith(['roster:read']))).not.toContain('pricing');
   });
 
+  it('gives the payments section to payments:read holders and never to a teacher', () => {
+    expect(sectionsFor(userWith(['members:read', 'payments:read']))).toEqual(['members', 'payments']);
+    expect(sectionsFor(userWith(['payments:collect', 'payments:annul']))).toEqual([]);
+    expect(sectionsFor(userWith(['roster:read']))).not.toContain('payments');
+  });
+
   it('is empty for a user without capabilities', () => {
     expect(sectionsFor(userWith([]))).toEqual([]);
   });

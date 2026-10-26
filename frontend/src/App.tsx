@@ -5,6 +5,7 @@ import { useSession } from './features/auth/hooks/useSession';
 import type { AuthUser } from './features/auth/types/auth';
 import { can } from './features/auth/utils/can';
 import { DisciplinesView } from './features/disciplines/components/DisciplinesView';
+import { PaymentsView } from './features/payments/components/PaymentsView';
 import { PricingView } from './features/pricing/components/PricingView';
 import { RosterView } from './features/roster/components/RosterView';
 import { MembersView } from './features/members/components/MembersView';
@@ -16,6 +17,7 @@ import { sectionsFor, type Section } from './layouts/sections';
 const PAGES: Record<Section, { title: string; subtitle: string }> = {
   members: { title: 'Socios', subtitle: 'Búsqueda por N° de socio, DNI o nombre' },
   disciplines: { title: 'Disciplinas', subtitle: 'Catálogo de disciplinas y sus profesores' },
+  payments: { title: 'Cobros', subtitle: 'Cobro de cuotas por DNI, comprobantes y anulaciones' },
   users: { title: 'Usuarios', subtitle: 'Administración de cuentas de demostración' },
   roster: { title: 'Mis disciplinas', subtitle: 'Alumnos actuales y anteriores de sus disciplinas' },
   pricing: { title: 'Precios', subtitle: 'Tarifas, recargos por pago tardío y prorrateo' },
@@ -53,8 +55,9 @@ export function App() {
   return <AppShell title={title} subtitle={subtitle} section={view} {...shellProps}>
     {view === 'members' ? <MembersView canWrite={can(user, 'members:write')} />
       : view === 'disciplines' ? <DisciplinesView canWrite={can(user, 'disciplines:write')} />
-        : view === 'roster' ? <RosterView />
-          : view === 'pricing' ? <PricingView canWrite={can(user, 'config:manage')} />
-            : <UsersView currentUserId={user.id} />}
+        : view === 'payments' ? <PaymentsView canCollect={can(user, 'payments:collect')} canAnnul={can(user, 'payments:annul')} />
+          : view === 'roster' ? <RosterView />
+            : view === 'pricing' ? <PricingView canWrite={can(user, 'config:manage')} />
+              : <UsersView currentUserId={user.id} />}
   </AppShell>;
 }
