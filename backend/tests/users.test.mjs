@@ -48,7 +48,8 @@ test('lists safe user fields and creates users with a server-generated scrypt ha
   assert.equal(initial.status, 200);
   const initialUsers = await initial.json();
   assert.ok(initialUsers.length >= 2);
-  assert.ok(initialUsers.every((user) => Object.keys(user).sort().join(',') === 'active,email,id,name,role'));
+  // Only teachers carry the extra disciplineIds field.
+  assert.ok(initialUsers.every((user) => Object.keys(user).sort().join(',') === (user.role === 'teacher' ? 'active,disciplineIds,email,id,name,role' : 'active,email,id,name,role')));
 
   const created = await request('/users', 'POST', {
     name: 'New Member', email: 'new@club.test', role: 'secretary', password: 'ValidPass123!',

@@ -13,6 +13,8 @@ import { createMembershipsRouter } from './modules/memberships/membership.routes
 import type { MembershipService } from './modules/memberships/membership.service.js';
 import { createPricingConfigRouter } from './modules/payments/pricing-config.routes.js';
 import type { PricingConfigService } from './modules/payments/pricing-config.service.js';
+import { createRosterRouter } from './modules/roster/roster.routes.js';
+import type { RosterService } from './modules/roster/roster.service.js';
 import { UserRepository, defaultUsersFilePath } from './modules/users/user.repository.js';
 import { createUsersRouter } from './modules/users/user.routes.js';
 import { createUserService, hasActiveHeadSecretary } from './modules/users/user.service.js';
@@ -24,6 +26,7 @@ export interface AppDependencies {
   disciplineService?: DisciplineService;
   membershipService?: MembershipService;
   pricingConfigService?: PricingConfigService;
+  rosterService?: RosterService;
   storePath?: string;
   // Origin allowed to send credentialed requests; defaults to the Vite dev server.
   frontendOrigin?: string;
@@ -50,7 +53,7 @@ const sessions = createSessionStore();
 const authenticate = createAuthenticator(sessions, authService);
 
 app.use('/auth', createAuthRouter(authService, sessions, authenticate));
-app.use('/users', requireCapability(authenticate, 'users:manage'), createUsersRouter(createUserService(repository)));
+app.use('/users', requireCapability(authenticate, 'users:manage'), createUsersRouter(createUserService(repository, { disciplineLookup: options.disciplineService })));
 
 // Every route below needs a session and a role allowed by modules/auth/permissions.ts; only /auth and /health are public.
 if (options.memberService) {
@@ -65,6 +68,9 @@ if (options.membershipService) {
 }
 if (options.pricingConfigService) {
   app.use('/api/pricing', requireCapabilityByMethod(authenticate, { read: 'config:read', write: 'config:manage' }), createPricingConfigRouter(options.pricingConfigService));
+}
+if (options.rosterService) {
+  app.use('/api/roster', requireCapability(authenticate, 'roster:read'), createRosterRouter(options.rosterService, authenticate));
 }
 app.use('/api', apiNotFound);
 app.use(errorHandler);

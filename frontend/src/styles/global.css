@@ -924,3 +924,14 @@ a:hover {
   display: flex;
   gap: 8px;
 }
+
+/* Teacher roster */
+
+.roster-block + .roster-block {
+  margin-top: 28px;
+}
+
+.roster-block__title {
+  margin: 0 0 12px;
+  font-size: 16px;
+}

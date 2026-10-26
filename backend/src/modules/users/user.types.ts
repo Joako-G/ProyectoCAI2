@@ -12,6 +12,8 @@ export interface DemoUser {
   // Stored text: may be a legacy or unknown role from an old file; narrow it with validRole before trusting it.
   role: string;
   active: boolean;
+  // Teachers only: the disciplines they teach, assigned by the head secretary. Absent on older records.
+  disciplineIds?: string[];
 }
 
 export type SafeUser = Omit<DemoUser, 'passwordHash'>;

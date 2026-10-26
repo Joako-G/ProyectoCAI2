@@ -13,6 +13,11 @@ describe('sectionsFor', () => {
     expect(sectionsFor(userWith(['members:read', 'members:write', 'disciplines:read']))).toEqual(['members', 'disciplines']);
   });
 
+  it('gives a teacher the roster section', () => {
+    expect(sectionsFor(userWith(['roster:read']))).toEqual(['roster']);
+    expect(sectionsFor(userWith(['members:read', 'roster:read']))).toEqual(['members', 'roster']);
+  });
+
   it('is empty for a user without capabilities', () => {
     expect(sectionsFor(userWith([]))).toEqual([]);
   });

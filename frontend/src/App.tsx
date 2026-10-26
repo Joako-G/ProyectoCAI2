@@ -5,6 +5,7 @@ import { useSession } from './features/auth/hooks/useSession';
 import type { AuthUser } from './features/auth/types/auth';
 import { can } from './features/auth/utils/can';
 import { DisciplinesView } from './features/disciplines/components/DisciplinesView';
+import { RosterView } from './features/roster/components/RosterView';
 import { MembersView } from './features/members/components/MembersView';
 import { UsersView } from './features/users/components/UsersView';
 import { AppShell } from './layouts/AppShell';
@@ -15,6 +16,7 @@ const PAGES: Record<Section, { title: string; subtitle: string }> = {
   members: { title: 'Socios', subtitle: 'Búsqueda por N° de socio, DNI o nombre' },
   disciplines: { title: 'Disciplinas', subtitle: 'Catálogo de disciplinas y sus profesores' },
   users: { title: 'Usuarios', subtitle: 'Administración de cuentas de demostración' },
+  roster: { title: 'Mis disciplinas', subtitle: 'Alumnos actuales y anteriores de sus disciplinas' },
 };
 
 export function App() {
@@ -49,6 +51,7 @@ export function App() {
   return <AppShell title={title} subtitle={subtitle} section={view} {...shellProps}>
     {view === 'members' ? <MembersView canWrite={can(user, 'members:write')} />
       : view === 'disciplines' ? <DisciplinesView canWrite={can(user, 'disciplines:write')} />
-        : <UsersView currentUserId={user.id} />}
+        : view === 'roster' ? <RosterView />
+          : <UsersView currentUserId={user.id} />}
   </AppShell>;
 }

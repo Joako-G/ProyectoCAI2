@@ -5,12 +5,17 @@ export function validEmail(value: unknown): value is string { return typeof valu
 export function validRole(value: unknown): value is Role { return roles.some((role) => role === value); }
 export function validPassword(value: unknown): value is string { return typeof value === 'string' && value.length >= 8 && value.length <= 128; }
 
-const updatableFields = new Set(['name', 'email', 'role', 'active', 'password']);
+const MAX_DISCIPLINE_IDS = 50;
+export function validDisciplineIds(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length <= MAX_DISCIPLINE_IDS && value.every((id) => typeof id === 'string' && id.length > 0 && id.length <= 100);
+}
+
+const updatableFields = new Set(['name', 'email', 'role', 'active', 'password', 'disciplineIds']);
 
 // Rejects unknown keys (including passwordHash), invalid values, and empty updates.
 export function validUserUpdate(body: Record<string, unknown>): boolean {
   return !(Object.keys(body).some((key) => !updatableFields.has(key)) || Object.hasOwn(body, 'passwordHash') ||
     (body.name !== undefined && !validName(body.name)) || (body.email !== undefined && !validEmail(body.email)) ||
     (body.role !== undefined && !validRole(body.role)) || (body.active !== undefined && typeof body.active !== 'boolean') ||
-    (body.password !== undefined && !validPassword(body.password)) || Object.keys(body).length === 0);
+    (body.password !== undefined && !validPassword(body.password)) || (body.disciplineIds !== undefined && !validDisciplineIds(body.disciplineIds)) || Object.keys(body).length === 0);
 }

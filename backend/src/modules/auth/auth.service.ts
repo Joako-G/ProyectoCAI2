@@ -1,5 +1,6 @@
 import { verifyPassword } from '../users/password.js';
 import type { UserRepository } from '../users/user.repository.js';
+import { disciplinesOf } from '../users/user.service.js';
 import type { DemoUser } from '../users/user.types.js';
 import type { AuthenticatedUser } from './auth.types.js';
 
@@ -10,8 +11,9 @@ export interface AuthService {
   getActiveUser(id: string): AuthenticatedUser | null;
 }
 
-function toAuthenticatedUser({ id, name, email, role }: DemoUser): AuthenticatedUser {
-  return { id, name, email, role };
+function toAuthenticatedUser(user: DemoUser): AuthenticatedUser {
+  const { id, name, email, role } = user;
+  return { id, name, email, role, ...disciplinesOf(user) };
 }
 
 export function createAuthService(repository: UserRepository): AuthService {

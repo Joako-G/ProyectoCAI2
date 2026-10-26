@@ -7,6 +7,8 @@ export interface ManagedUser {
   email: string;
   role: string;
   active: boolean;
+  /** Teachers only: the disciplines they teach. */
+  disciplineIds?: string[];
 }
 
 export interface UserFormValues {
@@ -15,6 +17,8 @@ export interface UserFormValues {
   role: UserRole;
   password: string;
   active: boolean;
+  /** Only sent for teachers. */
+  disciplineIds: string[];
 }
 
 export interface UserPayload {
@@ -23,4 +27,5 @@ export interface UserPayload {
   role: UserRole;
   password?: string;
   active?: boolean;
+  disciplineIds?: string[];
 }

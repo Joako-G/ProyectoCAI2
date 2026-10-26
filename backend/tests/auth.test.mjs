@@ -143,7 +143,7 @@ test('login and /auth/me report the capabilities of each role', async () => {
   const expected = {
     'demo@club.test': { includes: ['members:write', 'disciplines:write', 'users:manage'], excludes: [] },
     'secretary@club.test': { includes: ['members:read', 'members:write', 'disciplines:read'], excludes: ['disciplines:write', 'users:manage'] },
-    'teacher@club.test': { includes: [], excludes: ['members:read', 'disciplines:read', 'users:manage'] },
+    'teacher@club.test': { includes: ['roster:read'], excludes: ['members:read', 'disciplines:read', 'users:manage'] },
   };
   for (const [email, { includes, excludes }] of Object.entries(expected)) {
     const login = await signIn(email);
@@ -156,7 +156,7 @@ test('login and /auth/me report the capabilities of each role', async () => {
     for (const capability of excludes) assert.ok(!loginCapabilities.includes(capability), `${email} should not have ${capability}`);
   }
   const teacher = await signIn('teacher@club.test');
-  assert.deepEqual((await teacher.json()).capabilities, []);
+  assert.deepEqual((await teacher.json()).capabilities, ['roster:read']);
 });
 
 test('/users requires a session and unwired API routes still answer 404', async () => {

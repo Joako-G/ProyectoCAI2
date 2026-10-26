@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { emptyUserForm, roleLabel, roleOptions, toFormValues, toUserPayload, userInitial } from './user-format';
 
-const form = { name: '  Ana Pérez ', email: ' ana@club.test ', role: 'head_secretary' as const, password: '', active: false };
+const form = { name: '  Ana Pérez ', email: ' ana@club.test ', role: 'head_secretary' as const, password: '', active: false, disciplineIds: ['disc-1'] };
 
 describe('user-format', () => {
   it('labels known roles in Spanish and falls back to the raw role', () => {
@@ -35,6 +35,14 @@ describe('user-format', () => {
 
   it('loads an existing user into the form with an empty password', () => {
     expect(toFormValues({ id: '1', name: 'Ana', email: 'ana@club.test', role: 'teacher', active: true }))
-      .toEqual({ name: 'Ana', email: 'ana@club.test', role: 'teacher', password: '', active: true });
+      .toEqual({ name: 'Ana', email: 'ana@club.test', role: 'teacher', password: '', active: true, disciplineIds: [] });
+    expect(toFormValues({ id: '1', name: 'Ana', email: 'ana@club.test', role: 'teacher', active: true, disciplineIds: ['disc-2'] }).disciplineIds)
+      .toEqual(['disc-2']);
+  });
+
+  it('sends the assigned disciplines only for teachers', () => {
+    expect(toUserPayload({ ...form, role: 'teacher' }, false))
+      .toEqual({ name: 'Ana Pérez', email: 'ana@club.test', role: 'teacher', disciplineIds: ['disc-1'] });
+    expect(toUserPayload({ ...form, role: 'secretary' }, false)).not.toHaveProperty('disciplineIds');
   });
 });

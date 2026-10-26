@@ -8,7 +8,7 @@ export const roleOptions: ReadonlyArray<{ value: UserRole; label: string }> = [
 
 const roleLabels: Record<string, string> = Object.fromEntries(roleOptions.map(({ value, label }) => [value, label]));
 
-export const emptyUserForm: UserFormValues = { name: '', email: '', role: 'secretary', password: '', active: true };
+export const emptyUserForm: UserFormValues = { name: '', email: '', role: 'secretary', password: '', active: true, disciplineIds: [] };
 
 export function roleLabel(role: string): string {
   return roleLabels[role] ?? role;
@@ -19,15 +19,16 @@ export function userInitial(name: string): string {
 }
 
 export function toFormValues(user: ManagedUser): UserFormValues {
-  return { name: user.name, email: user.email, role: user.role as UserRole, password: '', active: user.active };
+  return { name: user.name, email: user.email, role: user.role as UserRole, password: '', active: user.active, disciplineIds: user.disciplineIds ?? [] };
 }
 
-/** A blank password keeps the current one; `active` is only sent when editing. */
+/** A blank password keeps the current one; `active` is only sent when editing and `disciplineIds` only for teachers. */
 export function toUserPayload(form: UserFormValues, editing: boolean): UserPayload {
   return {
     name: form.name.trim(),
     email: form.email.trim(),
     role: form.role,
+    ...(form.role === 'teacher' ? { disciplineIds: form.disciplineIds } : {}),
     ...(form.password ? { password: form.password } : {}),
     ...(editing ? { active: form.active } : {}),
   };

@@ -37,14 +37,14 @@ describe('user roles', () => {
     const { repository } = await usersFor(['head_secretary']);
     const service = createUserService(repository);
     const base = { name: 'Some Name', email: 'new@club.test', password: 'ValidPass123!' };
-    for (const role of ['admin', 'member']) expect(service.create({ ...base, role })).toEqual({ ok: false, failure: 'invalid' });
-    expect(service.update('user-head_secretary', { role: 'admin' })).toEqual({ ok: false, failure: 'invalid' });
-    expect(service.create({ ...base, role: 'teacher' }).ok).toBe(true);
+    for (const role of ['admin', 'member']) expect(await service.create({ ...base, role })).toEqual({ ok: false, failure: 'invalid' });
+    expect(await service.update('user-head_secretary', { role: 'admin' })).toEqual({ ok: false, failure: 'invalid' });
+    expect((await service.create({ ...base, role: 'teacher' })).ok).toBe(true);
   });
 
   it('persists the migrated role names on the next save', async () => {
     const { repository, storePath } = await usersFor(['admin']);
-    expect(createUserService(repository).update('user-admin', { name: 'Renamed Admin' }).ok).toBe(true);
+    expect((await createUserService(repository).update('user-admin', { name: 'Renamed Admin' })).ok).toBe(true);
     expect(JSON.parse(await readFile(storePath, 'utf8'))[0].role).toBe('head_secretary');
   });
 
@@ -59,8 +59,8 @@ describe('last head secretary guard', () => {
     const { repository, storePath } = await usersFor(['head_secretary', 'secretary']);
     const before = await readFile(storePath, 'utf8');
     const service = createUserService(repository);
-    expect(service.update('user-head_secretary', { role: 'secretary' })).toEqual({ ok: false, failure: 'last-head-secretary' });
-    expect(service.update('user-head_secretary', { role: 'teacher', name: 'Other Name' })).toEqual({ ok: false, failure: 'last-head-secretary' });
+    expect(await service.update('user-head_secretary', { role: 'secretary' })).toEqual({ ok: false, failure: 'last-head-secretary' });
+    expect(await service.update('user-head_secretary', { role: 'teacher', name: 'Other Name' })).toEqual({ ok: false, failure: 'last-head-secretary' });
     expect(await readFile(storePath, 'utf8')).toBe(before);
     expect(repository.list().find((user) => user.id === 'user-head_secretary')?.role).toBe('head_secretary');
   });
@@ -68,16 +68,16 @@ describe('last head secretary guard', () => {
   it('rejects deactivating the last head secretary, by update or by delete', async () => {
     const { repository } = await usersFor(['head_secretary', 'secretary']);
     const service = createUserService(repository);
-    expect(service.update('user-head_secretary', { active: false })).toEqual({ ok: false, failure: 'last-head-secretary' });
+    expect(await service.update('user-head_secretary', { active: false })).toEqual({ ok: false, failure: 'last-head-secretary' });
     expect(service.deactivate('user-head_secretary')).toEqual({ ok: false, failure: 'last-head-secretary' });
   });
 
   it('allows the change while another active head secretary remains, and other edits on the last one', async () => {
     const { repository } = await usersFor(['head_secretary', 'secretary']);
     const service = createUserService(repository);
-    expect(service.update('user-head_secretary', { name: 'Renamed Head' }).ok).toBe(true);
-    expect(service.create({ name: 'Second Head', email: 'second@club.test', role: 'head_secretary', password: 'ValidPass123!' }).ok).toBe(true);
-    expect(service.update('user-head_secretary', { role: 'secretary' }).ok).toBe(true);
+    expect((await service.update('user-head_secretary', { name: 'Renamed Head' })).ok).toBe(true);
+    expect((await service.create({ name: 'Second Head', email: 'second@club.test', role: 'head_secretary', password: 'ValidPass123!' })).ok).toBe(true);
+    expect((await service.update('user-head_secretary', { role: 'secretary' })).ok).toBe(true);
     expect(service.deactivate('user-secretary').ok).toBe(true);
   });
 

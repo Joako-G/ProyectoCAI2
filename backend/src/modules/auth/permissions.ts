@@ -11,6 +11,8 @@ export const permissions = {
   'disciplines:read': ['secretary', 'head_secretary'],
   'disciplines:write': ['head_secretary'],
   'users:manage': ['head_secretary'],
+  // A teacher reads the students of the disciplines assigned to their own account (RF-20), nothing else.
+  'roster:read': ['teacher'],
   // Future (payments, configuration): declared with the decided roles, not used by any route yet.
   'payments:collect': ['secretary', 'head_secretary'],
   'payments:annul': ['head_secretary'],

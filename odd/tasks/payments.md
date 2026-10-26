@@ -50,7 +50,14 @@ Let the club secretariat register member payments end to end: look up a member b
 - Original P2 note (superseded history; see "P2 done" above): `requireAuth` only checks the session and protects `/users`; `role` is a free `string` on users and members/disciplines are still open. Needed before T5–T6 (annulment) and T3 (configuration writes). Confirm the exact role names, including "Head of Secretariat", with the owners and the teammate who owns `users`.
 
 ## Additional tasks
-- [ ] T9 — Teacher roster (RF-20): link teacher users to their disciplines and expose the roster of members per discipline to them. After P2.
+- [x] T9 — Teacher roster (RF-20). Done 2026-10-25 (route: delegated direct writer, because it touches 2+ non-trivial files):
+  - Backend: new `modules/roster/` (`GET /api/roster`, capability `roster:read`, teacher only; disciplines come only from the signed-in teacher's `disciplineIds`, a query parameter is ignored; response `[{ discipline: { id, name }, students: [{ memberId, memberNumber, fullName, startDate, endDate?, status }] }]`, no DNI/contact/payment data; disciplines by name, students active first then by name). Users accept and return `disciplineIds` for teachers only (validated through an injected `DisciplineIdLookup`; cleared when the role changes); `UserService.create`/`update` became async. `/auth/login` and `/auth/me` include `disciplineIds` for teachers.
+  - Frontend: `features/roster/` (container `RosterView`, presentational `RosterBlock`, hook, API client), section "Mis disciplinas" in `sections.ts`, checkbox group "Disciplinas que dicta" in `UserForm` for teachers only.
+  - RED: backend 10 tests failed (missing roster module, `disciplineIds` not stored); frontend 7 tests failed (unresolved `./RosterView` and `./roster-api`, `sectionsFor` returned `[]`, missing "Disciplinas que dicta" group and "Mis disciplinas" heading).
+  - GREEN: backend 570/570 vitest and 20/20 node, frontend 268/268 (parent re-run); `pnpm -r typecheck`, `pnpm -r build` (writer) and `git diff --check` pass. Not checked in a browser.
+  - About 735 authored lines (about half tests).
+  - Gaps: no retention rule for past students; a discipline deactivated after assignment still shows, a removed one is skipped.
+  - Original decision: link teacher users to their disciplines and expose the roster of members per discipline to them. After P2. Decided (user, 2026-10-25): the head secretary assigns the disciplines a teacher user teaches in the user form (stored on the user, never matched by name against `discipline.teachers`); the teacher's "Mis disciplinas" section shows, per discipline, current and past students from the memberships history with name, member number, start date, end date if any and active/ended; no DNI, phone, email or debts (RNF-07).
 
 ## Open owner decisions
 - RF-12 (Esencial) requires partial payments with a pending balance; the owner said partial payments are not accepted. Blocks T5; the user is asking the club owners (2026-10-25).

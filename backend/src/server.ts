@@ -7,6 +7,7 @@ import { createDisciplineService } from './modules/disciplines/discipline.servic
 import { createJsonMembershipRepository } from './modules/memberships/json-membership.repository.js';
 import { createMembershipService } from './modules/memberships/membership.service.js';
 import { createJsonMemberRepository } from './modules/members/json-member.repository.js';
+import { createRosterService } from './modules/roster/roster.service.js';
 import { createMemberService } from './modules/members/member.service.js';
 import { bootstrap } from './startup.js';
 import { toIsoDate } from './shared/date.js';
@@ -32,7 +33,9 @@ const memberService = createMemberService({
 const pricingConfigService = createPricingConfigService({
   repository: createJsonPricingConfigRepository(pricingConfigFilePath()),
 });
-const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService });
+// A teacher's roster is composed from the three services through the roster module's own ports.
+const rosterService = createRosterService({ memberships: membershipService, members: memberService, disciplines: disciplineService });
+const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService, rosterService });
 
 bootstrap({
   memberService,

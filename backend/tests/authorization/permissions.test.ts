@@ -18,17 +18,18 @@ describe('permission policy', () => {
   });
 
   it('derives the capabilities of a role from the policy and gives unknown roles none', () => {
-    expect(capabilitiesFor('head_secretary')).toEqual(Object.keys(permissions));
+    expect(capabilitiesFor('head_secretary')).toEqual(Object.keys(permissions).filter((capability) => capability !== 'roster:read'));
     expect(capabilitiesFor('secretary')).toContain('members:write');
     expect(capabilitiesFor('secretary')).not.toContain('disciplines:write');
     expect(capabilitiesFor('secretary')).not.toContain('users:manage');
-    expect(capabilitiesFor('teacher')).toEqual([]);
+    expect(capabilitiesFor('teacher')).toEqual(['roster:read']);
     expect(capabilitiesFor('treasurer')).toEqual([]);
   });
 
-  it('gives the teacher no capability yet and only declares known roles', () => {
+  it('gives the teacher only the roster of their own disciplines and declares only known roles', () => {
+    expect(allowed('roster:read')).toEqual(['teacher']);
     for (const capability of Object.keys(permissions) as Capability[]) {
-      expect(permissions[capability]).not.toContain('teacher');
+      if (capability !== 'roster:read') expect(permissions[capability]).not.toContain('teacher');
       for (const role of permissions[capability]) expect(roles).toContain(role);
     }
   });

@@ -74,8 +74,18 @@ describe('role-based navigation', () => {
     expect(screen.getByRole('button', { name: 'Dar de baja' })).toBeInTheDocument();
   });
 
-  it('shows a teacher no sections, a neutral notice, and keeps the session panel', async () => {
-    stubSession('teacher', []);
+  it('shows a teacher only Mis disciplinas and loads their roster, never the member list', async () => {
+    stubSession('teacher', ['roster:read']);
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Mis disciplinas' })).toBeInTheDocument();
+    expect(navLinks().map((link) => link.textContent)).toEqual(['01Mis disciplinas']);
+    expect(fetch).toHaveBeenCalledWith('/api/roster', expect.anything());
+    expect(fetch).not.toHaveBeenCalledWith('/api/members', expect.anything());
+  });
+
+  it('shows a role without capabilities no sections, a neutral notice, and keeps the session panel', async () => {
+    stubSession('unassigned', []);
     render(<App />);
 
     expect(await screen.findByText('Tu rol todavía no tiene secciones disponibles.')).toBeInTheDocument();
