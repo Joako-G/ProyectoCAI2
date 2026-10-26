@@ -76,6 +76,17 @@ describe('register', () => {
     expect(await repository.list()).toHaveLength(1);
   });
 
+  it('rejects a concept repeated inside one register and writes nothing', async () => {
+    const { service, repository } = await contexts.create();
+    await expect(
+      service.register(MEMBER_ID, { concepts: [social('2026-10'), social('2026-10')], method: 'cash' }, ACTOR),
+    ).rejects.toBeInstanceOf(ValidationError);
+    await expect(
+      service.register(MEMBER_ID, { concepts: [activity('2026-10'), activity('2026-10')], method: 'cash' }, ACTOR),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(await repository.list()).toHaveLength(0);
+  });
+
   it('settles only the concepts it lists', async () => {
     const { service } = await contexts.create();
     await service.register(MEMBER_ID, { concepts: [social('2026-10')], method: 'cash' }, ACTOR);

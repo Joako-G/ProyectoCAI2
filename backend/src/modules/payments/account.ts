@@ -43,9 +43,12 @@ export function settledKeys(payments: readonly Payment[], memberId: string): Set
   const keys = new Set<string>();
   for (const payment of payments) {
     if (payment.memberId !== memberId || payment.annulment) continue;
+    // Built through conceptKey, the single definition of a concept's identity, so settled and owed keys always match.
     for (const line of payment.lines) {
-      if (line.kind === 'socialFee') keys.add(`socialFee:${line.period}`);
-      else if (line.kind === 'activityFee') keys.add(`activityFee:${line.period}:${line.disciplineId}`);
+      if (line.kind === 'socialFee') keys.add(conceptKey({ kind: 'socialFee', period: line.period }));
+      else if (line.kind === 'activityFee' && line.disciplineId) {
+        keys.add(conceptKey({ kind: 'activityFee', period: line.period, disciplineId: line.disciplineId }));
+      }
     }
   }
   return keys;
