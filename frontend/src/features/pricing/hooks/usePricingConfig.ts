@@ -12,10 +12,12 @@ export type PricingState =
 export function usePricingConfig() {
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<PricingState>({ phase: 'loading' });
+  const [stale, setStale] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
     setState({ phase: 'loading' });
+    setStale(false);
     fetchPricing(controller.signal).then(
       (config) => {
         if (!controller.signal.aborted) setState({ phase: 'ready', config });
@@ -29,14 +31,18 @@ export function usePricingConfig() {
 
   const reload = useCallback(() => setAttempt((current) => current + 1), []);
 
-  /** Re-reads after a successful write without unmounting the forms the user is looking at. */
+  /**
+   * Re-reads after a write without unmounting the forms the user is looking at. It never throws: if the
+   * re-read fails the last config stays on screen and `stale` turns on until a later re-read succeeds.
+   */
   const refresh = useCallback(async () => {
     try {
       setState({ phase: 'ready', config: await fetchPricing() });
-    } catch (error) {
-      setState({ phase: 'error', message: describeError(error) });
+      setStale(false);
+    } catch {
+      setStale(true);
     }
   }, []);
 
-  return { state, reload, refresh };
+  return { state, stale, reload, refresh };
 }

@@ -1,8 +1,8 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { jsonResponse } from '../../members/test/fixtures';
-import { buildPricingConfig } from '../test/fixtures';
+import { buildPricingConfig, buildTariff } from '../test/fixtures';
 import type { PricingConfig } from '../types/pricing';
 import { PricingView } from './PricingView';
 
@@ -250,6 +250,111 @@ describe('PricingView', () => {
       method: 'PUT',
       body: JSON.stringify({ afterDay: 15, activityPercent: 60 }),
     }));
+  });
+
+  const fillNewTariff = async (user: ReturnType<typeof userEvent.setup>, month = '2027-02') => {
+    const form = within(screen.getByRole('group', { name: 'Nueva tarifa' }));
+    fireEvent.change(form.getByLabelText('Vigente desde'), { target: { value: month } });
+    for (const label of ['Matrícula', 'Cuota social', 'Cuota por actividad', 'Reposición de carnet']) {
+      await user.type(form.getByLabelText(label), '1000');
+    }
+    await user.click(form.getByRole('button', { name: 'Agregar tarifa' }));
+  };
+
+  it('keeps the screen and the success notice when the re-read after a saved write fails', async () => {
+    const config = buildPricingConfig();
+    const retry = { ok: false };
+    let reads = 0;
+    vi.stubGlobal('fetch', vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') return jsonResponse(JSON.parse(String(init.body)), 201);
+      reads += 1;
+      if (reads > 1 && !retry.ok) throw new TypeError('offline');
+      return jsonResponse(config);
+    }));
+    const user = userEvent.setup();
+    render(<PricingView canWrite />);
+    await screen.findByRole('table', { name: 'Tarifas' });
+
+    await fillNewTariff(user);
+
+    expect(await within(tariffsRegion()).findByRole('status')).toHaveTextContent('Tarifa guardada.');
+    expect(screen.getByRole('alert')).toHaveTextContent('El cambio se guardó, pero no se pudo actualizar la lista. Reintentá para ver los datos al día.');
+    expect(screen.getByRole('table', { name: 'Tarifas' })).toBeInTheDocument();
+    expect(tiersRegion()).toBeInTheDocument();
+
+    retry.ok = true;
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    expect(tariffsRegion()).toBeInTheDocument();
+  });
+
+  it('re-reads after a write that failed with a network error and keeps the error visible', async () => {
+    const config = buildPricingConfig();
+    const fetchMock = stubApi(config);
+    const base = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (url, init) => {
+      if (init?.method === 'POST') throw new TypeError('offline');
+      return base(url, init);
+    });
+    const user = userEvent.setup();
+    render(<PricingView canWrite />);
+    await screen.findByRole('table', { name: 'Tarifas' });
+    config.tariffs.push(buildTariff({ effectiveFrom: '2027-03' }));
+
+    await fillNewTariff(user);
+
+    expect(await screen.findByRole('row', { name: /03\/2027/ })).toBeInTheDocument();
+    expect(within(tariffsRegion()).getByRole('alert')).toHaveTextContent('No se pudo conectar con el servidor.');
+  });
+
+  it('re-reads after a 409 so the table matches the server, keeping the message', async () => {
+    const config = buildPricingConfig();
+    stubApi(config, {
+      'POST /api/pricing/tariffs': jsonResponse({ error: 'conflict', message: 'A tariff already starts on 2027-02' }, 409),
+    });
+    const user = userEvent.setup();
+    render(<PricingView canWrite />);
+    await screen.findByRole('table', { name: 'Tarifas' });
+    config.tariffs.push(buildTariff({ effectiveFrom: '2027-02' }));
+
+    await fillNewTariff(user);
+
+    expect(await screen.findByRole('row', { name: /02\/2027/ })).toBeInTheDocument();
+    expect(within(tariffsRegion()).getByRole('alert')).toHaveTextContent('Ya existe una tarifa para ese mes.');
+  });
+
+  it('does not re-read after a 400 or a 403', async () => {
+    const fetchMock = stubApi(buildPricingConfig(), {
+      'POST /api/pricing/tariffs': jsonResponse({ error: 'validation_error', message: 'Invalid', fieldErrors: {} }, 400),
+      'PUT /api/pricing/proration-rule': jsonResponse({ error: 'forbidden', message: 'Forbidden' }, 403),
+    });
+    const user = userEvent.setup();
+    render(<PricingView canWrite />);
+    await screen.findByRole('table', { name: 'Tarifas' });
+
+    await fillNewTariff(user);
+    expect(await within(tariffsRegion()).findByRole('alert')).toHaveTextContent('El servidor rechazó los valores ingresados.');
+    await user.click(within(prorationRegion()).getByRole('button', { name: 'Guardar prorrateo' }));
+    expect(await within(prorationRegion()).findByRole('alert')).toHaveTextContent('No tiene permiso para modificar los precios.');
+    expect(fetchMock.mock.calls.filter(([, init]) => !init?.method)).toHaveLength(1);
+  });
+
+  it('deletes a tariff, shows the notice and the refreshed list without it', async () => {
+    const config = buildPricingConfig();
+    const fetchMock = stubApi(config);
+    const user = userEvent.setup();
+    render(<PricingView canWrite />);
+    await screen.findByRole('table', { name: 'Tarifas' });
+    config.tariffs = config.tariffs.filter((tariff) => tariff.effectiveFrom !== '2026-12');
+
+    await user.click(screen.getByRole('button', { name: 'Editar tarifa 12/2026' }));
+    await user.click(screen.getByRole('button', { name: 'Eliminar tarifa 12/2026' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar eliminación' }));
+
+    expect(await within(tariffsRegion()).findByRole('status')).toHaveTextContent('Tarifa eliminada.');
+    expect(screen.queryByRole('row', { name: /12\/2026/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Editar tarifa 12/2026' })).not.toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith('/api/pricing/tariffs/2026-12', { method: 'DELETE' });
   });
 
   it('shows a loading state, then an error with a retry that reloads', async () => {

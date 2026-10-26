@@ -38,7 +38,9 @@ export function TariffsSection({ tariffs, month, canWrite, onAdd, onReplace, onD
   }
 
   async function confirmDelete(effectiveFrom: string) {
-    await save.run(() => onDelete(effectiveFrom), 'Tarifa eliminada.');
+    const deleted = await save.run(() => onDelete(effectiveFrom), 'Tarifa eliminada.');
+    // The tariff no longer exists, so an open edit form for it would only fail with a 404.
+    if (deleted) setEditing((open) => (open?.effectiveFrom === effectiveFrom ? undefined : open));
     setConfirming(undefined);
   }
 
