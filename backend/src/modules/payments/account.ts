@@ -46,6 +46,7 @@ export function settledKeys(payments: readonly Payment[], memberId: string): Set
     // Built through conceptKey, the single definition of a concept's identity, so settled and owed keys always match.
     for (const line of payment.lines) {
       if (line.kind === 'socialFee') keys.add(conceptKey({ kind: 'socialFee', period: line.period }));
+      // The line type allows no disciplineId, but the repository rejects stored activity lines without one, so a valid file never skips here.
       else if (line.kind === 'activityFee' && line.disciplineId) {
         keys.add(conceptKey({ kind: 'activityFee', period: line.period, disciplineId: line.disciplineId }));
       }

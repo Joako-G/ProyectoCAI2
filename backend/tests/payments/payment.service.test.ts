@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { ChargeConcept } from '../../src/modules/payments/charge.types.js';
+import { createPaymentService } from '../../src/modules/payments/payment.service.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../src/shared/errors.js';
 import { ACTOR, MEMBER_ID, membership, trackContexts } from './payment.helpers.js';
 
@@ -256,5 +257,72 @@ describe('payments file', () => {
     await writeFile(file, '{"payments":[]}', 'utf8');
     await expect(service.register(MEMBER_ID, input, ACTOR)).rejects.toThrow(/Invalid payments file/);
     expect(await readFile(file, 'utf8')).toBe('{"payments":[]}');
+  });
+});
+
+describe('payments file lines', () => {
+  const goodLine = { kind: 'socialFee', period: '2026-10', amount: 20_000 };
+  const payment = (lines: unknown[]) => ({
+    id: 'p1', receiptNumber: 1, memberId: MEMBER_ID, method: 'cash', paymentDate: '2026-10-05',
+    lines, total: 20_000, createdBy: ACTOR, createdAt: '2026-10-05T12:00:00.000Z',
+  });
+
+  it.each([
+    ['an unknown kind', { ...goodLine, kind: 'bogus' }],
+    ['a malformed period', { ...goodLine, period: '2026-13' }],
+    ['a decimal amount', { ...goodLine, amount: 100.5 }],
+    ['a negative amount', { ...goodLine, amount: -1 }],
+    ['an activity fee without a discipline', { kind: 'activityFee', period: '2026-10', amount: 20_000 }],
+  ])('refuses a stored line with %s and leaves the file untouched', async (_name, line) => {
+    const { service, file } = await contexts.create();
+    const text = JSON.stringify([payment([line])]);
+    await writeFile(file, text, 'utf8');
+    await expect(service.history(MEMBER_ID)).rejects.toThrow(/Invalid payments file/);
+    await expect(
+      service.register(MEMBER_ID, { concepts: [social('2026-09')], method: 'cash' }, ACTOR),
+    ).rejects.toThrow(/Invalid payments file/);
+    expect(await readFile(file, 'utf8')).toBe(text);
+  });
+
+  it('accepts well-formed lines', async () => {
+    const { service, file } = await contexts.create();
+    await writeFile(file, JSON.stringify([payment([goodLine, { kind: 'activityFee', period: '2026-10', amount: 20_000, disciplineId: 'basket' }])]), 'utf8');
+    expect(await service.history(MEMBER_ID)).toHaveLength(1);
+  });
+});
+
+describe('server-owned enrollment date', () => {
+  it('ignores a backdated enrollmentDate in preview and register', async () => {
+    const { service } = await contexts.create();
+    const concepts = [{ kind: 'enrollment' as const }, social('2026-10'), activity('2026-10')];
+    const honest = await service.preview(MEMBER_ID, concepts, { registration: { enrollmentDate: '2026-10-05' } });
+    // A day-20 enrollment would prorate the activity fee; the server uses today (the 5th) instead.
+    const backdated = await service.preview(MEMBER_ID, concepts, { registration: { enrollmentDate: '2026-10-20' } });
+    expect(backdated).toEqual(honest);
+    const payment = await service.register(MEMBER_ID, { concepts, method: 'cash', registration: { enrollmentDate: '2026-01-01' } }, ACTOR);
+    expect(payment.total).toBe(honest.total);
+    expect(payment.registration).toEqual({ enrollmentDate: '2026-10-05' });
+  });
+
+  it('uses the club-local today as the enrollment date', async () => {
+    const { service } = await contexts.create({ now: () => new Date('2026-10-20T15:00:00Z') });
+    const charge = await service.preview(MEMBER_ID, [{ kind: 'enrollment' }, social('2026-10'), activity('2026-10')], {
+      registration: { enrollmentDate: '2026-10-01' },
+    });
+    // Registered on the 20th: the activity fee is prorated to half; the social fee never is.
+    expect(charge.lines.find((line) => line.kind === 'activityFee')!.amount).toBe(10_000);
+  });
+});
+
+describe('account without tariffs', () => {
+  it('throws a typed conflict instead of a TypeError', async () => {
+    const { repository, members, memberships } = await contexts.create();
+    const service = createPaymentService({
+      repository,
+      members: { getById: async () => members[0]! },
+      memberships: { list: async () => memberships },
+      pricing: { get: async () => ({ tariffs: [], surchargeTiers: [], prorationRule: { afterDay: 15, activityPercent: 50 } }) },
+    });
+    await expect(service.account(MEMBER_ID)).rejects.toBeInstanceOf(ConflictError);
   });
 });

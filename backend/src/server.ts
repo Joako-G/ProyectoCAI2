@@ -41,7 +41,7 @@ const memberService = createMemberService({
 const pricingConfigService = createPricingConfigService({
   repository: createJsonPricingConfigRepository(pricingConfigFilePath()),
 });
-// Payments are append-only receipts; the HTTP routes arrive in a later task, so nothing mounts this yet.
+// Payments are append-only receipts, served under /api/payments.
 const paymentService = createPaymentService({
   repository: createJsonPaymentRepository(paymentsFilePath()),
   members: memberService,

@@ -64,20 +64,22 @@ function sanitizeConcepts(concepts: readonly ChargeConcept[]): ChargeConcept[] {
 }
 
 function earliestTariffPeriod(config: PricingConfig): string {
+  if (config.tariffs.length === 0) throw new ConflictError('No tariffs are configured');
   return config.tariffs.reduce((earliest, tariff) => (tariff.effectiveFrom < earliest ? tariff.effectiveFrom : earliest), config.tariffs[0]!.effectiveFrom);
 }
 
 export function createPaymentService({ repository, members, memberships, pricing, now = () => new Date() }: PaymentServiceDeps) {
   const today = () => toIsoDate(now());
 
-  function chargeFor(config: PricingConfig, concepts: ChargeConcept[], registration: PreviewOptions['registration']): Charge {
+  function chargeFor(config: PricingConfig, concepts: ChargeConcept[], registration: boolean): Charge {
     return calculateCharge({
       tariffs: config.tariffs,
       surchargeTiers: config.surchargeTiers,
       prorationRule: config.prorationRule,
       paymentDate: today(),
       concepts,
-      ...(registration ? { registration: { enrollmentDate: registration.enrollmentDate } } : {}),
+      // A first-time registration is charged on the day it is made; a client-sent date is never trusted.
+      ...(registration ? { registration: { enrollmentDate: today() } } : {}),
     });
   }
 
@@ -91,7 +93,7 @@ export function createPaymentService({ repository, members, memberships, pricing
     // The charge for the given concepts as of today, without writing anything.
     async preview(memberId: string, concepts: readonly ChargeConcept[], options: PreviewOptions = {}): Promise<Charge> {
       await members.getById(memberId);
-      return chargeFor(await pricing.get(), sanitizeConcepts(concepts), options.registration);
+      return chargeFor(await pricing.get(), sanitizeConcepts(concepts), options.registration !== undefined);
     },
 
     // Recomputes the charge server-side and writes one payment with the next receipt number, atomically.
@@ -104,12 +106,12 @@ export function createPaymentService({ repository, members, memberships, pricing
       const concepts = sanitizeConcepts(input.concepts);
       if (member.status !== 'active') throw new ConflictError('Inactive members cannot make payments');
       const config = await pricing.get();
-      const registration = input.registration ? { enrollmentDate: input.registration.enrollmentDate } : undefined;
+      const registration = input.registration ? { enrollmentDate: today() } : undefined;
       return repository.mutate((payments) => {
         const settled = settledKeys(payments, memberId);
         const alreadyPaid = concepts.map(conceptKey).filter((key) => settled.has(key));
         if (alreadyPaid.length > 0) throw new ConflictError(`Already paid: ${alreadyPaid.join(', ')}`);
-        const charge = chargeFor(config, concepts, registration);
+        const charge = chargeFor(config, concepts, registration !== undefined);
         // Annulled payments stay in the list, so the maximum never goes back and numbers are never reused.
         const receiptNumber = payments.reduce((highest, payment) => Math.max(highest, payment.receiptNumber), 0) + 1;
         const payment: Payment = {

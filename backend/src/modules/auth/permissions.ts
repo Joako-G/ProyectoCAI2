@@ -13,7 +13,8 @@ export const permissions = {
   'users:manage': ['head_secretary'],
   // A teacher reads the students of the disciplines assigned to their own account (RF-20), nothing else.
   'roster:read': ['teacher'],
-  // Future (payments, configuration): declared with the decided roles, not used by any route yet.
+  // Payments: read, collect and annul are used by /api/payments. Cash count and reports are future.
+  'payments:read': ['secretary', 'head_secretary'],
   'payments:collect': ['secretary', 'head_secretary'],
   'payments:annul': ['head_secretary'],
   'cashcount:run': ['head_secretary'],

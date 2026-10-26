@@ -11,6 +11,7 @@ import { createMembersRouter } from './modules/members/member.routes.js';
 import type { MemberService } from './modules/members/member.service.js';
 import { createMembershipsRouter } from './modules/memberships/membership.routes.js';
 import type { MembershipService } from './modules/memberships/membership.service.js';
+import { createPaymentRouter } from './modules/payments/payment.routes.js';
 import { createPricingConfigRouter } from './modules/payments/pricing-config.routes.js';
 import type { PaymentService } from './modules/payments/payment.service.js';
 import type { PricingConfigService } from './modules/payments/pricing-config.service.js';
@@ -27,7 +28,6 @@ export interface AppDependencies {
   disciplineService?: DisciplineService;
   membershipService?: MembershipService;
   pricingConfigService?: PricingConfigService;
-  // Accepted so the wiring is in place; the /api/payments routes are mounted by a later task.
   paymentService?: PaymentService;
   rosterService?: RosterService;
   storePath?: string;
@@ -71,6 +71,10 @@ if (options.membershipService) {
 }
 if (options.pricingConfigService) {
   app.use('/api/pricing', requireCapabilityByMethod(authenticate, { read: 'config:read', write: 'config:manage' }), createPricingConfigRouter(options.pricingConfigService));
+}
+if (options.paymentService) {
+  // Reading needs payments:read; the write routes add payments:collect or payments:annul themselves.
+  app.use('/api/payments', requireCapability(authenticate, 'payments:read'), createPaymentRouter(options.paymentService, authenticate));
 }
 if (options.rosterService) {
   app.use('/api/roster', requireCapability(authenticate, 'roster:read'), createRosterRouter(options.rosterService, authenticate));

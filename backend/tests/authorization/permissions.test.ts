@@ -12,7 +12,7 @@ describe('permission policy', () => {
   });
 
   it('lets the secretary read and write members and read disciplines, memberships and pricing configuration', () => {
-    for (const capability of ['members:read', 'members:write', 'disciplines:read', 'memberships:read', 'config:read'] as const) {
+    for (const capability of ['members:read', 'members:write', 'disciplines:read', 'memberships:read', 'config:read', 'payments:collect', 'payments:read'] as const) {
       expect(allowed(capability)).toEqual(['head_secretary', 'secretary']);
     }
   });

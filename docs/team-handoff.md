@@ -69,7 +69,10 @@ Tariffs, late-surcharge tiers, the new-member proration (cutoff day and percenta
 Implemented backend side: `/api/pricing` (read: secretary and head secretary; writes: head secretary only), stored in `backend/data/pricing-config.json` (or `PRICING_CONFIG_FILE`; a missing file means the default prices). Tariffs of past months cannot be edited or deleted; a price rise is a new tariff with a later `effectiveFrom`. Discounts and promotions are not configurable yet.
 
 Payments are stored append-only in `backend/data/payments.json` (or `PAYMENTS_FILE`); a payment snapshots its charge lines, and an annulment is a recorded reason, actor and date on the payment, never a deletion.
-Receipt numbers are correlative integers allocated in the same write as the payment, never reused (also not after an annulment). The service is wired in `server.ts`; the HTTP routes come later.
+Receipt numbers are correlative integers allocated in the same write as the payment, never reused (also not after an annulment). The service is wired in `server.ts` and served under `/api/payments` (secretary and head secretary; only the head secretary annuls). The signed-in user is always the actor; amounts and `registration.enrollmentDate` in a body are ignored (a first-time registration is charged on the day it is made):
+- `GET /members/:memberId/account` owed concepts and standing; `GET /members/:memberId` history; `GET /receipts/:receiptNumber` one receipt.
+- `POST /preview` `{ memberId, concepts, registration? }` prices without writing; `POST /` adds `method` and returns 201 with the stored payment; `POST /:id/annul` `{ reason }` (head secretary).
+- Find a member by DNI with `GET /api/members?search=<dni>`; payments has no search of its own.
 
 PostgreSQL, migrations, Docker, and biometric access remain separate decisions; do not use real club/member records or credentials for demonstrations.
 
