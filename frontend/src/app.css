@@ -84,6 +84,10 @@ form button:disabled { cursor: wait; opacity: .8; }
 .field-hint { color: #858f9e; font-weight: 400; }
 .active-toggle { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; color: #334056; font-size: 13px; }
 .active-toggle input { accent-color: #1f568c; }
+.discipline-picker { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 0 0 16px; padding: 12px 14px; border: 1px solid #d9dee7; border-radius: 8px; }
+.discipline-picker legend { padding: 0 6px; color: #334056; font-size: 13px; font-weight: 600; }
+.discipline-picker label { display: flex; align-items: center; gap: 8px; color: #334056; font-size: 13px; }
+.discipline-picker input { accent-color: #1f568c; }
 .blue-spinner { border-color: #245b9140; border-top-color: #245b91; }
 .demo-disclaimer { margin: 18px 0; color: #929baa; text-align: center; font-size: 11px; }
 @media (max-width: 760px) {
@@ -109,3 +113,5 @@ form button:disabled { cursor: wait; opacity: .8; }
   .user-form { padding: 18px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+.no-sections__notice { margin: 0; padding: 36px 20px; text-align: center; font-size: 13px; color: var(--color-text-muted); }

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import demoUsers from '../../database/demo-users.json';
-import type { DemoUser } from './user.types.js';
+import { legacyRoles, type DemoUser } from './user.types.js';
 
 // src/modules/users and dist/modules/users are both three levels below the backend package directory.
 export const defaultUsersFilePath = join(__dirname, '..', '..', '..', 'data', 'users.json');
@@ -15,7 +15,8 @@ export class UserRepository {
       mkdirSync(dirname(storePath), { recursive: true });
       writeFileSync(storePath, `${JSON.stringify(demoUsers, null, 2)}\n`, { flag: 'wx' });
     }
-    this.users = JSON.parse(readFileSync(storePath, 'utf8')) as DemoUser[];
+    this.users = (JSON.parse(readFileSync(storePath, 'utf8')) as DemoUser[])
+      .map((user) => ({ ...user, role: Object.hasOwn(legacyRoles, user.role) ? legacyRoles[user.role]! : user.role }));
   }
 
   list(): DemoUser[] { return this.users; }

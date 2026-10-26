@@ -10,6 +10,8 @@ interface MemberDetailProps {
   today: string;
   /** Discipline catalog used to resolve the member's discipline ids to names. */
   disciplines?: Discipline[];
+  /** Whether to offer edit, deactivate and reactivate. */
+  canWrite: boolean;
   onBack: () => void;
   onEdit: () => void;
   onDeactivate: () => void;
@@ -33,6 +35,7 @@ export function MemberDetail({
   member,
   today,
   disciplines = [],
+  canWrite,
   onBack,
   onEdit,
   onDeactivate,
@@ -49,20 +52,22 @@ export function MemberDetail({
         <button type="button" className="button button--secondary" onClick={onBack}>
           Volver al listado
         </button>
-        <div className="member-detail__actions">
-          <button type="button" className="button button--secondary" onClick={onEdit}>
-            Editar
-          </button>
-          {member.status === 'active' ? (
-            <button type="button" className="button button--danger" onClick={onDeactivate}>
-              Dar de baja
+        {canWrite ? (
+          <div className="member-detail__actions">
+            <button type="button" className="button button--secondary" onClick={onEdit}>
+              Editar
             </button>
-          ) : (
-            <button type="button" className="button button--primary" onClick={onReactivate}>
-              Reactivar
-            </button>
-          )}
-        </div>
+            {member.status === 'active' ? (
+              <button type="button" className="button button--danger" onClick={onDeactivate}>
+                Dar de baja
+              </button>
+            ) : (
+              <button type="button" className="button button--primary" onClick={onReactivate}>
+                Reactivar
+              </button>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <header className="member-detail__header">

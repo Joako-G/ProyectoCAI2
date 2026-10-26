@@ -14,7 +14,7 @@ This is the shared, version-controlled project context for collaborators and cod
 | --- | --- |
 | Frontend | React + TypeScript + Vite. Existing feature areas include `auth`, `users`, `members`, and `disciplines`; `payments` and `memberships` are reserved for future work. Put feature code under `frontend/src/features/<feature>/`; use shared top-level folders only for genuinely cross-feature code. |
 | Backend | Express + TypeScript. Existing modules include `auth`, `users`, `members`, and `disciplines`; `payments` and `memberships` are reserved for future work. New domain behavior belongs under `backend/src/modules/<feature>/`; follow the actual route/service/repository pattern without adding controller layers automatically. |
-| Authentication and routing | Server-side sessions are implemented. The current protection scope and missing frontend route navigation are still project work; inspect current code before changing either. Authentication (signed-in status) and authorization (role permissions) are separate concerns. |
+| Authentication and routing | Server-side sessions are implemented. Every backend route except `/auth` and `/health` now requires a session and a role allowed by `backend/src/modules/auth/permissions.ts` (401 without a session, 403 for a disallowed role). Roles: `secretary` (Secretaria), `head_secretary` (Jefa de secretaría, the administrator) and `teacher` (Docente; sees only the section "Mis disciplinas" with the current and past students of the disciplines the head secretary assigns to their account in the user form, via `GET /api/roster`, with name, member number and dates only). Old stored roles map `admin` → `head_secretary` and `member` → `secretary`. Frontend role-based navigation is still project work. |
 | Persistence and tests | Demo data uses JSON persistence and the session store is in memory; neither is production-grade storage. Frontend and backend have package test scripts; root provides build and typecheck, not a root test script. Use the exact commands in the coding guide. |
 | Delivery | Keep work reviewable and agree on API contracts before wiring a new frontend flow to the backend. |
 
@@ -27,15 +27,20 @@ These are current project-owner clarifications for the demo flow. The spreadshee
 | New member | Register by unique DNI. Charge a one-time enrollment fee of `$20,000`; adding another activity later does not charge enrollment again. |
 | Monthly social fee | `$20,000` once per member and month. It may be paid with either activity or separately; do not force it to be attached to the first activity or a fixed payment order. |
 | Activity fee | `$20,000` for each discipline in the current example. A second discipline adds its activity fee, not another social fee. |
-| New-member proration | A new member enrolling after the 15th pays half of the first activity's monthly quota (`$20,000` instead of `$40,000`), in addition to enrollment. Handling additional activities in this proration case remains unspecified. |
-| Late surcharge | Apply per activity being paid, based on its payment date: days 1–10 `$0`; days 11–15 `+$3,000`; days 16–20 `+$5,000`; days 21–30 `+$7,000`. Add the applicable surcharge to each late activity; do not apply just one surcharge when multiple activities are late. Day 31 is undefined. |
+| New-member proration | A new member enrolling after the 15th pays enrollment and the full social fee, plus **each activity fee at half** (`$10,000` instead of `$20,000`). The social fee is never discounted. The cutoff day and the percentage must be editable parameters (see [Next project work](#next-project-work)). |
+| Added activity (existing member) | An existing member who adds an activity mid-month pays the full activity fee (`$20,000`). No second social fee and no proration. |
+| Late surcharge | Apply per activity being paid, based on its payment date: days 1–10 `$0`; days 11–15 `+$3,000`; days 16–20 `+$5,000`; day 21 onward `+$7,000` (day 31 included; the last tier has no upper bound). Add the applicable surcharge to each late activity; do not apply just one surcharge when multiple activities are late. Surcharges never accumulate across months: only the one for the current payment date applies, also when paying an overdue month. A new member's enrollment month is never surcharged, because it had no earlier due date; the following months are surcharged like any member's. |
 | Carnet | The first carnet is free. A replacement costs `$3,000`. |
+| Overdue months | Each overdue month is charged at the tariff that was in force for that month, so tariffs need an effective date. |
+| Deregistration | More than 3 unpaid months means deregistered. Re-registering requires paying everything again as a first-time member, enrollment included. |
+| Partial payments | Not accepted (confirmed by the club owners on 2026-10-26, overriding RF-12 of the requirements PDF). Each concept is paid in full; there is no credit. A paid/unpaid state per concept is enough. |
+| Advance payment | Paying months ahead is only a club custom (allowed up to the month before a price rise), not a system rule. |
 | Member account states | The working states are up to date (no debt), debtor, and deregistered. Track unpaid concepts and periods so balances remain accurate even when the member pays components in a flexible order. |
 
 ### Processing flow
 
 1. Search by DNI. If no member exists, validate the required registration data and create one; do not create a duplicate record for an existing member.
-2. Identify whether the member is new, up to date, in debt, or deregistered. For an existing member, show unpaid periods and concepts before collecting money. The requirements describe more than three months without payment as a re-enrollment case; preserve the prior history and confirm debt valuation/collection limits before encoding them.
+2. Identify whether the member is new, up to date, in debt, or deregistered. For an existing member, show unpaid periods and concepts before collecting money. More than three months without payment means deregistration and a full re-enrollment as a first-time member; preserve the prior history.
 3. For each month, charge the social fee once and one activity fee per enrolled discipline. These are separate payable concepts: the social fee may be paid with either activity or later, and paying one concept does not settle the others.
 4. Determine the payment date for each activity separately and apply that activity's surcharge tier. Keep enrollment, social fee, activity fees, surcharges, and carnet replacement as separate line items.
 5. Record the payment method (cash, debit, or QR for member payments; transfer is mainly used for rentals in the current process) and issue a numbered receipt. Recalculate the member's outstanding balance and status from paid and unpaid concepts/periods. Do not physically delete a payment; an annulment requires a reason and is restricted to the Head of Secretariat by the approved requirement.
@@ -46,19 +51,38 @@ Examples for two disciplines:
 - New member, both activities paid days 1–10: the same `$60,000` + `$20,000` enrollment = **`$80,000`**.
 - One activity paid on time and the other on day 13: **`$63,000`** (one `$3,000` surcharge).
 - Both activities paid on day 13: **`$66,000`** (two `$3,000` surcharges).
-- Both activities paid days 16–20: **`$70,000`**; both paid days 21–30: **`$74,000`**.
+- Both activities paid days 16–20: **`$70,000`**; both paid from day 21 onward (including day 31): **`$74,000`**.
+- New member after the 15th, one discipline, paid days 1–10: `$20,000` enrollment + `$20,000` social + `$10,000` activity = **`$50,000`**.
+- New member after the 15th, two disciplines: `$20,000` + `$20,000` + `$10,000` + `$10,000` = **`$60,000`**.
+- Existing member adds a second discipline mid-month: **`$20,000`** for the new activity only.
 
 The club currently accepts flexible payment arrangements and expects details to be refined as development progresses. Keep social fee, activity fees, enrollment, carnet replacement, and surcharges as distinct concepts. Do not assume that paying one component settles another.
 
-Still to confirm before encoding affected cases: handling on day 31; proration when adding an activity mid-month; the tariff basis and maximum count for overdue months; and whether arbitrary partial payments within a single concept are accepted. The report's note about up to two months paid in advance is conditional on no fee increase in the next month and should be confirmed before being treated as a hard system rule.
+These rules come from project-owner answers and are not yet reflected in the approved requirements PDFs, which still hold older amounts. Ask the project owners to confirm them and update the approved source.
 
 ## Next project work
 
-The user identified frontend routing and authentication-based route protection as unfinished. Complete those before expanding into payments. Then implement payments as a vertical flow using the rules above, checking the approved requirements first. Role-based authorization is distinct from merely requiring a signed-in session. PostgreSQL, migrations, Docker, and biometric access remain separate decisions; do not use real club/member records or credentials for demonstrations.
+The user identified frontend routing and authentication-based route protection as unfinished. Complete those before expanding into payments. Then implement payments as a vertical flow using the rules above, checking the approved requirements first. Role-based authorization is distinct from merely requiring a signed-in session.
+
+Tariffs, late-surcharge tiers, the new-member proration (cutoff day and percentage), discounts, promotions, and price increases must not be hardcoded. Plan an administrator-only configuration section that edits them, with an effective date on each tariff so past and overdue periods keep the price in force at the time. Configuration depends on role-based authorization being in place first.
+
+Implemented backend side: `/api/pricing` (read: secretary and head secretary; writes: head secretary only), stored in `backend/data/pricing-config.json` (or `PRICING_CONFIG_FILE`; a missing file means the default prices). Tariffs of past months cannot be edited or deleted; a price rise is a new tariff with a later `effectiveFrom`. Discounts and promotions are not configurable yet.
+
+Payments are stored append-only in `backend/data/payments.json` (or `PAYMENTS_FILE`); a payment snapshots its charge lines, and an annulment is a recorded reason, actor and date on the payment, never a deletion.
+Receipt numbers are correlative integers allocated in the same write as the payment, never reused (also not after an annulment). The service is wired in `server.ts` and served under `/api/payments` (secretary and head secretary; only the head secretary annuls). The signed-in user is always the actor; amounts and `registration.enrollmentDate` in a body are ignored (a first-time registration is charged on the day it is made):
+- `GET /members/:memberId/account` owed concepts and standing; `GET /members/:memberId` history; `GET /receipts/:receiptNumber` one receipt.
+- `POST /preview` `{ memberId, concepts, registration? }` prices without writing; `POST /` adds `method` and a client-generated `requestId` (8–100 characters, reused on every retry of the same cobro) and returns 201 with the stored payment; repeating a `requestId` for the same member and concepts returns the existing payment instead of charging again, and reusing it for a different payment gives 409; `POST /:id/annul` `{ reason }` (head secretary).
+- Find a member by DNI with `GET /api/members?search=<dni>`; payments has no search of its own.
+
+PostgreSQL, migrations, Docker, and biometric access remain separate decisions; do not use real club/member records or credentials for demonstrations.
 
 ## Engram portability and safety
 
 `.engram/config.json` names this project `club-socios`. The shareable source is this reviewed handoff, not a native Engram export. Each contributor can manually save this file into their own local Engram database by following [the PowerShell instructions](../.engram/README.md); cloning does not synchronize local Engram memories. Do not import parent-project history or commit native exports containing local account or filesystem metadata. Importing this handoff changes a contributor's local Engram database, not the Git repository.
+
+## After pulling the role change
+
+A local `backend/data/users.json` created before the role change stores `demo@club.test` as `member`, which now maps to `secretary` and cannot open Usuarios. Delete that local file (it is gitignored demo data) so the backend reseeds it from `backend/src/database/demo-users.json`, where `demo@club.test` is `head_secretary` and `secretary@club.test` and `teacher@club.test` exist with the same demo password.
 
 ## Shared JSON store
 

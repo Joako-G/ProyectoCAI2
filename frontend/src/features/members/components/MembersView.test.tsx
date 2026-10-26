@@ -92,7 +92,7 @@ afterEach(() => {
 
 function renderView() {
   const user = userEvent.setup({ delay: null });
-  render(<MembersView today={TODAY} />);
+  render(<MembersView today={TODAY} canWrite />);
   return user;
 }
 

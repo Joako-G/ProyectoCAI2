@@ -32,9 +32,10 @@ test('authenticates a synthetic active user and returns only safe fields', async
 
   assert.equal(response.status, 200);
   const payload = await response.json();
-  assert.deepEqual(payload, {
-    user: { id: 'demo-member', name: 'Demo Member', email: 'demo@club.test', role: 'member' },
+  assert.deepEqual(payload.user, {
+    id: 'demo-head-secretary', name: 'Demo Head Secretary', email: 'demo@club.test', role: 'head_secretary',
   });
+  assert.ok(payload.capabilities.includes('users:manage'));
   assert.equal(JSON.stringify(payload).includes('password'), false);
 });
 
@@ -62,18 +63,18 @@ test('stores synthetic users with hashes and no plaintext passwords', async () =
   const data = await readFile(new URL('../src/database/demo-users.json', import.meta.url), 'utf8');
   const users = JSON.parse(data);
 
-  assert.equal(users.length, 2);
+  assert.equal(users.length, 4);
   assert.ok(users.every(({ id, name, email, passwordHash, role, active }) =>
     id && name && email.endsWith('.test') && passwordHash.includes(':') && role && typeof active === 'boolean'));
   assert.equal(data.includes('DemoPass123!'), false);
   assert.ok(users.every((user) => !Object.hasOwn(user, 'password')));
 });
 
-async function signIn() {
+async function signIn(email = 'demo@club.test') {
   return fetch(`${baseUrl}/auth/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email: 'demo@club.test', password: 'DemoPass123!' }),
+    body: JSON.stringify({ email, password: 'DemoPass123!' }),
   });
 }
 
@@ -101,9 +102,11 @@ test('/auth/me returns the session user with the cookie and 401 without it', asy
 
   const withCookie = await fetch(`${baseUrl}/auth/me`, { headers: { cookie } });
   assert.equal(withCookie.status, 200);
-  assert.deepEqual(await withCookie.json(), {
-    user: { id: 'demo-member', name: 'Demo Member', email: 'demo@club.test', role: 'member' },
+  const payload = await withCookie.json();
+  assert.deepEqual(payload.user, {
+    id: 'demo-head-secretary', name: 'Demo Head Secretary', email: 'demo@club.test', role: 'head_secretary',
   });
+  assert.ok(payload.capabilities.includes('users:manage'));
 
   assert.equal((await fetch(`${baseUrl}/auth/me`)).status, 401);
   assert.equal((await fetch(`${baseUrl}/auth/me`, { headers: { cookie: 'club_session=forged' } })).status, 401);
@@ -126,7 +129,37 @@ test('logout without a session is harmless', async () => {
   assert.equal(response.status, 204);
 });
 
-test('/users requires a session while members and disciplines stay unprotected', async () => {
+test('demo accounts log in with the three current roles and /users is limited to the head secretary', async () => {
+  for (const [email, role] of [['demo@club.test', 'head_secretary'], ['secretary@club.test', 'secretary'], ['teacher@club.test', 'teacher']]) {
+    const login = await signIn(email);
+    assert.equal(login.status, 200);
+    assert.equal((await login.json()).user.role, role);
+    const status = (await fetch(`${baseUrl}/users`, { headers: { cookie: login.headers.get('set-cookie').split(';')[0] } })).status;
+    assert.equal(status, role === 'head_secretary' ? 200 : 403);
+  }
+});
+
+test('login and /auth/me report the capabilities of each role', async () => {
+  const expected = {
+    'demo@club.test': { includes: ['members:write', 'disciplines:write', 'users:manage'], excludes: [] },
+    'secretary@club.test': { includes: ['members:read', 'members:write', 'disciplines:read'], excludes: ['disciplines:write', 'users:manage'] },
+    'teacher@club.test': { includes: ['roster:read'], excludes: ['members:read', 'disciplines:read', 'users:manage'] },
+  };
+  for (const [email, { includes, excludes }] of Object.entries(expected)) {
+    const login = await signIn(email);
+    const loginCapabilities = (await login.json()).capabilities;
+    const cookie = login.headers.get('set-cookie').split(';')[0];
+    const meCapabilities = (await (await fetch(`${baseUrl}/auth/me`, { headers: { cookie } })).json()).capabilities;
+
+    assert.deepEqual(meCapabilities, loginCapabilities);
+    for (const capability of includes) assert.ok(loginCapabilities.includes(capability), `${email} should have ${capability}`);
+    for (const capability of excludes) assert.ok(!loginCapabilities.includes(capability), `${email} should not have ${capability}`);
+  }
+  const teacher = await signIn('teacher@club.test');
+  assert.deepEqual((await teacher.json()).capabilities, ['roster:read']);
+});
+
+test('/users requires a session and unwired API routes still answer 404', async () => {
   assert.equal((await fetch(`${baseUrl}/users`)).status, 401);
 
   const cookie = (await signIn()).headers.get('set-cookie').split(';')[0];
@@ -134,7 +167,7 @@ test('/users requires a session while members and disciplines stay unprotected',
   await fetch(`${baseUrl}/auth/logout`, { method: 'POST', headers: { cookie } });
   assert.equal((await fetch(`${baseUrl}/users`, { headers: { cookie } })).status, 401);
 
-  // No members/disciplines service is wired in this app, so an unprotected API route answers 404, never 401.
+  // No members service is wired in this app, so the route does not exist and answers 404.
   assert.equal((await fetch(`${baseUrl}/api/members`)).status, 404);
 });
 

@@ -6,6 +6,8 @@ import { Sidebar, type Section } from './Sidebar';
 interface AppShellProps {
   title: string;
   subtitle?: string;
+  /** Sections listed in the sidebar; omitted lists every section. */
+  sections?: ReadonlyArray<Section>;
   /** Section highlighted in the sidebar. */
   section?: Section;
   onNavigate?: (section: Section) => void;
@@ -14,10 +16,10 @@ interface AppShellProps {
   children?: ReactNode;
 }
 
-export function AppShell({ title, subtitle, section, onNavigate, user, onLogout, children }: AppShellProps) {
+export function AppShell({ title, subtitle, sections, section, onNavigate, user, onLogout, children }: AppShellProps) {
   return (
     <div className="app-shell">
-      <Sidebar current={section} onNavigate={onNavigate} user={user} onLogout={onLogout} />
+      <Sidebar sections={sections} current={section} onNavigate={onNavigate} user={user} onLogout={onLogout} />
       <div className="app-shell__column">
         <PageHeader title={title} subtitle={subtitle} />
         <main className="app-shell__content">{children}</main>

@@ -51,6 +51,8 @@ async function toApiError(response: Response): Promise<ApiError> {
 export async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   if (!response.ok) throw await toApiError(response);
+  // A 204 has no body (for example a delete): there is nothing to parse.
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 

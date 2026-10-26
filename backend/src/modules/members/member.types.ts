@@ -31,6 +31,9 @@ export interface Member extends MemberInput {
   memberNumber: string;
   status: MemberStatus;
   deactivation?: Deactivation;
+  // Club-calendar date (YYYY-MM-DD) the set of disciplines last changed; system-set, not editable input.
+  // Absent on legacy records.
+  disciplinesChangedOn?: string;
   createdAt: string;
   updatedAt: string;
 }

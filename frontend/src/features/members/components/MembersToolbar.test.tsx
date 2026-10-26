@@ -17,6 +17,7 @@ function setup(overrides: Partial<ComponentProps<typeof MembersToolbar>> = {}) {
     onSearchSubmit: vi.fn(),
     onStatusChange: vi.fn(),
     onDisciplineChange: vi.fn(),
+    canCreate: true,
     onCreate: vi.fn(),
     ...overrides,
   };
@@ -25,6 +26,13 @@ function setup(overrides: Partial<ComponentProps<typeof MembersToolbar>> = {}) {
 }
 
 describe('MembersToolbar', () => {
+  it('hides Alta de socio when the user cannot create members', () => {
+    setup({ canCreate: false });
+
+    expect(screen.queryByRole('button', { name: 'Alta de socio' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Buscar' })).toBeInTheDocument();
+  });
+
   it('submits the typed search with the Buscar button', async () => {
     const { props, user } = setup();
 

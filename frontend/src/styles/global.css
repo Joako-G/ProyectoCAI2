@@ -924,3 +924,186 @@ a:hover {
   display: flex;
   gap: 8px;
 }
+
+/* Teacher roster */
+
+.roster-block + .roster-block {
+  margin-top: 28px;
+}
+
+.roster-block__title {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+/* Pricing configuration */
+
+.pricing-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.pricing-section {
+  padding: 20px;
+}
+
+.pricing-section__title {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.pricing-form {
+  margin-top: 16px;
+}
+
+.pricing-notice {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+  color: var(--color-success);
+}
+
+.pricing-section .members-table input {
+  width: 100%;
+  max-width: 10rem;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+  font: 400 13px var(--font-sans);
+}
+
+/* Payments (Cobros) */
+
+.payments-view,
+.payments-member {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.payments-section {
+  padding: 20px;
+}
+
+.payments-section__title {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.payments-meta {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.payments-owed,
+.payments-matches {
+  margin: 12px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+
+.payments-matches {
+  list-style: none;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.payments-period {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+}
+
+.payments-period legend {
+  padding: 0 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.payments-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 13px;
+}
+
+.payments-preview {
+  margin-top: 16px;
+}
+
+.payments-stale {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.receipt__title {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.receipt__meta {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+.receipt__meta div {
+  display: flex;
+  gap: 8px;
+}
+
+.receipt__meta dt {
+  font-weight: 600;
+}
+
+.receipt__meta dd {
+  margin: 0;
+}
+
+.receipt__total th,
+.receipt__total td {
+  font-weight: 700;
+}
+
+.receipt__annulled {
+  color: var(--color-danger, #b3261e);
+  font-weight: 600;
+}
+
+.receipt__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Printing a receipt shows only the receipt block. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .receipt,
+  .receipt * {
+    visibility: visible;
+  }
+
+  .receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-shadow: none;
+  }
+
+  .receipt__actions {
+    display: none;
+  }
+}

@@ -2,6 +2,8 @@ import type { Discipline } from '../types/discipline';
 
 interface DisciplinesTableProps {
   disciplines: Discipline[];
+  /** Whether to show the actions column. */
+  canWrite: boolean;
   onEdit: (discipline: Discipline) => void;
   onDeactivate: (discipline: Discipline) => void;
   onReactivate: (discipline: Discipline) => void;
@@ -14,7 +16,7 @@ function otherTeachers(discipline: Discipline): string[] {
   return discipline.teachers.filter((teacher) => teacher !== discipline.leadTeacher);
 }
 
-export function DisciplinesTable({ disciplines, onEdit, onDeactivate, onReactivate }: DisciplinesTableProps) {
+export function DisciplinesTable({ disciplines, canWrite, onEdit, onDeactivate, onReactivate }: DisciplinesTableProps) {
   return (
     <table className="members-table">
       <caption className="visually-hidden">Listado de disciplinas</caption>
@@ -23,7 +25,7 @@ export function DisciplinesTable({ disciplines, onEdit, onDeactivate, onReactiva
           <th scope="col">Disciplina</th>
           <th scope="col">Profesores</th>
           <th scope="col">Estado</th>
-          <th scope="col">Acciones</th>
+          {canWrite ? <th scope="col">Acciones</th> : null}
         </tr>
       </thead>
       <tbody>
@@ -43,7 +45,7 @@ export function DisciplinesTable({ disciplines, onEdit, onDeactivate, onReactiva
                 {STATUS_LABEL[discipline.status]}
               </span>
             </td>
-            <td>
+            {canWrite ? <td>
               <div className="disciplines-table__actions">
                 <button
                   type="button"
@@ -73,7 +75,7 @@ export function DisciplinesTable({ disciplines, onEdit, onDeactivate, onReactiva
                   </button>
                 )}
               </div>
-            </td>
+            </td> : null}
           </tr>
         ))}
       </tbody>

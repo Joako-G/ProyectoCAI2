@@ -9,6 +9,8 @@ import { MembersPage } from './MembersPage';
 interface MembersViewProps {
   /** Overrides today's club date (`YYYY-MM-DD`); used by tests. */
   today?: string;
+  /** Whether the user may create, edit, deactivate and reactivate members. */
+  canWrite: boolean;
 }
 
 // No router (the app has a single section): the visible screen is plain state.
@@ -19,7 +21,7 @@ type View =
   | { name: 'edit'; id: string };
 
 /** Container of the members feature: switches between list, detail and the create / edit form. */
-export function MembersView({ today = todayInClub() }: MembersViewProps) {
+export function MembersView({ today = todayInClub(), canWrite }: MembersViewProps) {
   const [view, setView] = useState<View>({ name: 'list' });
   // Kept here, not in the list, so the filters survive going to the detail or form and back.
   const [query, setQuery] = useState<MemberListQuery>({ search: '', status: 'all', disciplineId: '' });
@@ -35,6 +37,7 @@ export function MembersView({ today = todayInClub() }: MembersViewProps) {
           query={query}
           onQueryChange={setQuery}
           catalog={catalog}
+          canCreate={canWrite}
           onCreate={() => setView({ name: 'create' })}
           onOpen={(id) => setView({ name: 'detail', id })}
         />
@@ -45,6 +48,7 @@ export function MembersView({ today = todayInClub() }: MembersViewProps) {
           id={view.id}
           today={today}
           catalog={catalog}
+          canWrite={canWrite}
           onBack={showList}
           onEdit={(id) => setView({ name: 'edit', id })}
         />

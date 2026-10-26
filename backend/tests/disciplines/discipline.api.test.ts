@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import type { MemberRepository } from '../../src/modules/members/member.repository.js';
 import { createMemberService } from '../../src/modules/members/member.service.js';
+import { createUsersFile, signIn } from '../authorization/helpers.js';
 import { basketball, createTestContext, volleyball } from './helpers.js';
 
 const cleanups: Array<() => Promise<void> | void> = [];
@@ -19,7 +20,10 @@ async function startApi() {
     list: async () => [],
     mutate: async (change) => change([]).result,
   };
+  const users = await createUsersFile();
+  cleanups.push(users.cleanup);
   const app = createApp({
+    storePath: users.storePath,
     memberService: createMemberService({ repository: memberRepository, disciplineLookup: context.service }),
     disciplineService: context.service,
   });
@@ -27,10 +31,11 @@ async function startApi() {
   await new Promise<void>((resolve) => server.once('listening', resolve));
   cleanups.push(() => new Promise<void>((resolve) => server.close(() => resolve())));
   const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const cookie = await signIn(baseUrl, 'head_secretary');
   const send = (method: string, path: string, body?: unknown) =>
     fetch(`${baseUrl}${path}`, {
       method,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', cookie },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   return { send, ...context };

@@ -3,6 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../../src/app.js';
 import type { MemberService } from '../../src/modules/members/member.service.js';
+import { createUsersFile, signIn } from '../authorization/helpers.js';
 import { adultInput, BASKET, createTestContext, minorInput, RETIRED, VOLLEY } from './helpers.js';
 
 const cleanups: Array<() => Promise<void> | void> = [];
@@ -12,24 +13,28 @@ afterEach(async () => {
   while (cleanups.length > 0) await cleanups.pop()!();
 });
 
-async function listen(memberService: MemberService): Promise<string> {
-  const server: Server = createApp({ memberService }).listen(0);
+// Starts the app with a head secretary account and returns the base URL and that account's session cookie.
+async function listen(memberService: MemberService): Promise<{ baseUrl: string; cookie: string }> {
+  const users = await createUsersFile();
+  cleanups.push(users.cleanup);
+  const server: Server = createApp({ memberService, storePath: users.storePath }).listen(0);
   await new Promise<void>((resolve) => server.once('listening', resolve));
   cleanups.push(() => new Promise<void>((resolve) => server.close(() => resolve())));
-  return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+  return { baseUrl, cookie: await signIn(baseUrl, 'head_secretary') };
 }
 
 async function startApi() {
   const context = await createTestContext();
   cleanups.push(context.cleanup);
-  const baseUrl = await listen(context.service);
+  const { baseUrl, cookie } = await listen(context.service);
   const send = (method: string, path: string, body?: unknown) =>
     fetch(`${baseUrl}${path}`, {
       method,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', cookie },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
-  return { baseUrl, send, ...context };
+  return { baseUrl, cookie, send, ...context };
 }
 
 describe('members API', () => {
@@ -179,10 +184,10 @@ describe('members API', () => {
   });
 
   it('returns 400 invalid_json for a malformed body', async () => {
-    const { baseUrl } = await startApi();
+    const { baseUrl, cookie } = await startApi();
     const response = await fetch(`${baseUrl}/api/members`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', cookie },
       body: '{"firstName": ',
     });
     expect(response.status).toBe(400);
@@ -197,10 +202,10 @@ describe('members API', () => {
   });
 
   it('maps other client body-parser errors to their 4xx status, not 500', async () => {
-    const { baseUrl } = await startApi();
+    const { baseUrl, cookie } = await startApi();
     const response = await fetch(`${baseUrl}/api/members`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json; charset=bogus' },
+      headers: { 'content-type': 'application/json; charset=bogus', cookie },
       body: JSON.stringify(adultInput),
     });
     expect(response.status).toBe(415);
@@ -213,9 +218,9 @@ describe('members API', () => {
     const error = new Error('ENOENT: C:\\secret\\members.json');
     const failing = { list: () => Promise.reject(error) } as unknown as MemberService;
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const baseUrl = await listen(failing);
+    const { baseUrl, cookie } = await listen(failing);
 
-    const response = await fetch(`${baseUrl}/api/members`);
+    const response = await fetch(`${baseUrl}/api/members`, { headers: { cookie } });
     expect(response.status).toBe(500);
     const text = await response.text();
     expect(JSON.parse(text)).toEqual({ error: 'internal_error', message: 'Unexpected error' });

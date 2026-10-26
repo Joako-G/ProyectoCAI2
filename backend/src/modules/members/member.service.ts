@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError, ValidationError } from '../../shared/errors.js';
 import { toIsoDate } from '../../shared/date.js';
+import type { DisciplineHistory } from './discipline-history.js';
 import type { DisciplineLookup } from './discipline-lookup.js';
 import type { MemberRepository } from './member.repository.js';
 import type { Member, MemberInput, MemberListQuery } from './member.types.js';
@@ -9,6 +10,8 @@ import { assertDisciplinesAssignable, validateMemberInput } from './member.valid
 export interface MemberServiceDeps {
   repository: MemberRepository;
   disciplineLookup: DisciplineLookup;
+  // Optional: when absent, discipline changes are simply not recorded anywhere else.
+  disciplineHistory?: DisciplineHistory;
   now?: () => Date;
 }
 
@@ -74,19 +77,57 @@ function assertDniAvailable(members: Member[], dni: string, ownId?: string): voi
   }
 }
 
+function sameSet(a: readonly string[], b: readonly string[]): boolean {
+  const left = new Set(a);
+  return left.size === new Set(b).size && b.every((id) => left.has(id));
+}
+
 function replaceAt(members: Member[], index: number, member: Member): Member[] {
   return members.map((current, i) => (i === index ? member : current));
 }
 
-export function createMemberService({ repository, disciplineLookup, now = () => new Date() }: MemberServiceDeps) {
+export function createMemberService({
+  repository,
+  disciplineLookup,
+  disciplineHistory,
+  now = () => new Date(),
+}: MemberServiceDeps) {
   const timestamp = () => now().toISOString();
   const today = () => toIsoDate(now());
+
+  // History syncs run one at a time per member and always read the member's CURRENT record, so
+  // concurrent saves cannot leave the history behind a newer edit. The two JSON files cannot be written
+  // together, so a failure is logged, not raised: the member is saved and the startup reconcile repairs
+  // the history using disciplinesChangedOn.
+  const syncChains = new Map<string, Promise<void>>();
+
+  function recordDisciplines(memberId: string): Promise<void> {
+    if (!disciplineHistory) return Promise.resolve();
+    const run = (syncChains.get(memberId) ?? Promise.resolve()).then(async () => {
+      try {
+        const member = (await repository.list()).find((current) => current.id === memberId);
+        if (!member) return;
+        await disciplineHistory.onDisciplinesChanged(
+          member.id,
+          member.disciplineIds,
+          member.disciplinesChangedOn ?? today(),
+        );
+      } catch (error) {
+        console.error('Could not record the discipline history of member', memberId, error);
+      }
+    });
+    syncChains.set(memberId, run);
+    void run.then(() => {
+      if (syncChains.get(memberId) === run) syncChains.delete(memberId);
+    });
+    return run;
+  }
 
   return {
     async create(raw: MemberInput): Promise<Member> {
       const input = validateMemberInput(raw, today());
       assertDisciplinesAssignable(input.disciplineIds, await disciplineLookup.findByIds(input.disciplineIds));
-      return repository.mutate((members) => {
+      const created = await repository.mutate((members) => {
         assertDniAvailable(members, input.dni);
         const at = timestamp();
         const member: Member = {
@@ -94,24 +135,34 @@ export function createMemberService({ repository, disciplineLookup, now = () => 
           id: randomUUID(),
           memberNumber: nextMemberNumber(members),
           status: 'active',
+          disciplinesChangedOn: today(),
           createdAt: at,
           updatedAt: at,
         };
         return { members: [...members, member], result: member };
       });
+      await recordDisciplines(created.id);
+      return created;
     },
 
     async update(id: string, raw: MemberInput): Promise<Member> {
       const input = validateMemberInput(raw, today());
       const found = await disciplineLookup.findByIds(input.disciplineIds);
-      return repository.mutate((members) => {
+      const updated = await repository.mutate((members) => {
         const index = findIndex(members, id);
         assertDisciplinesAssignable(input.disciplineIds, found, members[index]!.disciplineIds);
         assertDniAvailable(members, input.dni, id);
         const { email: _email, guardian: _guardian, ...current } = members[index]!;
-        const member: Member = { ...current, ...input, updatedAt: timestamp() };
+        const member: Member = {
+          ...current,
+          ...input,
+          ...(!sameSet(current.disciplineIds, input.disciplineIds) && { disciplinesChangedOn: today() }),
+          updatedAt: timestamp(),
+        };
         return { members: replaceAt(members, index, member), result: member };
       });
+      await recordDisciplines(updated.id);
+      return updated;
     },
 
     async deactivate(id: string, reason: string): Promise<Member> {

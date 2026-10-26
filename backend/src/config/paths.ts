@@ -19,3 +19,15 @@ export function membersFilePath(env: NodeJS.ProcessEnv = process.env): string {
 export function disciplinesFilePath(env: NodeJS.ProcessEnv = process.env): string {
   return dataFilePath(env, 'DISCIPLINES_FILE', 'disciplines.json');
 }
+
+export function membershipsFilePath(env: NodeJS.ProcessEnv = process.env): string {
+  return dataFilePath(env, 'MEMBERSHIPS_FILE', 'memberships.json');
+}
+
+export function pricingConfigFilePath(env: NodeJS.ProcessEnv = process.env): string {
+  return dataFilePath(env, 'PRICING_CONFIG_FILE', 'pricing-config.json');
+}
+
+export function paymentsFilePath(env: NodeJS.ProcessEnv = process.env): string {
+  return dataFilePath(env, 'PAYMENTS_FILE', 'payments.json');
+}

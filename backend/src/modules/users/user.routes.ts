@@ -7,6 +7,7 @@ const failureResponses: Record<UserFailure, { status: number; error: string }> =
   'duplicate-email': { status: 409, error: 'Email already exists' },
   'not-found': { status: 404, error: 'User not found' },
   'save-failed': { status: 500, error: 'Unable to save users' },
+  'last-head-secretary': { status: 409, error: 'At least one active head secretary is required' },
 };
 
 function send(response: Response, result: UserResult, successStatus = 200): void {
@@ -22,8 +23,8 @@ export function createUsersRouter(service: UserService): Router {
   const router = Router();
 
   router.get('/', (_request, response) => { response.json(service.list()); });
-  router.post('/', (request, response) => send(response, service.create(request.body), 201));
-  router.patch('/:id', (request, response) => send(response, service.update(request.params.id, request.body)));
+  router.post('/', async (request, response) => send(response, await service.create(request.body), 201));
+  router.patch('/:id', async (request, response) => send(response, await service.update(request.params.id, request.body)));
   router.delete('/:id', (request, response) => send(response, service.deactivate(request.params.id)));
 
   return router;

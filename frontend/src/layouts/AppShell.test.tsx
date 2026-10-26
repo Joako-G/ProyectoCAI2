@@ -43,6 +43,13 @@ describe('AppShell', () => {
     expect(within(nav).getByRole('link', { name: /Usuarios/ })).toHaveAttribute('aria-current', 'page');
   });
 
+  it('lists only the sections it is given, numbered consecutively', () => {
+    render(<AppShell title="Socios" sections={['members', 'users']}><p>Page content</p></AppShell>);
+    const nav = screen.getByRole('navigation', { name: 'Navegación principal' });
+
+    expect(within(nav).getAllByRole('link').map((link) => link.textContent)).toEqual(['01Socios', '02Usuarios']);
+  });
+
   it('renders the screen title and subtitle in the page header', () => {
     renderShell();
 
@@ -92,7 +99,7 @@ describe('AppShell', () => {
 });
 
 describe('AppShell session panel', () => {
-  const user = { id: '1', name: 'Manuel Mendoza', email: 'manum@gmail.com', role: 'admin' };
+  const user = { id: '1', name: 'Manuel Mendoza', email: 'manum@gmail.com', role: 'head_secretary', capabilities: [] };
 
   it('shows the initial, name, email and role of the signed-in user at the foot of the sidebar', () => {
     render(<AppShell title="Socios" user={user} onLogout={vi.fn()}><p>Page content</p></AppShell>);
@@ -101,7 +108,7 @@ describe('AppShell session panel', () => {
     expect(within(session).getByText('M')).toBeInTheDocument();
     expect(within(session).getByText('Manuel Mendoza')).toBeInTheDocument();
     expect(within(session).getByText('manum@gmail.com')).toBeInTheDocument();
-    expect(within(session).getByText('Administrador')).toBeInTheDocument();
+    expect(within(session).getByText('Jefa de secretaría')).toBeInTheDocument();
   });
 
   it('keeps the full name and email available when they are truncated', () => {

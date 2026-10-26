@@ -1,4 +1,16 @@
-import type { AuthUser } from '../types/auth';
+import type { AuthUser, Capability } from '../types/auth';
+
+interface SessionPayload {
+  user?: Omit<AuthUser, 'capabilities'>;
+  capabilities?: Capability[];
+}
+
+// The server sends the capabilities next to the user; a missing list means the user can do nothing.
+function toAuthUser({ user, capabilities }: SessionPayload): AuthUser | null {
+  if (!user) return null;
+  if (!capabilities) console.warn('The session response has no capabilities; treating the user as having none.');
+  return { ...user, capabilities: capabilities ?? [] };
+}
 
 // The session lives in an httpOnly cookie, so every auth request must send credentials.
 export async function login(email: string, password: string): Promise<AuthUser> {
@@ -9,8 +21,9 @@ export async function login(email: string, password: string): Promise<AuthUser> 
     body: JSON.stringify({ email, password }),
   });
   if (!response.ok) throw new Error(`Login failed with status ${response.status}`);
-  const result = await response.json() as { user: AuthUser };
-  return result.user;
+  const user = toAuthUser(await response.json() as SessionPayload);
+  if (!user) throw new Error('Login response had no user');
+  return user;
 }
 
 /** Returns the user of the current server session, or null when there is none. */
@@ -18,8 +31,7 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
   const response = await fetch('/auth/me', { credentials: 'include' });
   if (response.status === 401) return null;
   if (!response.ok) throw new Error(`Session check failed with status ${response.status}`);
-  const result = await response.json() as { user?: AuthUser };
-  return result.user ?? null;
+  return toAuthUser(await response.json() as SessionPayload);
 }
 
 export async function logout(): Promise<void> {

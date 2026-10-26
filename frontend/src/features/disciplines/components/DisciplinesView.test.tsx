@@ -30,7 +30,7 @@ afterEach(() => {
 describe('DisciplinesView list', () => {
   it('shows a loading state, then name, teachers and status chip', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse([basket, volley]));
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
 
     expect(screen.getByRole('status')).toHaveTextContent('Cargando disciplinas');
 
@@ -49,7 +49,7 @@ describe('DisciplinesView list', () => {
 
   it('shows an empty state', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse([]));
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
 
     expect(await screen.findByText(/No hay disciplinas/)).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
@@ -60,7 +60,7 @@ describe('DisciplinesView list', () => {
       .mockResolvedValueOnce(jsonResponse({ error: 'internal_error', message: 'Boom' }, 500))
       .mockResolvedValueOnce(jsonResponse([basket]));
     const user = userEvent.setup();
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('No se pudo cargar el listado');
@@ -73,7 +73,7 @@ describe('DisciplinesView list', () => {
 
   it('shows a connection message when the request fails outright', async () => {
     fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo conectar con el servidor.');
   });
@@ -81,7 +81,7 @@ describe('DisciplinesView list', () => {
   it('filters by status and searches by name', async () => {
     fetchMock.mockImplementation(async () => jsonResponse([basket]));
     const user = userEvent.setup();
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
     await screen.findByText('Básquet');
 
     await user.click(screen.getByRole('radio', { name: 'Inactivas' }));
@@ -99,7 +99,7 @@ describe('DisciplinesView create and edit', () => {
       .mockResolvedValueOnce(jsonResponse(basket, 201))
       .mockResolvedValueOnce(jsonResponse([basket]));
     const user = userEvent.setup();
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
 
     await user.click(await screen.findByRole('button', { name: 'Nueva disciplina' }));
     expect(screen.getByRole('heading', { name: 'Alta de disciplina' })).toHaveFocus();
@@ -124,7 +124,7 @@ describe('DisciplinesView create and edit', () => {
       .mockResolvedValueOnce(jsonResponse([]))
       .mockResolvedValueOnce(jsonResponse({ error: 'conflict', message: 'A discipline with this name already exists' }, 409));
     const user = userEvent.setup();
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
 
     await user.click(await screen.findByRole('button', { name: 'Nueva disciplina' }));
     await user.type(screen.getByLabelText('Nombre'), 'Básquet');
@@ -145,7 +145,7 @@ describe('DisciplinesView create and edit', () => {
         jsonResponse({ error: 'validation_error', message: 'Invalid', fieldErrors: { teachers: 'Teachers must not be repeated', leadTeacher: 'Lead teacher must be one of the teachers' } }, 400),
       );
     const user = userEvent.setup();
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
 
     await user.click(await screen.findByRole('button', { name: 'Nueva disciplina' }));
     await user.type(screen.getByLabelText('Nombre'), 'Básquet');
@@ -168,7 +168,7 @@ describe('DisciplinesView create and edit', () => {
       .mockResolvedValueOnce(jsonResponse({ ...basket, teachers: ['Lucas Vera'], leadTeacher: 'Lucas Vera' }))
       .mockResolvedValueOnce(jsonResponse([{ ...basket, teachers: ['Lucas Vera'], leadTeacher: 'Lucas Vera' }]));
     const user = userEvent.setup();
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
 
     await user.click(await screen.findByRole('button', { name: 'Editar Básquet' }));
     expect(screen.getByRole('heading', { name: 'Editar disciplina' })).toBeInTheDocument();
@@ -187,7 +187,7 @@ describe('DisciplinesView create and edit', () => {
   it('keeps the status tab and search when coming back from the form', async () => {
     fetchMock.mockImplementation(async () => jsonResponse([basket]));
     const user = userEvent.setup();
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
     await screen.findByText('Básquet');
 
     await user.click(screen.getByRole('radio', { name: 'Activas' }));
@@ -206,7 +206,7 @@ describe('DisciplinesView create and edit', () => {
   it('cancels back to the list without saving', async () => {
     fetchMock.mockImplementation(async () => jsonResponse([basket]));
     const user = userEvent.setup();
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
 
     await user.click(await screen.findByRole('button', { name: 'Editar Básquet' }));
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
@@ -223,7 +223,7 @@ describe('DisciplinesView status actions', () => {
       .mockResolvedValueOnce(jsonResponse({ ...basket, status: 'inactive' }))
       .mockResolvedValueOnce(jsonResponse([{ ...basket, status: 'inactive' }]));
     const user = userEvent.setup();
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
 
     await user.click(await screen.findByRole('button', { name: 'Dar de baja Básquet' }));
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -241,7 +241,7 @@ describe('DisciplinesView status actions', () => {
       .mockResolvedValueOnce(jsonResponse({ ...volley, status: 'active' }))
       .mockResolvedValueOnce(jsonResponse([{ ...volley, status: 'active' }]));
     const user = userEvent.setup();
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
 
     await user.click(await screen.findByRole('button', { name: 'Reactivar Vóley' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar reactivación' }));
@@ -255,7 +255,7 @@ describe('DisciplinesView status actions', () => {
       .mockResolvedValueOnce(jsonResponse([basket]))
       .mockResolvedValueOnce(jsonResponse({ error: 'internal_error', message: 'Boom' }, 500));
     const user = userEvent.setup();
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
 
     await user.click(await screen.findByRole('button', { name: 'Dar de baja Básquet' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar baja' }));
@@ -269,7 +269,7 @@ describe('DisciplinesView status actions', () => {
       .mockResolvedValueOnce(jsonResponse({ error: 'not_found', message: 'Discipline not found' }, 404))
       .mockResolvedValueOnce(jsonResponse([]));
     const user = userEvent.setup();
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
 
     await user.click(await screen.findByRole('button', { name: 'Dar de baja Básquet' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar baja' }));
@@ -290,7 +290,7 @@ describe('DisciplinesView status actions', () => {
       .mockResolvedValueOnce(jsonResponse({ error: 'conflict', message: 'Discipline is already inactive' }, 409))
       .mockResolvedValueOnce(jsonResponse([{ ...basket, status: 'inactive' }]));
     const user = userEvent.setup();
-    render(<DisciplinesView />);
+    render(<DisciplinesView canWrite />);
 
     await user.click(await screen.findByRole('button', { name: 'Dar de baja Básquet' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar baja' }));
