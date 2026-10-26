@@ -11,7 +11,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-type Handler = () => Response | Promise<Response>;
+// A handler receives the request it is answering, so fakes can read that request's own body.
+type Handler = (init?: RequestInit) => Response | Promise<Response>;
 
 const failure = (status: number, message: string): Handler => () => jsonResponse({ error: 'error', message }, status);
 
@@ -33,7 +34,7 @@ function stubApi(overrides: Record<string, Handler> = {}) {
     const key = `${init?.method ?? 'GET'} ${String(url)}`;
     const handler = routes[key];
     if (!handler) throw new Error(`Unexpected request: ${key}`);
-    return handler();
+    return handler(init);
   });
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
@@ -418,15 +419,22 @@ describe('PaymentsView idempotent registration', () => {
     ['a network error', () => { throw new TypeError('Failed to fetch'); }],
   ])('stores one payment when the response is lost (%s) and the operator confirms again after the form remounts', async (_name, lose) => {
     // Fake server that dedupes by requestId like the backend: the first POST is saved, then its answer is lost.
-    const stored: Array<ReturnType<typeof buildPayment>> = [];
+    // Only this fake server keeps the requestId next to the payment, to dedupe the way the backend does.
+    type StoredPayment = ReturnType<typeof buildPayment> & { requestId: string };
+    const stored: StoredPayment[] = [];
     let posts = 0;
     const fetchMock = stubApi({
       [HISTORY]: () => jsonResponse(stored),
-      'POST /api/payments': () => {
-        const body = JSON.parse(String(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST' && String(init.body).includes('requestId')).at(-1)?.[1]?.body));
-        let payment = stored.find((entry) => (entry as { requestId?: string }).requestId === body.requestId);
+      'POST /api/payments': (init) => {
+        if (typeof init?.body !== 'string') throw new Error('The register request has no JSON body');
+        const { requestId } = JSON.parse(init.body) as { requestId?: string };
+        if (!requestId) throw new Error('The register request has no requestId');
+        let payment = stored.find((entry) => entry.requestId === requestId);
         if (!payment) {
-          payment = buildPayment({ id: 'pay-carnet', receiptNumber: 9, paymentDate: '2026-10-26', lines: [{ kind: 'carnetReplacement', period: '2026-10', amount: 13000 }], total: 13000, ...{ requestId: body.requestId } });
+          payment = {
+            ...buildPayment({ id: 'pay-carnet', receiptNumber: 9, paymentDate: '2026-10-26', lines: [{ kind: 'carnetReplacement', period: '2026-10', amount: 13000 }], total: 13000 }),
+            requestId,
+          };
           stored.push(payment);
         }
         return ++posts === 1 ? lose() : jsonResponse(payment, 201);
