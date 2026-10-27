@@ -42,10 +42,23 @@ export interface RevenueReport {
   /** Valid (not annulled) income; the concept, method and receipt figures below each add up to it. */
   total: Money;
   byConcept: Array<{ concept: IncomeConcept; total: Money }>;
+  /** Receipt lines per concept, for the printed report. Kept apart from `byConcept`, which the Arqueo stores as a snapshot. */
+  operationsByConcept: Array<{ concept: IncomeConcept; count: number }>;
   byMethod: Array<{ method: PaymentMethod; total: Money }>;
-  receipts: Array<{ receiptNumber: number; date: ClubDate; method: PaymentMethod; total: Money }>;
+  receipts: Array<{
+    receiptNumber: number;
+    date: ClubDate;
+    method: PaymentMethod;
+    total: Money;
+    /** The concepts the receipt charged, in the order the reports list them. */
+    concepts: IncomeConcept[];
+    /** Absent when the member no longer exists in the list; never guessed. */
+    member?: { memberNumber: string; fullName: string };
+  }>;
   /** Annulled payments of the range, shown apart and never netted into the figures above. */
   annulled: { count: number; total: Money };
+  /** Receipt numbers handed out in the range, annulled ones included; `null` when none were. */
+  issued: { first: number; last: number; count: number } | null;
 }
 
 export interface DisciplineSettlementQuery {

@@ -47,9 +47,28 @@ describe('revenue report', () => {
     expect(report.byConcept).toEqual([{ concept: 'socialFee', total: 2000 }, { concept: 'activityFee', total: 3000 }]);
     expect(report.byMethod).toEqual([{ method: 'cash', total: 4000 }, { method: 'qr', total: 1000 }]);
     expect(report.receipts).toEqual([
-      { receiptNumber: 1, date: '2026-10-05', method: 'cash', total: 4000 },
-      { receiptNumber: 2, date: '2026-10-05', method: 'qr', total: 1000 },
+      { receiptNumber: 1, date: '2026-10-05', method: 'cash', total: 4000, concepts: ['socialFee', 'activityFee'], member: { memberNumber: '0001', fullName: 'Lucía Pérez' } },
+      { receiptNumber: 2, date: '2026-10-05', method: 'qr', total: 1000, concepts: ['socialFee'], member: { memberNumber: '0002', fullName: 'Ana Gómez' } },
     ]);
+  });
+
+  it('counts the receipt lines of each concept and the receipt numbers issued, annulled ones included', async () => {
+    const report = await serviceWith([
+      entry({ receiptNumber: 4, concept: 'socialFee', amount: 1000 }),
+      entry({ receiptNumber: 4, concept: 'socialFee', amount: 1000 }),
+      entry({ receiptNumber: 5, concept: 'carnetReplacement', amount: 300, memberId: 'm2' }),
+      entry({ receiptNumber: 6, amount: 800, annulled: true }),
+    ]).revenue({ granularity: 'daily', date: '2026-10-05' });
+
+    expect(report.operationsByConcept).toEqual([{ concept: 'socialFee', count: 2 }, { concept: 'carnetReplacement', count: 1 }]);
+    expect(report.issued).toEqual({ first: 4, last: 6, count: 3 });
+    expect(report.annulled.count).toBe(1);
+  });
+
+  it('leaves the member out of a receipt whose member is not in the list instead of inventing one', async () => {
+    const report = await serviceWith([entry({ memberId: 'gone' })]).revenue({ granularity: 'daily', date: '2026-10-05' });
+
+    expect(report.receipts[0]).not.toHaveProperty('member');
   });
 
   it('keeps the concept, method and receipt figures adding up to the total', async () => {
@@ -106,7 +125,7 @@ describe('revenue report', () => {
   it('returns zeros and empty lists for a period with no payments', async () => {
     const report = await serviceWith([]).revenue({ granularity: 'daily', date: '2026-10-05' });
 
-    expect(report).toMatchObject({ total: 0, byConcept: [], byMethod: [], receipts: [], annulled: { count: 0, total: 0 } });
+    expect(report).toMatchObject({ total: 0, byConcept: [], byMethod: [], receipts: [], annulled: { count: 0, total: 0 }, issued: null });
   });
 
   it.each([

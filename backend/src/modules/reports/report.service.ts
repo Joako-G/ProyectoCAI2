@@ -51,7 +51,9 @@ function rangeFor({ granularity, date }: RevenueQuery): { from: ClubDate; to: Cl
 
 const sum = (entries: readonly IncomeEntry[]) => entries.reduce((total, entry) => total + entry.amount, 0);
 
-function revenueReport(entries: readonly IncomeEntry[], query: RevenueQuery): RevenueReport {
+type MemberRow = { id: string; memberNumber: string; firstName: string; lastName: string };
+
+function revenueReport(entries: readonly IncomeEntry[], query: RevenueQuery, members: ReadonlyMap<string, MemberRow>): RevenueReport {
   const { from, to } = rangeFor(query);
   const inRange = entries.filter((entry) => entry.date >= from && entry.date <= to);
   const valid = inRange.filter((entry) => !entry.annulled);
@@ -68,14 +70,33 @@ function revenueReport(entries: readonly IncomeEntry[], query: RevenueQuery): Re
     byConcept: CHARGE_LINE_KINDS
       .map((concept) => ({ concept, total: sum(valid.filter((entry) => entry.concept === concept)) }))
       .filter((row) => valid.some((entry) => entry.concept === row.concept)),
+    operationsByConcept: CHARGE_LINE_KINDS
+      .map((concept) => ({ concept, count: valid.filter((entry) => entry.concept === concept).length }))
+      .filter((row) => row.count > 0),
     byMethod: PAYMENT_METHODS
       .map((method) => ({ method, total: sum(valid.filter((entry) => entry.method === method)) }))
       .filter((row) => valid.some((entry) => entry.method === row.method)),
     receipts: [...receipts.entries()]
       .sort(([a], [b]) => a - b)
-      .map(([receiptNumber, lines]) => ({ receiptNumber, date: lines[0]!.date, method: lines[0]!.method, total: sum(lines) })),
+      .map(([receiptNumber, lines]) => {
+        const member = members.get(lines[0]!.memberId);
+        return {
+          receiptNumber,
+          date: lines[0]!.date,
+          method: lines[0]!.method,
+          total: sum(lines),
+          concepts: CHARGE_LINE_KINDS.filter((concept) => lines.some((line) => line.concept === concept)),
+          ...(member ? { member: { memberNumber: member.memberNumber, fullName: `${member.firstName} ${member.lastName}` } } : {}),
+        };
+      }),
     annulled: { count: new Set(annulled.map((entry) => entry.receiptNumber)).size, total: sum(annulled) },
+    issued: issuedRange(inRange),
   };
+}
+
+function issuedRange(entries: readonly IncomeEntry[]): RevenueReport['issued'] {
+  const numbers = [...new Set(entries.map((entry) => entry.receiptNumber))];
+  return numbers.length === 0 ? null : { first: Math.min(...numbers), last: Math.max(...numbers), count: numbers.length };
 }
 
 const byName = (a: string, b: string) => a.localeCompare(b, 'es');
@@ -85,7 +106,8 @@ export function createReportService({ income, members, disciplines }: ReportServ
     // Valid income of a day, week or month by concept and payment method; annulled payments are listed apart.
     async revenue(query: RevenueQuery): Promise<RevenueReport> {
       rangeFor(query);
-      return revenueReport(await income.list(), query);
+      const memberById = new Map((await members.list()).map((member) => [member.id, member]));
+      return revenueReport(await income.list(), query, memberById);
     },
 
     // PROVISIONAL(S3c): "al día" is read as "paid that month's fee for this discipline", like the current
