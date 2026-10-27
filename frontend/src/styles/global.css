@@ -144,6 +144,21 @@ a:hover {
   color: #fff;
 }
 
+.sidebar__group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.sidebar__group-label {
+  padding: 4px 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--color-sidebar-muted);
+}
+
 .sidebar__link-index {
   font-family: var(--font-mono);
   font-size: 10px;

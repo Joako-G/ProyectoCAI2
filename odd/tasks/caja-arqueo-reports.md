@@ -25,7 +25,8 @@ Branch: JoakoG. Delivery strategy: ask-on-risk. Test runner: vitest (frontend), 
 - T1. S2-S4, S10. Read-only Reports contracts and service. Pending.
 - T2. S1, S6, S8, S9, S11, S12. Arqueo domain and JSON persistence. Pending.
 - T3. S5, S7. Protected APIs and capability checks. Pending.
-- T4. S7. Role-specific Caja navigation and screens (manifest/Sidebar refactor first, own commit). Pending.
+- T4a. S7. Navigation layout with groups (`navigationFor`, `Sidebar` groups); default layout stays flat. Inline. Done: RED observed (6 failing), GREEN 389 tests, typecheck clean.
+- T4b. S7. Caja group, Arqueo and Reportes screens and routes. Pending.
 - T5. S4. PDF and Excel export, tests, browser smoke. Pending.
 
 ## Log

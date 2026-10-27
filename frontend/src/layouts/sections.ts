@@ -16,6 +16,40 @@ export const SECTIONS: ReadonlyArray<{ id: Section; label: string; subtitle: str
   { id: 'pricing', label: 'Precios', subtitle: 'Tarifas, recargos por pago tardío y prorrateo', path: '/precios', capability: 'config:read' },
 ];
 
+/**
+ * How the sidebar lists sections: a bare id is a link, a group is a labelled set of links shown only
+ * when the user may open `requires`. A section is listed once, at its first place in the layout, so a
+ * link placed after a group is the fallback for users who do not get that group.
+ */
+export type NavLayoutEntry = Section | { id: string; label: string; requires: Section; items: ReadonlyArray<Section> };
+
+export type NavEntry =
+  | { kind: 'link'; section: Section }
+  | { kind: 'group'; id: string; label: string; items: Section[] };
+
+export const NAVIGATION: ReadonlyArray<NavLayoutEntry> = SECTIONS.map(({ id }) => id);
+
+/** The sidebar entries for the allowed sections: groups and links in layout order, each section once. */
+export function navigationFor(allowed: ReadonlyArray<Section>, layout: ReadonlyArray<NavLayoutEntry> = NAVIGATION): NavEntry[] {
+  const placed = new Set<Section>();
+  const entries: NavEntry[] = [];
+  for (const entry of layout) {
+    if (typeof entry === 'string') {
+      if (allowed.includes(entry) && !placed.has(entry)) {
+        placed.add(entry);
+        entries.push({ kind: 'link', section: entry });
+      }
+      continue;
+    }
+    if (!allowed.includes(entry.requires)) continue;
+    const items = entry.items.filter((item) => allowed.includes(item) && !placed.has(item));
+    if (items.length === 0) continue;
+    items.forEach((item) => placed.add(item));
+    entries.push({ kind: 'group', id: entry.id, label: entry.label, items });
+  }
+  return entries;
+}
+
 /** The sections a user may open, in navigation order. */
 export function sectionsFor(user: Pick<AuthUser, 'capabilities'>): Section[] {
   return SECTIONS.filter(({ capability }) => can(user, capability)).map(({ id }) => id);
