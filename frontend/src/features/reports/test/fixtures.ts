@@ -7,12 +7,14 @@ export function buildRevenue(overrides: Partial<RevenueReport> = {}): RevenueRep
     to: '2026-10-05',
     total: 4500,
     byConcept: [{ concept: 'socialFee', total: 1500 }, { concept: 'activityFee', total: 3000 }],
+    operationsByConcept: [{ concept: 'socialFee', count: 1 }, { concept: 'activityFee', count: 1 }],
     byMethod: [{ method: 'cash', total: 4000 }, { method: 'qr', total: 500 }],
     receipts: [
-      { receiptNumber: 1, date: '2026-10-05', method: 'cash', total: 4000 },
-      { receiptNumber: 2, date: '2026-10-05', method: 'qr', total: 500 },
+      { receiptNumber: 1, date: '2026-10-05', method: 'cash', total: 4000, concepts: ['socialFee', 'activityFee'], member: { memberNumber: '0001', fullName: 'Lucía Ríos' } },
+      { receiptNumber: 2, date: '2026-10-05', method: 'qr', total: 500, concepts: ['socialFee'], member: { memberNumber: '0002', fullName: 'Ana Gómez' } },
     ],
     annulled: { count: 0, total: 0 },
+    issued: { first: 1, last: 2, count: 2 },
     ...overrides,
   };
 }
