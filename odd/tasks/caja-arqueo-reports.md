@@ -24,7 +24,7 @@ Branch: JoakoG. Delivery strategy: ask-on-risk. Test runner: vitest (frontend), 
 
 - T0. S1-S12. Inline. Freeze scope against the approved PDFs. Done (this document).
 - T1. S2-S4, S10, S3b, S3c. Read-only Reports service (`backend/src/modules/reports/`). Inline. Done: RED observed (module missing), GREEN 19 new tests; backend suite 688 passed, typecheck clean. No HTTP route yet (T3). Exports are T5.
-- T2. S1, S6, S8, S9, S11, S12. Arqueo domain and JSON persistence. Pending.
+- T2. S1, S6, S8, S9, S11, S12. Arqueo domain and JSON persistence (`backend/src/modules/cashcount/`). Inline. Done: RED observed (module missing), GREEN 25 new tests; backend suite 713 passed, typecheck clean. Not wired into the app yet (T3). Assumption A1: a close is only for today (club-local); the caller cannot choose or backdate the date. Limitation: expected totals are read just before the write, so a payment taken in between is not in that close's snapshot.
 - T3. S5, S7. Protected APIs and capability checks. Pending.
 - T4a. S7. Navigation layout with groups (`navigationFor`, `Sidebar` groups); default layout stays flat. Inline. Done: RED observed (6 failing), GREEN 389 tests, typecheck clean.
 - T4b. S7. Caja group, Arqueo and Reportes screens and routes. Pending.
