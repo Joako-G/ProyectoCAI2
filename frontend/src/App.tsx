@@ -23,7 +23,7 @@ function pageFor(section: Section, user: AuthUser) {
     case 'disciplines': return <DisciplinesView canWrite={can(user, 'disciplines:write')} />;
     case 'payments': return <PaymentsView canCollect={can(user, 'payments:collect')} canAnnul={can(user, 'payments:annul')} />;
     case 'cashcount': return <ArqueoView />;
-    case 'reports': return <ReportsView />;
+    case 'reports': return <ReportsView issuedBy={user.name} canReadCashCount={can(user, 'cashcount:run')} />;
     case 'roster': return <RosterView />;
     case 'pricing': return <PricingView canWrite={can(user, 'config:manage')} />;
     case 'users': return <UsersView currentUserId={user.id} />;

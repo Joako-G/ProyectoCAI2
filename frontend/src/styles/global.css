@@ -1099,21 +1099,18 @@ a:hover {
   margin-top: 16px;
 }
 
-/* Printing a receipt or a report shows only that block. */
+/* Printing a receipt shows only that block; the report sheet has its own rules in report-print.css. */
 @media print {
   body * {
     visibility: hidden;
   }
 
   .receipt,
-  .receipt *,
-  .report-sheet,
-  .report-sheet * {
+  .receipt * {
     visibility: visible;
   }
 
-  .receipt,
-  .report-sheet {
+  .receipt {
     position: absolute;
     left: 0;
     top: 0;

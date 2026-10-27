@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { fetchHistory } from '../../cashcount/services/cashcount-api';
+import type { CashCount } from '../../cashcount/types/cashcount';
 import { useDisciplinesList } from '../../disciplines/hooks/useDisciplinesList';
 import { useReport, type ReportState } from '../hooks/useReport';
 import { fetchDisciplineSettlement, fetchRevenue } from '../services/reports-api';
@@ -24,8 +26,27 @@ function Outcome<T>({ state, retry, children }: { state: ReportState<T>; retry: 
   return state.phase === 'ready' ? <>{children(state.report)}</> : null;
 }
 
+/**
+ * The revenue sheet with the day's saved Arqueo, when the user may read it and one exists. Without it the
+ * sheet prints blank lines for the counted cash, so a failed or forbidden read never blocks the report.
+ */
+function RevenueSheet({ report, issuedBy, canReadCashCount }: { report: RevenueReport; issuedBy?: string; canReadCashCount: boolean }) {
+  const [cashCount, setCashCount] = useState<CashCount | undefined>();
+  useEffect(() => {
+    setCashCount(undefined);
+    if (!canReadCashCount || report.granularity !== 'daily') return;
+    const controller = new AbortController();
+    fetchHistory(controller.signal).then(
+      (history) => { if (!controller.signal.aborted) setCashCount(history.find(({ businessDate }) => businessDate === report.from)); },
+      () => undefined,
+    );
+    return () => controller.abort();
+  }, [report, canReadCashCount]);
+  return <RevenueResult report={report} issuedBy={issuedBy} cashCount={cashCount} />;
+}
+
 /** Container of the reports feature: picks a report and its criteria and shows the result the server computed. */
-export function ReportsView() {
+export function ReportsView({ issuedBy, canReadCashCount = false }: { issuedBy?: string; canReadCashCount?: boolean } = {}) {
   const [kind, setKind] = useState<Kind>('revenue');
   const [granularity, setGranularity] = useState<ReportGranularity>('daily');
   const [date, setDate] = useState(todayDate);
@@ -84,8 +105,8 @@ export function ReportsView() {
       </form>
 
       {kind === 'revenue'
-        ? <Outcome state={revenue.state} retry={revenue.retry}>{(report) => <><ReportActions exported={revenueExport(report)} /><RevenueResult report={report} /></>}</Outcome>
-        : <Outcome state={settlement.state} retry={settlement.retry}>{(report) => <><ReportActions exported={settlementExport(report)} /><SettlementResult report={report} /></>}</Outcome>}
+        ? <Outcome state={revenue.state} retry={revenue.retry}>{(report) => <><ReportActions exported={revenueExport(report)} /><RevenueSheet report={report} issuedBy={issuedBy} canReadCashCount={canReadCashCount} /></>}</Outcome>
+        : <Outcome state={settlement.state} retry={settlement.retry}>{(report) => <><ReportActions exported={settlementExport(report)} /><SettlementResult report={report} issuedBy={issuedBy} /></>}</Outcome>}
     </section>
   );
 }

@@ -41,17 +41,17 @@ describe('ReportsView: revenue', () => {
     fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2026-10-05' } });
     await user.click(screen.getByRole('button', { name: 'Generar reporte' }));
 
-    expect(await screen.findByText('Del 05/10/2026 al 05/10/2026')).toBeInTheDocument();
+    expect(await screen.findByText('Fecha: 05/10/2026')).toBeInTheDocument();
     expect(reportCalls(fetchMock)).toEqual(['/api/reports/revenue?granularity=daily&date=2026-10-05']);
     expect(screen.getByText('Total recaudado')).toBeInTheDocument();
     expect(screen.getByTestId('revenue-total')).toHaveTextContent('$ 4.500');
 
     const concepts = screen.getByRole('table', { name: 'Recaudación por concepto' });
-    expect(within(concepts).getAllByRole('row').slice(1).map((row) => row.textContent)).toEqual(['Cuotas sociales$ 1.500', 'Cuotas de actividades$ 3.000']);
+    expect(within(concepts).getAllByRole('row').slice(1).map((row) => row.textContent)).toEqual(['Cuotas sociales133,3 %$ 1.500,00', 'Cuotas de actividades166,7 %$ 3.000,00', 'TOTAL2100,0 %$ 4.500,00']);
     const methods = screen.getByRole('table', { name: 'Recaudación por medio de pago' });
-    expect(within(methods).getAllByRole('row').slice(1).map((row) => row.textContent)).toEqual(['Efectivo$ 4.000', 'QR$ 500']);
+    expect(within(methods).getAllByRole('row').slice(1).map((row) => row.textContent)).toEqual(['Efectivo88,9 %$ 4.000,00', 'QR11,1 %$ 500,00', 'TOTAL100,0 %$ 4.500,00']);
     const receipts = screen.getByRole('table', { name: 'Comprobantes del período' });
-    expect(within(receipts).getAllByRole('row').slice(1).map((row) => row.textContent)).toEqual(['105/10/2026Efectivo$ 4.000', '205/10/2026QR$ 500']);
+    expect(within(receipts).getAllByRole('row').slice(1).map((row) => row.textContent)).toEqual(['105/10/2026Lucía Ríos (N° 0001)Cuotas sociales, Cuotas de actividadesEfectivo$ 4.000,00', '205/10/2026Ana Gómez (N° 0002)Cuotas socialesQR$ 500,00', 'TOTAL$ 4.500,00']);
   });
 
   it('requests the period chosen and shows the range the server worked out', async () => {
@@ -67,13 +67,41 @@ describe('ReportsView: revenue', () => {
     expect(reportCalls(fetchMock)).toEqual(['/api/reports/revenue?granularity=weekly&date=2026-10-07']);
   });
 
+  it('warns instead of printing in silence when a table does not add up to the total', async () => {
+    stubApi({ revenue: buildRevenue({ byMethod: [{ method: 'cash', total: 4000 }] }) });
+    const user = userEvent.setup();
+    render(<ReportsView />);
+    await user.click(screen.getByRole('button', { name: 'Generar reporte' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('los totales no coinciden');
+    expect(screen.getByRole('alert')).toHaveTextContent('Por medio de pago');
+  });
+
+  it('shows no warning, the receipt summary, the signature lines and blank closing lines when everything adds up', async () => {
+    stubApi({ revenue: buildRevenue({ annulled: { count: 1, total: 300 }, issued: { first: 1, last: 3, count: 3 } }) });
+    const user = userEvent.setup();
+    render(<ReportsView issuedBy="Ana Caja" />);
+    await user.click(screen.getByRole('button', { name: 'Generar reporte' }));
+
+    await screen.findByTestId('revenue-total');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByText('del 1 al 3 (3)')).toBeInTheDocument();
+    expect(screen.getByText('Emitido por')).toBeInTheDocument();
+    expect(screen.getByText('Ana Caja')).toBeInTheDocument();
+    const signatures = screen.getByRole('region', { name: 'Firmas' });
+    expect(within(signatures).getByText('Responsable de caja')).toBeInTheDocument();
+    expect(within(signatures).getByText('Tesorería')).toBeInTheDocument();
+    const closing = screen.getByRole('region', { name: 'Cierre de caja' });
+    expect(within(closing).getByText('$ 4.000,00')).toBeInTheDocument();
+  });
+
   it('shows annulled payments apart from the total', async () => {
     stubApi({ revenue: buildRevenue({ annulled: { count: 2, total: 1200 } }) });
     const user = userEvent.setup();
     render(<ReportsView />);
     await user.click(screen.getByRole('button', { name: 'Generar reporte' }));
 
-    expect(await screen.findByText('Pagos anulados, no incluidos en el total: 2 por $ 1.200')).toBeInTheDocument();
+    expect(await screen.findByText('Pagos anulados, no incluidos en el total: 2 por $ 1.200,00')).toBeInTheDocument();
   });
 
   it('says so when nothing was collected in the period', async () => {

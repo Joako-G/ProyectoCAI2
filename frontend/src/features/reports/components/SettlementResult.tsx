@@ -1,18 +1,22 @@
+import { useMemo } from 'react';
 import { formatPeriod, formatPesos } from '../../pricing/utils/pricing-format';
 import type { DisciplineSettlement } from '../types/report';
+import { ReportLetterhead } from './ReportLetterhead';
 
 /** Presentational: who paid a discipline's fee for a month and what that fee came to. No DNI, by the club's decision. */
-export function SettlementResult({ report }: { report: DisciplineSettlement }) {
+export function SettlementResult({ report, issuedBy }: { report: DisciplineSettlement; issuedBy?: string }) {
+  const issuedAt = useMemo(() => new Date(), [report]);
   const month = formatPeriod(report.period);
   return (
     <section className="report-result report-sheet" aria-label="Resultado de liquidación">
+      <ReportLetterhead issuedBy={issuedBy} issuedAt={issuedAt} />
       <h2 className="report-title">Liquidación de {report.discipline.name}</h2>
       <p className="report-result__range">{report.discipline.name}, {month}</p>
 
       {report.students.length === 0 ? (
         <p className="members-page__notice">Ningún socio pagó la cuota de esta disciplina en el mes elegido.</p>
       ) : (
-        <table className="members-table">
+        <table className="members-table report-table">
           <caption className="visually-hidden">Socios de {report.discipline.name} con la cuota de {month} paga</caption>
           <thead>
             <tr className="table-head"><th scope="col">Nombre</th><th scope="col">N° de socio</th><th scope="col">Mes</th></tr>

@@ -1,0 +1,357 @@
+/*
+ * Report sheet: the on-screen touches of the revenue and settlement reports, and everything about how they
+ * print. Tune the paper here; nothing in this file touches the report data or logic.
+ *
+ * Printed to be read in black and white and to spare ink: light-grey table heads, thin rules and borders
+ * instead of colour fills. Two type families only: the sans of the app for text and the mono for figures.
+ */
+
+/* ---- Screen ---- */
+
+.report-letterhead,
+.report-signatures {
+  display: none;
+}
+
+.report-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.report-section__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.report-table .report-amount {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.report-table tfoot th,
+.report-table tfoot td {
+  padding: 8px 12px;
+  border-top: 2px solid var(--color-text);
+  font-weight: 700;
+}
+
+.report-table tfoot th {
+  text-align: left;
+}
+
+.report-summary,
+.report-closing {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 0;
+}
+
+.report-summary div,
+.report-closing div {
+  display: flex;
+  gap: 8px;
+}
+
+.report-summary dt,
+.report-closing dt {
+  color: var(--color-text-muted);
+}
+
+.report-summary dd,
+.report-closing dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.report-closing__note {
+  font-weight: 400;
+}
+
+.report-blank {
+  display: inline-block;
+  min-width: 9em;
+  border-bottom: 1px solid var(--color-text);
+}
+
+.report-warning {
+  margin: 0;
+  padding: 10px 12px;
+  border: 2px solid var(--color-error);
+  border-radius: var(--radius-sm);
+  color: var(--color-error);
+}
+
+/* ---- Paper ---- */
+
+@page {
+  size: A4;
+  margin: 18mm;
+
+  @bottom-left {
+    content: var(--print-stamp, '');
+    font: 8pt 'IBM Plex Sans', Helvetica, Arial, sans-serif;
+    color: #444;
+  }
+
+  @bottom-center {
+    content: 'Club CAI · Gestión de socios';
+    font: 8pt 'IBM Plex Sans', Helvetica, Arial, sans-serif;
+    color: #444;
+  }
+
+  @bottom-right {
+    content: 'Página ' counter(page) ' de ' counter(pages);
+    font: 8pt 'IBM Plex Sans', Helvetica, Arial, sans-serif;
+    color: #444;
+  }
+}
+
+@media print {
+  /* Only the report goes to paper, flowing from the top of the first page. */
+  html,
+  body {
+    background: #fff;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .report-sheet,
+  .report-sheet * {
+    visibility: visible;
+  }
+
+  .report-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    gap: 8pt;
+    background: none;
+    box-shadow: none;
+    color: #000;
+    font-family: var(--font-sans);
+    font-size: 10pt;
+  }
+
+  .report-sheet .report-mono,
+  .report-sheet .members-table__mono {
+    font-family: var(--font-mono);
+    font-size: 9.5pt;
+  }
+
+  .report-letterhead {
+    display: flex;
+    align-items: center;
+    gap: 14pt;
+    padding-bottom: 10pt;
+    border-bottom: 1.5pt solid #000;
+  }
+
+  .report-letterhead__logo {
+    flex: none;
+    width: 46pt;
+    height: auto;
+  }
+
+  .report-letterhead__identity {
+    flex: 1;
+  }
+
+  .report-letterhead p,
+  .report-letterhead dl,
+  .report-letterhead dd {
+    margin: 0;
+  }
+
+  .report-letterhead__club {
+    font-size: 20pt;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .report-letterhead__system {
+    font-size: 8.5pt;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .report-letterhead__issue {
+    display: grid;
+    gap: 2pt;
+    font-size: 8.5pt;
+  }
+
+  .report-letterhead__issue div {
+    display: flex;
+    justify-content: space-between;
+    gap: 8pt;
+  }
+
+  .report-letterhead__issue dt {
+    color: #444;
+  }
+
+  /* The total is the headline; the title is a plain label above it. */
+  .report-sheet .report-title {
+    margin: 4pt 0 0;
+    font-family: var(--font-sans);
+    font-size: 12pt;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .report-sheet .report-result__range {
+    font-family: var(--font-sans);
+    font-size: 10pt;
+  }
+
+  .report-sheet .report-result__total {
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 8pt 14pt;
+    border: 2pt solid #000;
+    break-inside: avoid;
+  }
+
+  .report-sheet .report-result__total span {
+    font-size: 11pt;
+    font-weight: 600;
+  }
+
+  .report-sheet .report-result__total strong {
+    font-size: 24pt;
+    line-height: 1;
+  }
+
+  .report-warning {
+    border-width: 2pt;
+    color: #000;
+    break-inside: avoid;
+  }
+
+  .report-summary,
+  .report-closing {
+    gap: 4pt 24pt;
+    padding: 6pt 0;
+    border-top: 0.5pt solid #000;
+    border-bottom: 0.5pt solid #000;
+  }
+
+  .report-summary dt,
+  .report-closing dt {
+    color: #000;
+  }
+
+  .report-section {
+    break-inside: avoid-page;
+  }
+
+  /* A long list of receipts may break across pages; its rows and subtitle may not. */
+  .report-section--receipts {
+    break-inside: auto;
+  }
+
+  .report-section__title {
+    break-after: avoid;
+    font-size: 10.5pt;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .report-sheet .report-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .report-sheet .report-table thead {
+    display: table-header-group;
+  }
+
+  .report-sheet .report-table tfoot {
+    display: table-row-group;
+  }
+
+  .report-sheet .report-table tr {
+    break-inside: avoid;
+  }
+
+  .report-sheet .report-table th {
+    padding: 4pt 6pt;
+    border-top: 0.5pt solid #000;
+    border-bottom: 1.5pt solid #000;
+    background: #f0f0f0;
+    color: #000;
+    font-family: var(--font-sans);
+    font-size: 8.5pt;
+    letter-spacing: 0;
+    text-transform: none;
+    font-weight: 700;
+    text-align: left;
+  }
+
+  .report-sheet .report-table td {
+    padding: 3pt 6pt;
+    border-bottom: 0.5pt solid #999;
+  }
+
+  .report-sheet .report-table tbody tr {
+    background: none;
+  }
+
+  .report-sheet .report-table th.report-amount,
+  .report-sheet .report-table td.report-amount {
+    text-align: right;
+  }
+
+  .report-sheet .report-table tfoot th,
+  .report-sheet .report-table tfoot td {
+    padding: 4pt 6pt;
+    border-top: 1.5pt solid #000;
+    border-bottom: 0;
+    background: none;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  .report-sheet .report-table tfoot th {
+    text-align: left;
+  }
+
+  .report-sheet .members-page__notice {
+    margin: 0;
+    padding: 4pt 8pt;
+    border: 0.5pt solid #000;
+    background: none;
+    font-size: 9pt;
+  }
+
+  /* Signatures stay together and close the sheet. */
+  .report-signatures {
+    display: flex;
+    gap: 36pt;
+    margin-top: 10pt;
+    break-inside: avoid;
+  }
+
+  .report-signature {
+    flex: 1;
+  }
+
+  .report-signature__role {
+    margin: 0 0 12pt;
+    font-weight: 700;
+  }
+
+  .report-signature__line {
+    margin: 0 0 8pt;
+    padding-top: 2pt;
+    border-top: 0.5pt solid #000;
+    font-size: 8.5pt;
+  }
+}
