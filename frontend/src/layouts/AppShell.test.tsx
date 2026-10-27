@@ -1,11 +1,15 @@
-import { render, screen, within } from '@testing-library/react';
+import { render as baseRender, screen, within } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { MemoryRouter } from 'react-router';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { AppShell } from './AppShell';
 
+const render = (ui: ReactElement) => baseRender(<MemoryRouter>{ui}</MemoryRouter>);
+
 function renderShell() {
   return render(
-    <AppShell title="Socios" subtitle="Padrón de socios">
+    <AppShell title="Socios" subtitle="Padrón de socios" section="members">
       <p>Page content</p>
     </AppShell>,
   );
@@ -88,13 +92,17 @@ describe('AppShell', () => {
     expect(within(nav).getByRole('link', { name: /Socios/ })).not.toHaveAttribute('aria-current');
   });
 
-  it('reports the chosen section on navigation', async () => {
-    const onNavigate = vi.fn();
-    render(<AppShell title="Socios" onNavigate={onNavigate} />);
+  it('links each entry to the URL of its section', () => {
+    render(<AppShell title="Socios" />);
 
-    await userEvent.click(screen.getByRole('link', { name: /Disciplinas/ }));
+    expect(screen.getByRole('link', { name: /Disciplinas/ })).toHaveAttribute('href', '/disciplinas');
+    expect(screen.getByRole('link', { name: /Mis disciplinas/ })).toHaveAttribute('href', '/mis-disciplinas');
+  });
 
-    expect(onNavigate).toHaveBeenCalledWith('disciplines');
+  it('marks no entry as current when no section is given', () => {
+    render(<AppShell title="Página no encontrada" />);
+
+    expect(screen.queryByRole('link', { current: 'page' })).not.toBeInTheDocument();
   });
 });
 

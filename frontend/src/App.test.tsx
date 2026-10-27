@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { App } from './App';
+import { renderApp } from './test/renderApp';
 import { buildMember } from './features/members/test/fixtures';
 
 const HEAD = ['members:read', 'members:write', 'disciplines:read', 'disciplines:write', 'users:manage'];
@@ -19,7 +19,7 @@ afterEach(() => {
 
 describe('App', () => {
   it('shows login initially and does not request members or users before authentication', async () => {
-    render(<App />);
+    renderApp();
 
     expect(await screen.findByRole('heading', { name: 'Bienvenido/a de nuevo' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Socios' })).not.toBeInTheDocument();
@@ -32,7 +32,7 @@ describe('App', () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => input === '/auth/me'
       ? new Response(JSON.stringify({ user: { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' }, capabilities: HEAD }), { headers: { 'Content-Type': 'application/json' } })
       : new Response('[]', { headers: { 'Content-Type': 'application/json' } })));
-    render(<App />);
+    renderApp();
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Socios' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Bienvenido/a de nuevo' })).not.toBeInTheDocument();
@@ -41,14 +41,14 @@ describe('App', () => {
 
   it('falls back to login when the session check fails', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network down'); }));
-    render(<App />);
+    renderApp();
 
     expect(await screen.findByRole('heading', { name: 'Bienvenido/a de nuevo' })).toBeInTheDocument();
   });
 
   it('keeps rejected credentials on login and does not request protected data', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 401 })));
-    render(<App />);
+    renderApp();
     await screen.findByLabelText('Correo electrónico');
 
     fireEvent.change(screen.getByLabelText('Correo electrónico'), { target: { value: 'bad@example.com' } });
@@ -68,7 +68,7 @@ describe('App', () => {
       }
       return new Response('[]', { headers: { 'Content-Type': 'application/json' } });
     }));
-    render(<App />);
+    renderApp();
     await screen.findByLabelText('Correo electrónico');
 
     fireEvent.change(screen.getByLabelText('Correo electrónico'), { target: { value: 'demo@example.com' } });
@@ -84,7 +84,7 @@ describe('App', () => {
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => input === '/auth/login'
       ? new Response(JSON.stringify({ user: { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' }, capabilities: HEAD }), { headers: { 'Content-Type': 'application/json' } })
       : new Response('[]', { headers: { 'Content-Type': 'application/json' } })));
-    render(<App />);
+    renderApp();
     await screen.findByLabelText('Correo electrónico');
     fireEvent.change(screen.getByLabelText('Correo electrónico'), { target: { value: 'demo@example.com' } });
     fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'password' } });
@@ -107,7 +107,7 @@ describe('App', () => {
       if (input === '/api/members') return new Response(JSON.stringify([buildMember()]), { headers: { 'Content-Type': 'application/json' } });
       return new Response(JSON.stringify(users), { headers: { 'Content-Type': 'application/json' } });
     }));
-    render(<App />);
+    renderApp();
     await screen.findByLabelText('Correo electrónico');
     fireEvent.change(screen.getByLabelText('Correo electrónico'), { target: { value: 'demo@example.com' } });
     fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'password' } });
@@ -145,7 +145,7 @@ describe('App', () => {
       ? new Response(JSON.stringify({ user: { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' }, capabilities: HEAD }), { headers: { 'Content-Type': 'application/json' } })
       : new Response('[]', { headers: { 'Content-Type': 'application/json' } })));
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
     await screen.findByLabelText('Correo electrónico');
     fireEvent.change(screen.getByLabelText('Correo electrónico'), { target: { value: 'demo@example.com' } });
     fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'password' } });
@@ -181,7 +181,7 @@ describe('App session panel', () => {
 
   it('shows the data of the real session in the sidebar', async () => {
     stubSession();
-    render(<App />);
+    renderApp();
 
     const session = await screen.findByRole('region', { name: 'Sesión actual' });
     expect(within(session).getByText('Demo')).toBeInTheDocument();
@@ -191,7 +191,7 @@ describe('App session panel', () => {
 
   it('ends the server session and returns to login on Cerrar sesión', async () => {
     stubSession();
-    render(<App />);
+    renderApp();
 
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Cerrar sesión' }));
 
@@ -202,7 +202,7 @@ describe('App session panel', () => {
 
   it('still returns to login when the server cannot be reached on logout', async () => {
     stubSession(() => { throw new Error('network down'); });
-    render(<App />);
+    renderApp();
 
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Cerrar sesión' }));
 

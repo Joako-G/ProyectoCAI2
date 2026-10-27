@@ -1,3 +1,4 @@
+import { Link } from 'react-router';
 import { SessionPanel } from '../features/auth/components/SessionPanel';
 import type { AuthUser } from '../features/auth/types/auth';
 
@@ -8,14 +9,14 @@ export type { Section };
 interface SidebarProps {
   /** Sections to list, in order; omitted lists every section. */
   sections?: ReadonlyArray<Section>;
+  /** Section highlighted as the current page; none when the URL names no section. */
   current?: Section;
-  onNavigate?: (section: Section) => void;
   /** Signed-in account shown at the foot of the sidebar; omitted renders no session panel. */
   user?: AuthUser;
   onLogout?: () => void;
 }
 
-export function Sidebar({ sections, current = 'members', onNavigate, user, onLogout }: SidebarProps) {
+export function Sidebar({ sections, current, user, onLogout }: SidebarProps) {
   const visible = sections ? SECTIONS.filter(({ id }) => sections.includes(id)) : SECTIONS;
   return (
     <aside className="sidebar">
@@ -25,21 +26,17 @@ export function Sidebar({ sections, current = 'members', onNavigate, user, onLog
       </div>
       <nav className="sidebar__nav" aria-label="Navegación principal">
         {visible.map((section, index) => (
-          <a
+          <Link
             key={section.id}
             className="sidebar__link"
-            href={`#${section.id}`}
+            to={section.path}
             aria-current={section.id === current ? 'page' : undefined}
-            onClick={(event) => {
-              event.preventDefault();
-              onNavigate?.(section.id);
-            }}
           >
             <span className="sidebar__link-index" aria-hidden="true">
               {String(index + 1).padStart(2, '0')}
             </span>
             {section.label}
-          </a>
+          </Link>
         ))}
       </nav>
       {user && onLogout && <SessionPanel user={user} onLogout={onLogout} />}

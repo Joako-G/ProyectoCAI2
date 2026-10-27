@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { App } from './App';
+import { renderApp } from './test/renderApp';
 import type { Capability } from './features/auth/types/auth';
 import { buildDiscipline } from './features/disciplines/test/fixtures';
 import { buildMember } from './features/members/test/fixtures';
@@ -33,7 +33,7 @@ afterEach(() => {
 describe('role-based navigation', () => {
   it('shows the head secretary the three sections, numbered 01 to 03, and opens Socios first', async () => {
     stubSession('head_secretary', HEAD);
-    render(<App />);
+    renderApp();
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Socios' })).toBeInTheDocument();
     expect(navLinks().map((link) => link.textContent)).toEqual(['01Socios', '02Disciplinas', '03Usuarios']);
@@ -41,7 +41,7 @@ describe('role-based navigation', () => {
 
   it('shows the secretary Socios and Disciplinas but not Usuarios, with consecutive numbering', async () => {
     stubSession('secretary', SECRETARY);
-    render(<App />);
+    renderApp();
 
     await screen.findByRole('heading', { level: 1, name: 'Socios' });
     expect(navLinks().map((link) => link.textContent)).toEqual(['01Socios', '02Disciplinas']);
@@ -51,7 +51,7 @@ describe('role-based navigation', () => {
   it('keeps the member write actions for the secretary but hides the discipline ones', async () => {
     stubSession('secretary', SECRETARY);
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
 
     expect(await screen.findByRole('button', { name: 'Alta de socio' })).toBeInTheDocument();
     await user.click(screen.getByRole('link', { name: /Disciplinas/ }));
@@ -66,7 +66,7 @@ describe('role-based navigation', () => {
   it('lets the secretary open a member and edit it', async () => {
     stubSession('secretary', SECRETARY);
     const user = userEvent.setup();
-    render(<App />);
+    renderApp();
 
     await user.click(await screen.findByRole('button', { name: /Ríos/ }));
 
@@ -76,7 +76,7 @@ describe('role-based navigation', () => {
 
   it('shows a teacher only Mis disciplinas and loads their roster, never the member list', async () => {
     stubSession('teacher', ['roster:read']);
-    render(<App />);
+    renderApp();
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Mis disciplinas' })).toBeInTheDocument();
     expect(navLinks().map((link) => link.textContent)).toEqual(['01Mis disciplinas']);
@@ -94,21 +94,21 @@ describe('role-based navigation', () => {
     const user = userEvent.setup();
 
     stub([...SECRETARY, 'config:read']);
-    const readOnly = render(<App />);
+    const readOnly = renderApp();
     await user.click(await screen.findByRole('link', { name: /Precios/ }));
     expect(await screen.findByRole('table', { name: 'Tarifas' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Agregar tarifa' })).not.toBeInTheDocument();
     readOnly.unmount();
 
     stub([...SECRETARY, 'config:read', 'config:manage']);
-    render(<App />);
+    renderApp();
     await user.click(await screen.findByRole('link', { name: /Precios/ }));
     expect(await screen.findByRole('button', { name: 'Agregar tarifa' })).toBeInTheDocument();
   });
 
   it('hides Precios from a role without config:read', async () => {
     stubSession('teacher', ['roster:read']);
-    render(<App />);
+    renderApp();
     await screen.findByRole('heading', { level: 1, name: 'Mis disciplinas' });
     expect(screen.queryByRole('link', { name: /Precios/ })).not.toBeInTheDocument();
   });
@@ -136,7 +136,7 @@ describe('role-based navigation', () => {
     it('shows Cobros to payments:read holders; collecting without Anular for a secretary', async () => {
       stubPayments(COLLECTOR);
       const user = userEvent.setup();
-      render(<App />);
+      renderApp();
       await openCobros(user);
 
       expect(screen.getByRole('heading', { level: 1, name: 'Cobros' })).toBeInTheDocument();
@@ -147,7 +147,7 @@ describe('role-based navigation', () => {
     it('lets only payments:annul holders see Anular', async () => {
       stubPayments([...COLLECTOR, 'payments:annul']);
       const user = userEvent.setup();
-      render(<App />);
+      renderApp();
       await openCobros(user);
 
       expect(screen.getByRole('button', { name: 'Anular comprobante 7' })).toBeInTheDocument();
@@ -155,7 +155,7 @@ describe('role-based navigation', () => {
 
     it('hides Cobros from a teacher', async () => {
       stubSession('teacher', ['roster:read']);
-      render(<App />);
+      renderApp();
       await screen.findByRole('heading', { level: 1, name: 'Mis disciplinas' });
       expect(screen.queryByRole('link', { name: /Cobros/ })).not.toBeInTheDocument();
     });
@@ -163,7 +163,7 @@ describe('role-based navigation', () => {
 
   it('shows a role without capabilities no sections, a neutral notice, and keeps the session panel', async () => {
     stubSession('unassigned', []);
-    render(<App />);
+    renderApp();
 
     expect(await screen.findByText('Tu rol todavía no tiene secciones disponibles.')).toBeInTheDocument();
     expect(screen.queryAllByRole('link')).toHaveLength(0);
