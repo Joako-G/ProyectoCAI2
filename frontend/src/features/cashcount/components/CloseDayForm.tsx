@@ -26,7 +26,7 @@ export function CloseDayForm({ expectedCash, saving, error, onClose }: CloseDayF
   }
 
   return (
-    <form className="report-filters" onSubmit={(event) => { event.preventDefault(); if (amount !== null) setConfirming(true); }}>
+    <form className="arqueo-form" onSubmit={(event) => { event.preventDefault(); if (amount !== null) setConfirming(true); }}>
       <div className="form-field">
         <label htmlFor="arqueo-counted" className="form-field__label">Efectivo contado</label>
         <input id="arqueo-counted" type="text" inputMode="numeric" autoComplete="off" value={counted} disabled={confirming || saving}
@@ -47,7 +47,7 @@ export function CloseDayForm({ expectedCash, saving, error, onClose }: CloseDayF
       {error ? <p className="form-field__error" role="alert">{error}</p> : null}
 
       {confirming && amount !== null ? (
-        <div className="members-page__notice" role="alertdialog" aria-label="Confirmar cierre">
+        <div className="arqueo-confirm" role="alertdialog" aria-label="Confirmar cierre">
           <p>El cierre no se puede modificar después. ¿Cerrar el día con {formatPesos(amount)} contados?</p>
           <button type="button" className="button button--primary" onClick={confirm}>Confirmar cierre</button>
           <button type="button" className="button button--secondary" onClick={() => setConfirming(false)}>Cancelar</button>

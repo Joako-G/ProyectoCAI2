@@ -44,7 +44,7 @@ export function ReportsView() {
   }
 
   return (
-    <section className="card members-page" aria-label="Reportes">
+    <section className="card members-page report-page" aria-label="Reportes">
       <fieldset className="report-kind">
         <legend>Tipo de reporte</legend>
         <label><input type="radio" name="report-kind" checked={kind === 'revenue'} onChange={() => setKind('revenue')} /> Recaudación</label>

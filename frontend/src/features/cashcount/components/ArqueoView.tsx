@@ -11,11 +11,11 @@ export function ArqueoView() {
   const { state, closing, alreadyClosed, reload, close } = useArqueo();
 
   if (state.phase === 'loading') {
-    return <section className="card members-page" aria-label="Arqueo"><p className="members-page__notice" role="status">Cargando el arqueo…</p></section>;
+    return <section className="card members-page report-page" aria-label="Arqueo"><p className="members-page__notice" role="status">Cargando el arqueo…</p></section>;
   }
   if (state.phase === 'error') {
     return (
-      <section className="card members-page" aria-label="Arqueo">
+      <section className="card members-page report-page" aria-label="Arqueo">
         <div className="members-page__notice members-page__notice--error" role="alert">
           <p><strong>No se pudo cargar el arqueo.</strong> {state.message}</p>
           <button type="button" className="button button--secondary" onClick={reload}>Reintentar</button>
@@ -27,8 +27,8 @@ export function ArqueoView() {
   const { preview, history } = state;
   const earlier = history.filter((entry) => entry.businessDate !== preview.businessDate);
   return (
-    <section className="card members-page" aria-label="Arqueo">
-      <h2>Arqueo del {formatIsoDate(preview.businessDate)}</h2>
+    <section className="card members-page report-page" aria-label="Arqueo">
+      <h2 className="report-title">Arqueo del {formatIsoDate(preview.businessDate)}</h2>
       <ExpectedTotals expected={preview.expected} />
 
       {preview.closed ? (

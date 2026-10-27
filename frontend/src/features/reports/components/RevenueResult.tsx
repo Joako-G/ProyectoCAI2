@@ -8,7 +8,7 @@ import { conceptTotalLabel, revenueTitle } from '../utils/report-format';
 export function RevenueResult({ report }: { report: RevenueReport }) {
   return (
     <section className="report-result report-sheet" aria-label="Resultado de recaudación">
-      <h2>{revenueTitle(report.granularity)}</h2>
+      <h2 className="report-title">{revenueTitle(report.granularity)}</h2>
       <p className="report-result__range">Del {formatIsoDate(report.from)} al {formatIsoDate(report.to)}</p>
       <p className="report-result__total">
         <span>Total recaudado</span> <strong data-testid="revenue-total">{formatPesos(report.total)}</strong>
