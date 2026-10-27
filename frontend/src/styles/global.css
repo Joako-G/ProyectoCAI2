@@ -1179,6 +1179,13 @@ a:hover {
   margin-bottom: 14px;
 }
 
+.report-actions__hint {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
 /*
  * The login screen styles every bare form, input and button (app.css), so the report and cash count
  * forms undo what leaks into them: the column direction, the 49px full-width inputs and the blue buttons.

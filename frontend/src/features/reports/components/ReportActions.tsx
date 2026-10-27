@@ -25,8 +25,12 @@ export function ReportActions({ exported }: { exported: ReportExport }) {
 
   return (
     <div className="report-actions">
-      <button type="button" className="button button--secondary" onClick={() => window.print()}>Imprimir o guardar como PDF</button>
+      <button type="button" className="button button--secondary" aria-describedby="report-print-hint" onClick={() => window.print()}>Imprimir o guardar como PDF</button>
       <button type="button" className="button button--secondary" onClick={() => void exportExcel()}>Descargar Excel</button>
+      {/* With margins set to none the browser drops the sheet's margins and the page-number footer (report-print.css). */}
+      <p id="report-print-hint" className="report-actions__hint">
+        En el diálogo de impresión elija Márgenes: Predeterminado, para que el reporte no quede pegado al borde y lleve el número de página.
+      </p>
       {failed ? <p className="form-field__error" role="alert">No se pudo generar el archivo de Excel. Intente de nuevo.</p> : null}
     </div>
   );

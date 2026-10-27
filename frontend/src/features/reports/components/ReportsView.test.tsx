@@ -244,6 +244,18 @@ describe('ReportsView: print and export', () => {
     expect(print).toHaveBeenCalledTimes(1);
   });
 
+  it('tells the user to keep the default margins so the printed sheet keeps its margins and page numbers', async () => {
+    stubApi();
+    const user = userEvent.setup();
+    render(<ReportsView />);
+    await user.click(screen.getByRole('button', { name: 'Generar reporte' }));
+    await screen.findByTestId('revenue-total');
+
+    expect(screen.getByRole('button', { name: 'Imprimir o guardar como PDF' })).toHaveAccessibleDescription(
+      'En el diálogo de impresión elija Márgenes: Predeterminado, para que el reporte no quede pegado al borde y lleve el número de página.',
+    );
+  });
+
   it('titles the printed sheet with the report and the period', async () => {
     stubApi();
     const user = userEvent.setup();
