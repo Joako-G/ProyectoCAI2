@@ -18,6 +18,7 @@ Branch: JoakoG. Delivery strategy: ask-on-risk. Test runner: vitest (frontend), 
 - S9. Owner: "se deberia poder guardar el cierre pero se debe especificar porque la diferencia si es posible" — the close is always saved, even with a nonzero variance; the reason is an optional note the UI asks for when the variance is not zero. Variance is computed server-side.
 - S10. Owner: rentals (RF-16), Treasury accounts, teacher roster (RF-20) and expense reporting are out of this phase. Reports are payment-derived income only, behind a narrow report-data boundary so an expense source can be added later (no expense capture, endpoints, UI, or fabricated zero figures).
 - S11. Informe CU-19: AS-IS covers a cash shortage "de bolsillo" and flags it as a risk; the system records the variance and never charges it to a person. Treasury also needs a weekly summary on Fridays (covered by the weekly period of S2).
+- S13. PROVISIONAL, CONFIRM LATER (A1): owner said "el cierre debe ser solo en el dia, dejar marcado esto tambien para consultarlo con el club" — a day can only be closed on that same club-local day; the caller cannot choose or backdate the date. To confirm with the club: whether a forgotten close (for example a Friday) must be possible later. Marked in the code as `PROVISIONAL(A1)`.
 - S12. Total counted cash is the required input; no denomination entry (RF-17 only needs the cash counted).
 
 ## Tasks
@@ -39,4 +40,5 @@ Branch: JoakoG. Delivery strategy: ask-on-risk. Test runner: vitest (frontend), 
 - L5. Open point found: CU-20 AS-IS planilla lists "nombre, DNI y mes". Plan said to avoid DNI in the discipline report unless required. Needs owner decision before T1 builds RF-19.
 - L5a. Decision: "solo nombre, número de socio y mes, sin DNI" (see S3b). L5 is resolved.
 - L5b. Decision: "A, como la planilla actual pero marcalo o deja una bandera para luego confirmar que la opcion que estoy eligiendo ahora este bien" (see S3c).
+- L5c. Decision: "el cierre debe ser solo en el dia, dejar marcado esto tambien para consultarlo con el club" (see S13).
 - L6. Note for T2: RNF-08 means closes are append-only; the plan's "variance note" is set at close time and not editable afterwards.

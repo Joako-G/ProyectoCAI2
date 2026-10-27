@@ -53,6 +53,8 @@ export function createCashCountService({ repository, revenue, now = () => new Da
     },
 
     // Closes today. The date, actor, time, expected totals and variance are all decided here, never by the caller.
+    // PROVISIONAL(A1): a day can only be closed on that same day, so a forgotten close cannot be made up later.
+    // The club has yet to confirm whether it needs to close a previous day.
     async close(input: CloseDayInput, actorId: string): Promise<CashCount> {
       const countedCash = requireCountedCash(input?.countedCash);
       const varianceNote = optionalNote(input?.varianceNote);
