@@ -5,6 +5,8 @@ import { requireCapability, requireCapabilityByMethod } from './middlewares/requ
 import { createAuthRouter } from './modules/auth/auth.routes.js';
 import { createAuthService } from './modules/auth/auth.service.js';
 import { createAuthenticator, createSessionStore } from './modules/auth/auth.session.js';
+import { createCashCountRouter } from './modules/cashcount/cashcount.routes.js';
+import type { CashCountService } from './modules/cashcount/cashcount.service.js';
 import { createDisciplinesRouter } from './modules/disciplines/discipline.routes.js';
 import type { DisciplineService } from './modules/disciplines/discipline.service.js';
 import { createMembersRouter } from './modules/members/member.routes.js';
@@ -15,6 +17,8 @@ import { createPaymentRouter } from './modules/payments/payment.routes.js';
 import { createPricingConfigRouter } from './modules/payments/pricing-config.routes.js';
 import type { PaymentService } from './modules/payments/payment.service.js';
 import type { PricingConfigService } from './modules/payments/pricing-config.service.js';
+import { createReportRouter } from './modules/reports/report.routes.js';
+import type { ReportService } from './modules/reports/report.service.js';
 import { createRosterRouter } from './modules/roster/roster.routes.js';
 import type { RosterService } from './modules/roster/roster.service.js';
 import { UserRepository, defaultUsersFilePath } from './modules/users/user.repository.js';
@@ -29,6 +33,8 @@ export interface AppDependencies {
   membershipService?: MembershipService;
   pricingConfigService?: PricingConfigService;
   paymentService?: PaymentService;
+  reportService?: Pick<ReportService, 'revenue' | 'disciplineSettlement'>;
+  cashCountService?: CashCountService;
   rosterService?: RosterService;
   storePath?: string;
   // Origin allowed to send credentialed requests; defaults to the Vite dev server.
@@ -75,6 +81,14 @@ if (options.pricingConfigService) {
 if (options.paymentService) {
   // Reading needs payments:read; the write routes add payments:collect or payments:annul themselves.
   app.use('/api/payments', requireCapability(authenticate, 'payments:read'), createPaymentRouter(options.paymentService, authenticate));
+}
+if (options.reportService) {
+  // Read-only: reports:read for every request, and the router has no write route.
+  app.use('/api/reports', requireCapability(authenticate, 'reports:read'), createReportRouter(options.reportService));
+}
+if (options.cashCountService) {
+  // The daily close is the head secretary's alone; the secretary reaches reports but never the cash count.
+  app.use('/api/cashcount', requireCapability(authenticate, 'cashcount:run'), createCashCountRouter(options.cashCountService, authenticate));
 }
 if (options.rosterService) {
   app.use('/api/roster', requireCapability(authenticate, 'roster:read'), createRosterRouter(options.rosterService, authenticate));

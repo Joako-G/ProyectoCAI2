@@ -1,5 +1,6 @@
 import { createApp } from './app.js';
 import {
+  cashCountsFilePath,
   disciplinesFilePath,
   membershipsFilePath,
   membersFilePath,
@@ -15,6 +16,10 @@ import { createDisciplineService } from './modules/disciplines/discipline.servic
 import { createJsonMembershipRepository } from './modules/memberships/json-membership.repository.js';
 import { createMembershipService } from './modules/memberships/membership.service.js';
 import { createJsonMemberRepository } from './modules/members/json-member.repository.js';
+import { createCashCountService } from './modules/cashcount/cashcount.service.js';
+import { createJsonCashCountRepository } from './modules/cashcount/json-cashcount.repository.js';
+import { createPaymentIncomeSource } from './modules/reports/income.source.js';
+import { createReportService } from './modules/reports/report.service.js';
 import { createRosterService } from './modules/roster/roster.service.js';
 import { createMemberService } from './modules/members/member.service.js';
 import { bootstrap } from './startup.js';
@@ -42,15 +47,26 @@ const pricingConfigService = createPricingConfigService({
   repository: createJsonPricingConfigRepository(pricingConfigFilePath()),
 });
 // Payments are append-only receipts, served under /api/payments.
+const paymentRepository = createJsonPaymentRepository(paymentsFilePath());
 const paymentService = createPaymentService({
-  repository: createJsonPaymentRepository(paymentsFilePath()),
+  repository: paymentRepository,
   members: memberService,
   memberships: membershipService,
   pricing: pricingConfigService,
 });
 // A teacher's roster is composed from the three services through the roster module's own ports.
 const rosterService = createRosterService({ memberships: membershipService, members: memberService, disciplines: disciplineService });
-const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService, paymentService, rosterService });
+// Reports read income through their own port; the daily cash count takes its expected totals from the reports.
+const reportService = createReportService({
+  income: createPaymentIncomeSource(paymentRepository),
+  members: memberService,
+  disciplines: disciplineService,
+});
+const cashCountService = createCashCountService({
+  repository: createJsonCashCountRepository(cashCountsFilePath()),
+  revenue: reportService,
+});
+const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService });
 
 bootstrap({
   memberService,

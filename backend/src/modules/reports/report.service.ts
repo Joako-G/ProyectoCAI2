@@ -96,6 +96,7 @@ export function createReportService({ income, members, disciplines }: ReportServ
       if (typeof period !== 'string' || !PERIOD.test(period)) {
         throw new ValidationError({ period: 'Must be a valid month (YYYY-MM)' });
       }
+      if (typeof disciplineId !== 'string' || disciplineId === '') throw new ValidationError({ disciplineId: 'Required' });
       const [discipline] = await disciplines.findByIds([disciplineId]);
       if (!discipline) throw new NotFoundError('Discipline not found');
 
