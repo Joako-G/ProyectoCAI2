@@ -24,6 +24,12 @@ describe('sectionsFor', () => {
     expect(sectionsFor(userWith(['roster:read']))).not.toContain('pricing');
   });
 
+  it('gives reports to reports:read holders and the cash count only to cashcount:run holders', () => {
+    expect(sectionsFor(userWith(['members:read', 'reports:read']))).toEqual(['members', 'reports']);
+    expect(sectionsFor(userWith(['members:read', 'reports:read', 'cashcount:run']))).toEqual(['members', 'cashcount', 'reports']);
+    expect(sectionsFor(userWith(['roster:read']))).not.toContain('reports');
+  });
+
   it('gives the payments section to payments:read holders and never to a teacher', () => {
     expect(sectionsFor(userWith(['members:read', 'payments:read']))).toEqual(['members', 'payments']);
     expect(sectionsFor(userWith(['payments:collect', 'payments:annul']))).toEqual([]);
@@ -44,14 +50,33 @@ describe('navigationFor', () => {
     'users',
   ];
 
-  it('lists every allowed section as a plain link, in navigation order, by default', () => {
-    const allowed = SECTIONS.map(({ id }) => id);
+  it('lists the allowed sections as plain links, in navigation order, by default', () => {
+    const allowed = SECTIONS.map(({ id }) => id).filter((id) => id !== 'cashcount' && id !== 'reports');
     expect(navigationFor(allowed)).toEqual(allowed.map(link));
     expect(navigationFor(['users', 'members'])).toEqual([link('members'), link('users')]);
   });
 
-  it('keeps the default layout identical to the section list', () => {
-    expect(NAVIGATION).toEqual(SECTIONS.map(({ id }) => id));
+  it('gives whoever runs the cash count the Caja group with Arqueo and Reportes, and Reportes only there', () => {
+    expect(navigationFor(['members', 'payments', 'cashcount', 'reports', 'users'])).toEqual([
+      link('members'),
+      link('payments'),
+      { kind: 'group', id: 'caja', label: 'Caja', items: ['cashcount', 'reports'] },
+      link('users'),
+    ]);
+  });
+
+  it('gives a reader of reports without the cash count a standalone Reportes and no Caja group', () => {
+    expect(navigationFor(['members', 'payments', 'reports'])).toEqual([link('members'), link('payments'), link('reports')]);
+  });
+
+  it('never lists Caja or Reportes without the capabilities that open them', () => {
+    expect(navigationFor(['members', 'roster'])).toEqual([link('members'), link('roster')]);
+  });
+
+  it('lists every section outside Caja as a plain link in the production layout', () => {
+    const outside: Section[] = SECTIONS.map(({ id }) => id).filter((id) => id !== 'cashcount' && id !== 'reports');
+    const plain = NAVIGATION.filter((entry): entry is Section => typeof entry === 'string');
+    expect(plain.filter((id) => outside.includes(id))).toEqual(outside);
   });
 
   it('shows a group with the allowed items when the section it requires is allowed', () => {

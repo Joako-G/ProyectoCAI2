@@ -1,7 +1,7 @@
 import type { AuthUser, Capability } from '../features/auth/types/auth';
 import { can } from '../features/auth/utils/can';
 
-export type Section = 'members' | 'disciplines' | 'payments' | 'users' | 'roster' | 'pricing';
+export type Section = 'members' | 'disciplines' | 'payments' | 'cashcount' | 'reports' | 'users' | 'roster' | 'pricing';
 
 /**
  * Navigation order; each section lives at its own URL and needs one capability to be reachable.
@@ -11,6 +11,8 @@ export const SECTIONS: ReadonlyArray<{ id: Section; label: string; subtitle: str
   { id: 'members', label: 'Socios', subtitle: 'Búsqueda por N° de socio, DNI o nombre', path: '/socios', capability: 'members:read' },
   { id: 'disciplines', label: 'Disciplinas', subtitle: 'Catálogo de disciplinas y sus profesores', path: '/disciplinas', capability: 'disciplines:read' },
   { id: 'payments', label: 'Cobros', subtitle: 'Cobro de cuotas por DNI, comprobantes y anulaciones', path: '/cobros', capability: 'payments:read' },
+  { id: 'cashcount', label: 'Arqueo', subtitle: 'Cierre diario de caja: efectivo contado y diferencia', path: '/caja/arqueo', capability: 'cashcount:run' },
+  { id: 'reports', label: 'Reportes', subtitle: 'Recaudación por período y liquidación por disciplina', path: '/reportes', capability: 'reports:read' },
   { id: 'users', label: 'Usuarios', subtitle: 'Administración de cuentas de demostración', path: '/usuarios', capability: 'users:manage' },
   { id: 'roster', label: 'Mis disciplinas', subtitle: 'Alumnos actuales y anteriores de sus disciplinas', path: '/mis-disciplinas', capability: 'roster:read' },
   { id: 'pricing', label: 'Precios', subtitle: 'Tarifas, recargos por pago tardío y prorrateo', path: '/precios', capability: 'config:read' },
@@ -27,7 +29,14 @@ export type NavEntry =
   | { kind: 'link'; section: Section }
   | { kind: 'group'; id: string; label: string; items: Section[] };
 
-export const NAVIGATION: ReadonlyArray<NavLayoutEntry> = SECTIONS.map(({ id }) => id);
+/**
+ * The sidebar: plain links in section order, except Caja. Whoever may run the cash count gets the Caja group
+ * with Arqueo and Reportes; everyone else who may read reports gets the Reportes link that follows it.
+ */
+export const NAVIGATION: ReadonlyArray<NavLayoutEntry> = SECTIONS.flatMap(({ id }): NavLayoutEntry[] => {
+  if (id === 'cashcount') return [{ id: 'caja', label: 'Caja', requires: 'cashcount', items: ['cashcount', 'reports'] }];
+  return [id];
+});
 
 /** The sidebar entries for the allowed sections: groups and links in layout order, each section once. */
 export function navigationFor(allowed: ReadonlyArray<Section>, layout: ReadonlyArray<NavLayoutEntry> = NAVIGATION): NavEntry[] {

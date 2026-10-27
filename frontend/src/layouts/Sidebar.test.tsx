@@ -38,8 +38,8 @@ describe('Sidebar groups', () => {
     expect(within(nav()).getAllByRole('link').map((link) => link.textContent)).toEqual(['01Socios', '02Usuarios']);
   });
 
-  it('renders no groups with the default layout', () => {
-    render(<Sidebar />);
+  it('renders no group with the default layout when the section it requires is not listed', () => {
+    render(<Sidebar sections={['members', 'users', 'pricing']} />);
 
     expect(within(nav()).queryByRole('group')).not.toBeInTheDocument();
   });

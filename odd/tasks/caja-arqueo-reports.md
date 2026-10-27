@@ -28,7 +28,7 @@ Branch: JoakoG. Delivery strategy: ask-on-risk. Test runner: vitest (frontend), 
 - T2. S1, S6, S8, S9, S11, S12. Arqueo domain and JSON persistence (`backend/src/modules/cashcount/`). Inline. Done: RED observed (module missing), GREEN 25 new tests; backend suite 713 passed, typecheck clean. Not wired into the app yet (T3). Assumption A1: a close is only for today (club-local); the caller cannot choose or backdate the date. Limitation: expected totals are read just before the write, so a payment taken in between is not in that close's snapshot.
 - T3. S5, S7. Protected APIs and capability checks: `GET /api/reports/revenue`, `GET /api/reports/discipline-settlement` (reports:read); `GET /api/cashcount/today`, `GET /api/cashcount`, `POST /api/cashcount` (cashcount:run). Wired in app.ts and server.ts. Inline. Done: RED observed (404), GREEN; backend suite 758 passed, typecheck clean. Risk: item 2 (new capability-guarded routes), pinned by the route matrix for all roles.
 - T4a. S7. Navigation layout with groups (`navigationFor`, `Sidebar` groups); default layout stays flat. Inline. Done: RED observed (6 failing), GREEN 389 tests, typecheck clean.
-- T4b. S7. Caja group, Arqueo and Reportes screens and routes. Pending.
+- T4b. S7, S3b, S8, S9, S13. Reports screen (`ef36da9`), Arqueo screen (`5583606`), and the wiring: sections `cashcount` (`/caja/arqueo`, cashcount:run) and `reports` (`/reportes`, reports:read), Caja group in the sidebar. Inline. Done: RED observed for each, GREEN; frontend suite 419 passed, typecheck and `pnpm build` clean. Print is part of T5. Browser smoke with both roles is in T5.
 - T5. S4. PDF and Excel export, tests, browser smoke. Pending.
 
 ## Log
