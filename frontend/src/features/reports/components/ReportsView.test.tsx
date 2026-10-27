@@ -4,9 +4,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildDiscipline } from '../../disciplines/test/fixtures';
 import { jsonResponse } from '../../members/test/fixtures';
 import { buildRevenue, buildSettlement } from '../test/fixtures';
+import { downloadXlsx } from '../utils/download-xlsx';
 import { ReportsView } from './ReportsView';
 
-afterEach(() => vi.unstubAllGlobals());
+vi.mock('../utils/download-xlsx', () => ({ downloadXlsx: vi.fn(async () => undefined) }));
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  vi.mocked(downloadXlsx).mockClear();
+});
 
 type Routes = { revenue?: unknown; settlement?: unknown; disciplines?: unknown };
 
@@ -139,5 +146,82 @@ describe('ReportsView: discipline settlement', () => {
     await user.click(screen.getByRole('button', { name: 'Generar reporte' }));
 
     expect(await screen.findByText('Ningún socio pagó la cuota de esta disciplina en el mes elegido.')).toBeInTheDocument();
+  });
+});
+
+describe('ReportsView: print and export', () => {
+  it('offers neither until a report is shown', () => {
+    stubApi();
+    render(<ReportsView />);
+
+    expect(screen.queryByRole('button', { name: 'Descargar Excel' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Imprimir o guardar como PDF' })).not.toBeInTheDocument();
+  });
+
+  it('downloads the revenue report as Excel with the figures on screen', async () => {
+    stubApi();
+    const user = userEvent.setup();
+    render(<ReportsView />);
+    fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2026-10-05' } });
+    await user.click(screen.getByRole('button', { name: 'Generar reporte' }));
+    await screen.findByTestId('revenue-total');
+
+    await user.click(screen.getByRole('button', { name: 'Descargar Excel' }));
+
+    expect(downloadXlsx).toHaveBeenCalledTimes(1);
+    const exported = vi.mocked(downloadXlsx).mock.calls[0]![0];
+    expect(exported.fileName).toBe('recaudacion-2026-10-05-al-2026-10-05.xlsx');
+    expect(exported.sheets.map((sheet) => sheet.sheet)).toEqual(['Resumen', 'Por concepto', 'Por medio de pago', 'Comprobantes']);
+  });
+
+  it('downloads the discipline settlement as Excel', async () => {
+    stubApi();
+    const user = userEvent.setup();
+    render(<ReportsView />);
+    await user.click(screen.getByRole('radio', { name: 'Liquidación por disciplina' }));
+    await screen.findByRole('option', { name: 'Básquet' });
+    fireEvent.change(screen.getByLabelText('Mes'), { target: { value: '2026-10' } });
+    await user.selectOptions(screen.getByLabelText('Disciplina'), 'Básquet');
+    await user.click(screen.getByRole('button', { name: 'Generar reporte' }));
+    await screen.findByTestId('settlement-fees');
+
+    await user.click(screen.getByRole('button', { name: 'Descargar Excel' }));
+
+    expect(vi.mocked(downloadXlsx).mock.calls[0]![0].fileName).toBe('liquidacion-basquet-2026-10.xlsx');
+  });
+
+  it('tells the user when the Excel file could not be made', async () => {
+    stubApi();
+    vi.mocked(downloadXlsx).mockRejectedValueOnce(new Error('boom'));
+    const user = userEvent.setup();
+    render(<ReportsView />);
+    await user.click(screen.getByRole('button', { name: 'Generar reporte' }));
+    await screen.findByTestId('revenue-total');
+
+    await user.click(screen.getByRole('button', { name: 'Descargar Excel' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo generar el archivo de Excel. Intente de nuevo.');
+  });
+
+  it('opens the browser print dialog, which also saves as PDF', async () => {
+    stubApi();
+    const print = vi.spyOn(window, 'print').mockImplementation(() => undefined);
+    const user = userEvent.setup();
+    render(<ReportsView />);
+    await user.click(screen.getByRole('button', { name: 'Generar reporte' }));
+    await screen.findByTestId('revenue-total');
+
+    await user.click(screen.getByRole('button', { name: 'Imprimir o guardar como PDF' }));
+
+    expect(print).toHaveBeenCalledTimes(1);
+  });
+
+  it('titles the printed sheet with the report and the period', async () => {
+    stubApi();
+    const user = userEvent.setup();
+    render(<ReportsView />);
+    await user.click(screen.getByRole('button', { name: 'Generar reporte' }));
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Recaudación diaria' })).toBeInTheDocument();
   });
 });

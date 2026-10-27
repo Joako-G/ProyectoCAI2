@@ -8,6 +8,14 @@ export const GRANULARITIES: ReadonlyArray<{ value: ReportGranularity; label: str
   { value: 'monthly', label: 'Mensual' },
 ];
 
+const REVENUE_TITLE: Record<ReportGranularity, string> = {
+  daily: 'Recaudación diaria',
+  weekly: 'Recaudación semanal',
+  monthly: 'Recaudación mensual',
+};
+
+export const revenueTitle = (granularity: ReportGranularity) => REVENUE_TITLE[granularity];
+
 const CONCEPT_LABEL: Record<IncomeConcept, string> = {
   enrollment: 'Inscripciones',
   socialFee: 'Cuotas sociales',

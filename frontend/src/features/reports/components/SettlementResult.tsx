@@ -5,7 +5,8 @@ import type { DisciplineSettlement } from '../types/report';
 export function SettlementResult({ report }: { report: DisciplineSettlement }) {
   const month = formatPeriod(report.period);
   return (
-    <section className="report-result" aria-label="Resultado de liquidación">
+    <section className="report-result report-sheet" aria-label="Resultado de liquidación">
+      <h2>Liquidación de {report.discipline.name}</h2>
       <p className="report-result__range">{report.discipline.name}, {month}</p>
 
       {report.students.length === 0 ? (

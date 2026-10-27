@@ -1099,18 +1099,21 @@ a:hover {
   margin-top: 16px;
 }
 
-/* Printing a receipt shows only the receipt block. */
+/* Printing a receipt or a report shows only that block. */
 @media print {
   body * {
     visibility: hidden;
   }
 
   .receipt,
-  .receipt * {
+  .receipt *,
+  .report-sheet,
+  .report-sheet * {
     visibility: visible;
   }
 
-  .receipt {
+  .receipt,
+  .report-sheet {
     position: absolute;
     left: 0;
     top: 0;
@@ -1169,4 +1172,12 @@ a:hover {
 .report-result__total strong {
   font-family: var(--font-mono);
   font-size: 18px;
+}
+
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
 }

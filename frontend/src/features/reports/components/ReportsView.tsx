@@ -4,6 +4,8 @@ import { useReport, type ReportState } from '../hooks/useReport';
 import { fetchDisciplineSettlement, fetchRevenue } from '../services/reports-api';
 import type { DisciplineSettlement, ReportGranularity, RevenueReport } from '../types/report';
 import { GRANULARITIES, todayDate } from '../utils/report-format';
+import { revenueExport, settlementExport } from '../utils/report-export';
+import { ReportActions } from './ReportActions';
 import { RevenueResult } from './RevenueResult';
 import { SettlementResult } from './SettlementResult';
 
@@ -82,8 +84,8 @@ export function ReportsView() {
       </form>
 
       {kind === 'revenue'
-        ? <Outcome state={revenue.state} retry={revenue.retry}>{(report) => <RevenueResult report={report} />}</Outcome>
-        : <Outcome state={settlement.state} retry={settlement.retry}>{(report) => <SettlementResult report={report} />}</Outcome>}
+        ? <Outcome state={revenue.state} retry={revenue.retry}>{(report) => <><ReportActions exported={revenueExport(report)} /><RevenueResult report={report} /></>}</Outcome>
+        : <Outcome state={settlement.state} retry={settlement.retry}>{(report) => <><ReportActions exported={settlementExport(report)} /><SettlementResult report={report} /></>}</Outcome>}
     </section>
   );
 }
