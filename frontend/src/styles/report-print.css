@@ -8,6 +8,19 @@
 
 /* ---- Screen ---- */
 
+.report-frame,
+.report-frame > thead,
+.report-frame > tbody,
+.report-frame tr,
+.report-frame td {
+  display: block;
+  padding: 0;
+}
+
+.report-frame > thead {
+  display: none;
+}
+
 .report-letterhead,
 .report-signatures {
   display: none;
@@ -88,7 +101,7 @@
 
 @page {
   size: A4;
-  margin: 24mm 19mm 20mm;
+  margin: 18mm 24mm 22mm;
 
   @bottom-left {
     content: var(--print-stamp, '');
@@ -130,7 +143,6 @@
     left: 0;
     top: 0;
     width: 100%;
-    gap: 22pt;
     --club-navy: #2b2a6b;
     background: none;
     box-shadow: none;
@@ -139,10 +151,42 @@
     font-size: 10pt;
   }
 
+  .report-sheet .report-result {
+    gap: 26pt;
+  }
+
   .report-sheet .report-mono,
   .report-sheet .members-table__mono {
     font-family: var(--font-mono);
     font-size: 9.5pt;
+  }
+
+  /* The frame's header row repeats on every page, so the letterhead heads each sheet. */
+  .report-frame {
+    display: table;
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .report-frame > thead {
+    display: table-header-group;
+  }
+
+  .report-frame > tbody {
+    display: table-row-group;
+  }
+
+  .report-frame tr {
+    display: table-row;
+  }
+
+  .report-frame td {
+    display: table-cell;
+    padding: 0;
+  }
+
+  .report-frame > thead td {
+    padding: 6mm 0 8mm;
   }
 
   .report-letterhead {
@@ -162,8 +206,8 @@
 
   .report-letterhead__logo {
     flex: none;
-    width: 46pt;
-    height: auto;
+    width: auto;
+    height: 16mm;
   }
 
   .report-letterhead__identity {
@@ -281,6 +325,10 @@
     gap: 8pt;
   }
 
+  .report-title--screen-only {
+    display: none;
+  }
+
   .report-section__title {
     break-after: avoid;
     padding-bottom: 3pt;
@@ -326,6 +374,18 @@
     padding: 5.5pt 8pt;
     border-bottom: 0.5pt solid #999;
   }
+
+  /* Give the member and the concept room so a name or a long concept does not pile up on three lines. */
+  .report-table--receipts {
+    table-layout: fixed;
+  }
+
+  .report-table--receipts th:nth-child(1) { width: 9%; }
+  .report-table--receipts th:nth-child(2) { width: 14%; }
+  .report-table--receipts th:nth-child(3) { width: 30%; }
+  .report-table--receipts th:nth-child(4) { width: 22%; }
+  .report-table--receipts th:nth-child(5) { width: 12%; }
+  .report-table--receipts th:nth-child(6) { width: 13%; }
 
   .report-sheet .report-table tbody tr {
     background: none;

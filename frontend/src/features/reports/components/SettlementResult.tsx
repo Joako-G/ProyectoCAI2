@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { formatPeriod, formatPesos } from '../../pricing/utils/pricing-format';
 import type { DisciplineSettlement } from '../types/report';
+import { ReportFrame } from './ReportFrame';
 import { ReportLetterhead } from './ReportLetterhead';
 
 /** Presentational: who paid a discipline's fee for a month and what that fee came to. No DNI, by the club's decision. */
@@ -8,8 +9,8 @@ export function SettlementResult({ report, issuedBy }: { report: DisciplineSettl
   const issuedAt = useMemo(() => new Date(), [report]);
   const month = formatPeriod(report.period);
   return (
-    <section className="report-result report-sheet" aria-label="Resultado de liquidación">
-      <ReportLetterhead issuedBy={issuedBy} issuedAt={issuedAt} />
+    <section className="report-sheet" aria-label="Resultado de liquidación">
+      <ReportFrame header={<ReportLetterhead issuedBy={issuedBy} issuedAt={issuedAt} />}>
       <h2 className="report-title">Liquidación de {report.discipline.name}</h2>
       <p className="report-result__range">{report.discipline.name}, {month}</p>
 
@@ -39,6 +40,7 @@ export function SettlementResult({ report, issuedBy }: { report: DisciplineSettl
       <p className="report-result__total">
         <span>Recargos por pago tardío (aparte)</span> <strong data-testid="settlement-surcharges">{formatPesos(report.surchargeTotal)}</strong>
       </p>
+      </ReportFrame>
     </section>
   );
 }

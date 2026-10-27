@@ -6,6 +6,7 @@ import type { RevenueReport } from '../types/report';
 import { conceptTotalLabel, formatAmount, formatShare, issuedLabel, rangeLabel, revenueTitle } from '../utils/report-format';
 import { revenueMismatches } from '../utils/report-totals';
 import { CashClosing } from './CashClosing';
+import { ReportFrame } from './ReportFrame';
 import { ReportLetterhead } from './ReportLetterhead';
 import { SignatureBlock } from './SignatureBlock';
 
@@ -32,10 +33,10 @@ export function RevenueResult({ report, issuedBy, cashCount }: { report: Revenue
   const receiptSum = sum(report.receipts.map((row) => row.total));
 
   return (
-    <section className="report-result report-sheet" aria-label="Resultado de recaudación">
-      <ReportLetterhead issuedBy={issuedBy} issuedAt={issuedAt} />
+    <section className="report-sheet" aria-label="Resultado de recaudación">
+      <ReportFrame header={<ReportLetterhead issuedBy={issuedBy} issuedAt={issuedAt} />}>
       <div className="report-head">
-        <h2 className="report-title">{revenueTitle(report.granularity)}</h2>
+        <h2 className="report-title report-title--screen-only">{revenueTitle(report.granularity)}</h2>
         <p className="report-result__range">{rangeLabel(report)}</p>
         <p className="report-result__total">
           <span>Total recaudado</span> <strong data-testid="revenue-total">{formatAmount(report.total)}</strong>
@@ -109,7 +110,7 @@ export function RevenueResult({ report, issuedBy, cashCount }: { report: Revenue
 
           <section className="report-section report-section--receipts" aria-label="Detalle de recibos">
             <h3 className="report-section__title">Detalle de recibos</h3>
-            <table className="members-table report-table">
+            <table className="members-table report-table report-table--receipts">
               <caption className="visually-hidden">Comprobantes del período</caption>
               <thead>
                 <tr className="table-head">
@@ -138,6 +139,7 @@ export function RevenueResult({ report, issuedBy, cashCount }: { report: Revenue
 
       {report.granularity === 'daily' ? <CashClosing expectedCash={cashExpected} cashCount={cashCount} /> : null}
       <SignatureBlock />
+      </ReportFrame>
     </section>
   );
 }
