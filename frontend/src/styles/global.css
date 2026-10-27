@@ -1122,3 +1122,51 @@ a:hover {
     display: none;
   }
 }
+
+/* Reports */
+
+.report-kind {
+  display: flex;
+  gap: 18px;
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+}
+
+.report-kind legend {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.report-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.report-result {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.report-result__range {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.report-result__total {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin: 0;
+}
+
+.report-result__total strong {
+  font-family: var(--font-mono);
+  font-size: 18px;
+}
