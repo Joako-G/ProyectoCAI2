@@ -9,6 +9,7 @@ Branch: JoakoG. Delivery strategy: ask-on-risk. Test runner: vitest (frontend), 
 - S2. Requirement RF-18: "Generar reportes de recaudación por período (diario, semanal, mensual) y por concepto, imprimibles y exportables." (Esencial)
 - S3. Requirement RF-19: "Generar por disciplina el listado de socios al día y el monto recaudado para la liquidación a profesores." (Esencial)
 - S3b. Owner: "solo nombre, número de socio y mes, sin DNI" — the per-discipline list (RF-19) shows member name, member number and month, never the DNI.
+- S3c. PROVISIONAL, CONFIRM LATER: owner chose "A, como la planilla actual" for what "al día" means in RF-19: a member is listed for a month and discipline when a valid (not annulled) payment settles that discipline's activity fee for that month, even if the member owes earlier months. The alternative (B) was a member whose whole account is up to date. The owner asked to flag this so it is confirmed with the club later. Marked in the code as `PROVISIONAL(S3c)`. Surcharges are reported separately from the fee, never silently merged into the amount.
 - S4. Requirement RNF-14: "Los reportes se exportan a PDF y Excel." Acceptance: "Todos los reportes exportables".
 - S5. Requirement RNF-07: "Los datos contables solo los ven Secretaría, Tesorería y Administración (RN-12)." Acceptance: "100 % de las pantallas contables restringidas por rol".
 - S6. Requirement RNF-08: "Los pagos no se eliminan, solo se anulan. El historial y la auditoría no se pueden modificar." A saved Arqueo close is never edited or deleted.
@@ -22,7 +23,7 @@ Branch: JoakoG. Delivery strategy: ask-on-risk. Test runner: vitest (frontend), 
 ## Tasks
 
 - T0. S1-S12. Inline. Freeze scope against the approved PDFs. Done (this document).
-- T1. S2-S4, S10. Read-only Reports contracts and service. Pending.
+- T1. S2-S4, S10, S3b, S3c. Read-only Reports service (`backend/src/modules/reports/`). Inline. Done: RED observed (module missing), GREEN 19 new tests; backend suite 688 passed, typecheck clean. No HTTP route yet (T3). Exports are T5.
 - T2. S1, S6, S8, S9, S11, S12. Arqueo domain and JSON persistence. Pending.
 - T3. S5, S7. Protected APIs and capability checks. Pending.
 - T4a. S7. Navigation layout with groups (`navigationFor`, `Sidebar` groups); default layout stays flat. Inline. Done: RED observed (6 failing), GREEN 389 tests, typecheck clean.
@@ -37,4 +38,5 @@ Branch: JoakoG. Delivery strategy: ask-on-risk. Test runner: vitest (frontend), 
 - L4. T0 verification against docs/Modelo_Sistema_ClubOCEA.drawio.pdf and docs/Informe_Relevamiento_ClubOCEA.pdf: RF-17, RF-18, RF-19 are Esencial; RF-20 Deseable; RF-16 Opcional (priority read from the table order, because the PDF text layer detaches priorities from rows). Plan #1139 matches the PDFs.
 - L5. Open point found: CU-20 AS-IS planilla lists "nombre, DNI y mes". Plan said to avoid DNI in the discipline report unless required. Needs owner decision before T1 builds RF-19.
 - L5a. Decision: "solo nombre, número de socio y mes, sin DNI" (see S3b). L5 is resolved.
+- L5b. Decision: "A, como la planilla actual pero marcalo o deja una bandera para luego confirmar que la opcion que estoy eligiendo ahora este bien" (see S3c).
 - L6. Note for T2: RNF-08 means closes are append-only; the plan's "variance note" is set at close time and not editable afterwards.
