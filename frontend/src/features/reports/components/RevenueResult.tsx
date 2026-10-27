@@ -37,7 +37,8 @@ export function RevenueResult({ report, issuedBy, cashCount }: { report: Revenue
       <ReportFrame header={<ReportLetterhead issuedBy={issuedBy} issuedAt={issuedAt} />}>
       <div className="report-head">
         <h2 className="report-title report-title--screen-only">{revenueTitle(report.granularity)}</h2>
-        <p className="report-result__range">{rangeLabel(report)}</p>
+        {/* A single day's date is not printed; a week or a month keeps its range, which nothing else on the sheet says. */}
+        <p className={report.from === report.to ? 'report-result__range report-title--screen-only' : 'report-result__range'}>{rangeLabel(report)}</p>
         <p className="report-result__total">
           <span>Total recaudado</span> <strong data-testid="revenue-total">{formatAmount(report.total)}</strong>
         </p>
