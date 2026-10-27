@@ -199,7 +199,7 @@ describe('ReportsView: print and export', () => {
     expect(downloadXlsx).toHaveBeenCalledTimes(1);
     const exported = vi.mocked(downloadXlsx).mock.calls[0]![0];
     expect(exported.fileName).toBe('recaudacion-2026-10-05-al-2026-10-05.xlsx');
-    expect(exported.sheets.map((sheet) => sheet.sheet)).toEqual(['Resumen', 'Por concepto', 'Por medio de pago', 'Comprobantes']);
+    expect(exported.sheets.map((sheet) => sheet.sheet)).toEqual(['Resumen', 'Comprobantes']);
   });
 
   it('downloads the discipline settlement as Excel', async () => {
