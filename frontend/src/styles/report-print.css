@@ -101,7 +101,11 @@
 
 @page {
   size: A4;
-  margin: 18mm 24mm 22mm;
+  /*
+   * Close to the look of Chrome's "minimum" margins, yet clear of the 4–6 mm most printers cannot reach,
+   * so no letter is cut. The bottom keeps room for the footer with the page number.
+   */
+  margin: 10mm 10mm 14mm;
 
   @bottom-left {
     content: var(--print-stamp, '');
@@ -186,7 +190,7 @@
   }
 
   .report-frame > thead td {
-    padding: 6mm 0 8mm;
+    padding: 0 0 8mm;
   }
 
   .report-letterhead {
@@ -303,9 +307,20 @@
     color: #000;
   }
 
+  /* Each closing figure sits under its label, kept on one line so the "$" never parts from the amount. */
   .report-closing {
     flex-wrap: nowrap;
     justify-content: space-between;
+  }
+
+  .report-closing div {
+    flex: 1;
+    flex-direction: column;
+    gap: 2pt;
+  }
+
+  .report-closing dd {
+    white-space: nowrap;
   }
 
   .report-closing .report-blank {
@@ -375,17 +390,20 @@
     border-bottom: 0.5pt solid #999;
   }
 
-  /* Give the member and the concept room so a name or a long concept does not pile up on three lines. */
+  /*
+   * Fixed widths keep the member and the concept from piling up on many lines. The amount column fits
+   * "$ 1.263.000,00" in one line, since amounts do not wrap and a fixed table clips what overflows.
+   */
   .report-table--receipts {
     table-layout: fixed;
   }
 
-  .report-table--receipts th:nth-child(1) { width: 9%; }
-  .report-table--receipts th:nth-child(2) { width: 14%; }
-  .report-table--receipts th:nth-child(3) { width: 30%; }
+  .report-table--receipts th:nth-child(1) { width: 7%; }
+  .report-table--receipts th:nth-child(2) { width: 15%; }
+  .report-table--receipts th:nth-child(3) { width: 23%; }
   .report-table--receipts th:nth-child(4) { width: 22%; }
-  .report-table--receipts th:nth-child(5) { width: 12%; }
-  .report-table--receipts th:nth-child(6) { width: 13%; }
+  .report-table--receipts th:nth-child(5) { width: 13%; }
+  .report-table--receipts th:nth-child(6) { width: 20%; }
 
   .report-sheet .report-table tbody tr {
     background: none;
