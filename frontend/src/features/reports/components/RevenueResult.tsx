@@ -34,23 +34,31 @@ export function RevenueResult({ report, issuedBy, cashCount }: { report: Revenue
   return (
     <section className="report-result report-sheet" aria-label="Resultado de recaudación">
       <ReportLetterhead issuedBy={issuedBy} issuedAt={issuedAt} />
-      <h2 className="report-title">{revenueTitle(report.granularity)}</h2>
-      <p className="report-result__range">{rangeLabel(report)}</p>
-      <p className="report-result__total">
-        <span>Total recaudado</span> <strong data-testid="revenue-total">{formatAmount(report.total)}</strong>
-      </p>
-
-      {mismatches.length > 0 ? (
-        <p className="report-warning" role="alert">
-          <strong>Atención: los totales no coinciden.</strong> No suma el total recaudado: {mismatches.join(', ')}. No use este informe hasta revisarlo.
+      <div className="report-head">
+        <h2 className="report-title">{revenueTitle(report.granularity)}</h2>
+        <p className="report-result__range">{rangeLabel(report)}</p>
+        <p className="report-result__total">
+          <span>Total recaudado</span> <strong data-testid="revenue-total">{formatAmount(report.total)}</strong>
         </p>
-      ) : null}
 
-      <dl className="report-summary">
-        <div><dt>Recibos emitidos</dt><dd>{report.issued ? `${issuedLabel(report.issued)} (${report.issued.count})` : 'Ninguno'}</dd></div>
-        <div><dt>Recibos válidos</dt><dd>{report.receipts.length}</dd></div>
-        <div><dt>Recibos anulados</dt><dd>{report.annulled.count}</dd></div>
-      </dl>
+        {mismatches.length > 0 ? (
+          <p className="report-warning" role="alert">
+            <strong>Atención: los totales no coinciden.</strong> No suma el total recaudado: {mismatches.join(', ')}. No use este informe hasta revisarlo.
+          </p>
+        ) : null}
+
+        <dl className="report-summary">
+          <div><dt>Recibos emitidos</dt><dd>{report.issued ? `${issuedLabel(report.issued)} (${report.issued.count})` : 'Ninguno'}</dd></div>
+          <div><dt>Recibos válidos</dt><dd>{report.receipts.length}</dd></div>
+          <div><dt>Recibos anulados</dt><dd>{report.annulled.count}</dd></div>
+        </dl>
+        {report.annulled.count > 0 ? (
+          <p className="members-page__notice">
+            Pagos anulados, no incluidos en el total: {report.annulled.count} por {formatAmount(report.annulled.total)}
+          </p>
+        ) : null}
+
+      </div>
 
       {report.receipts.length === 0 ? (
         <p className="members-page__notice">No hubo cobros en el período.</p>
@@ -129,13 +137,6 @@ export function RevenueResult({ report, issuedBy, cashCount }: { report: Revenue
       )}
 
       {report.granularity === 'daily' ? <CashClosing expectedCash={cashExpected} cashCount={cashCount} /> : null}
-
-      {report.annulled.count > 0 ? (
-        <p className="members-page__notice">
-          Pagos anulados, no incluidos en el total: {report.annulled.count} por {formatAmount(report.annulled.total)}
-        </p>
-      ) : null}
-
       <SignatureBlock />
     </section>
   );
