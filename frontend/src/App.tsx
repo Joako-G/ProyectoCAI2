@@ -1,63 +1,82 @@
-import { useState } from 'react';
+import { Navigate, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router';
 import './app.css';
 import { LoginScreen } from './features/auth/components/LoginScreen';
 import { useSession } from './features/auth/hooks/useSession';
 import type { AuthUser } from './features/auth/types/auth';
 import { can } from './features/auth/utils/can';
+import { ArqueoView } from './features/cashcount/components/ArqueoView';
 import { DisciplinesView } from './features/disciplines/components/DisciplinesView';
 import { PaymentsView } from './features/payments/components/PaymentsView';
 import { PricingView } from './features/pricing/components/PricingView';
+import { ReportsView } from './features/reports/components/ReportsView';
 import { RosterView } from './features/roster/components/RosterView';
 import { MembersView } from './features/members/components/MembersView';
 import { UsersView } from './features/users/components/UsersView';
 import { AppShell } from './layouts/AppShell';
-import { sectionsFor, type Section } from './layouts/sections';
+import { Forbidden, NoSections, NotFound } from './layouts/RouteMessages';
+import { SECTIONS, sectionsFor, type Section } from './layouts/sections';
 
-// No router: the visible section is plain state.
-const PAGES: Record<Section, { title: string; subtitle: string }> = {
-  members: { title: 'Socios', subtitle: 'Búsqueda por N° de socio, DNI o nombre' },
-  disciplines: { title: 'Disciplinas', subtitle: 'Catálogo de disciplinas y sus profesores' },
-  payments: { title: 'Cobros', subtitle: 'Cobro de cuotas por DNI, comprobantes y anulaciones' },
-  users: { title: 'Usuarios', subtitle: 'Administración de cuentas de demostración' },
-  roster: { title: 'Mis disciplinas', subtitle: 'Alumnos actuales y anteriores de sus disciplinas' },
-  pricing: { title: 'Precios', subtitle: 'Tarifas, recargos por pago tardío y prorrateo' },
-};
+/** The screen of each section; built only for routes whose capability was already checked. */
+function pageFor(section: Section, user: AuthUser) {
+  switch (section) {
+    case 'members': return <MembersView canWrite={can(user, 'members:write')} />;
+    case 'disciplines': return <DisciplinesView canWrite={can(user, 'disciplines:write')} />;
+    case 'payments': return <PaymentsView canCollect={can(user, 'payments:collect')} canAnnul={can(user, 'payments:annul')} />;
+    case 'cashcount': return <ArqueoView />;
+    case 'reports': return <ReportsView issuedBy={user.name} canReadCashCount={can(user, 'cashcount:run')} />;
+    case 'roster': return <RosterView />;
+    case 'pricing': return <PricingView canWrite={can(user, 'config:manage')} />;
+    case 'users': return <UsersView currentUserId={user.id} />;
+  }
+}
+
+/** Shared shell: title and sidebar highlight follow the section the URL names. */
+function ShellLayout({ user, onLogout }: { user: AuthUser; onLogout: () => void }) {
+  const { pathname } = useLocation();
+  const allowed = sectionsFor(user);
+  // A section the role cannot open is not highlighted nor named in the header.
+  const current = SECTIONS.find(({ id, path }) => path === pathname && allowed.includes(id));
+  return <AppShell
+    title={current?.label ?? 'Club Independiente'} subtitle={current?.subtitle} section={current?.id}
+    sections={allowed} user={user} onLogout={onLogout}
+  >
+    <Outlet />
+  </AppShell>;
+}
 
 export function App() {
   const { user, restoring, signIn, signOut } = useSession();
-  // The section the user picked; ignored when it is not (or no longer) allowed.
-  const [requested, setRequested] = useState<Section>();
-
-  function handleLogin(signedIn: AuthUser) {
-    signIn(signedIn); setRequested(undefined);
-  }
+  const navigate = useNavigate();
+  const { pathname, state } = useLocation();
 
   async function handleLogout() {
-    await signOut(); setRequested(undefined);
+    await signOut(); navigate('/login', { replace: true });
   }
 
   if (restoring) return null;
-  if (!user) return <LoginScreen onLogin={handleLogin} />;
 
-  const sections = sectionsFor(user);
-  const view = requested && sections.includes(requested) ? requested : sections[0];
-  const shellProps = { sections, onNavigate: setRequested, user, onLogout: handleLogout };
-
-  if (!view) {
-    return <AppShell title="Club Independiente" {...shellProps}>
-      <section className="card no-sections" aria-label="Sin secciones disponibles">
-        <p className="no-sections__notice">Tu rol todavía no tiene secciones disponibles.</p>
-      </section>
-    </AppShell>;
+  if (!user) {
+    // Remember where the visitor was heading so signing in brings them back there.
+    const from = pathname === '/login' ? (state as { from?: string } | null)?.from : pathname;
+    return <Routes>
+      <Route path="/login" element={<LoginScreen onLogin={signIn} />} />
+      <Route path="*" element={<Navigate to="/login" replace state={{ from }} />} />
+    </Routes>;
   }
 
-  const { title, subtitle } = PAGES[view];
-  return <AppShell title={title} subtitle={subtitle} section={view} {...shellProps}>
-    {view === 'members' ? <MembersView canWrite={can(user, 'members:write')} />
-      : view === 'disciplines' ? <DisciplinesView canWrite={can(user, 'disciplines:write')} />
-        : view === 'payments' ? <PaymentsView canCollect={can(user, 'payments:collect')} canAnnul={can(user, 'payments:annul')} />
-          : view === 'roster' ? <RosterView />
-            : view === 'pricing' ? <PricingView canWrite={can(user, 'config:manage')} />
-              : <UsersView currentUserId={user.id} />}
-  </AppShell>;
+  const allowed = sectionsFor(user);
+  const home = SECTIONS.find(({ id }) => id === allowed[0])?.path;
+  const requested = (state as { from?: string } | null)?.from;
+  const landing = SECTIONS.find(({ id, path }) => path === requested && allowed.includes(id))?.path ?? home;
+
+  return <Routes>
+    <Route element={<ShellLayout user={user} onLogout={() => void handleLogout()} />}>
+      {SECTIONS.map(({ id, path }) => (
+        <Route key={id} path={path} element={allowed.includes(id) ? pageFor(id, user) : <Forbidden homePath={home} />} />
+      ))}
+      <Route path="/" element={home ? <Navigate to={home} replace /> : <NoSections />} />
+      <Route path="/login" element={landing ? <Navigate to={landing} replace /> : <NoSections />} />
+      <Route path="*" element={<NotFound homePath={home} />} />
+    </Route>
+  </Routes>;
 }

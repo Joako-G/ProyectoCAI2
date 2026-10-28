@@ -2,6 +2,7 @@ import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
+import { createTestContext as createCashCount } from '../cashcount/helpers.js';
 import { createTestContext as createDisciplines } from '../disciplines/helpers.js';
 import { createTestContext as createMembers } from '../members/helpers.js';
 import { createTestContext as createMemberships } from '../memberships/helpers.js';
@@ -48,6 +49,11 @@ const routes: Array<[string, string, readonly RoleName[]]> = [
   ['POST', '/api/payments/preview', both],
   ['POST', '/api/payments', both],
   ['POST', '/api/payments/missing/annul', headOnly],
+  ['GET', '/api/reports/revenue', both],
+  ['GET', '/api/reports/discipline-settlement', both],
+  ['GET', '/api/cashcount/today', headOnly],
+  ['GET', '/api/cashcount', headOnly],
+  ['POST', '/api/cashcount', headOnly],
 ];
 
 let baseUrl: string;
@@ -62,7 +68,8 @@ beforeAll(async () => {
   const memberships = await createMemberships();
   const pricing = await createPricing();
   const payments = await createPayments();
-  cleanups.push(users.cleanup, members.cleanup, disciplines.cleanup, memberships.cleanup, pricing.cleanup, payments.cleanup);
+  const cashCount = await createCashCount();
+  cleanups.push(users.cleanup, members.cleanup, disciplines.cleanup, memberships.cleanup, pricing.cleanup, payments.cleanup, cashCount.cleanup);
   server = createApp({
     storePath: users.storePath,
     memberService: members.service,
@@ -70,6 +77,8 @@ beforeAll(async () => {
     membershipService: memberships.service,
     pricingConfigService: pricing.service,
     paymentService: payments.service,
+    reportService: cashCount.reports,
+    cashCountService: cashCount.cashCount,
     rosterService: createRosterService({ memberships: memberships.service, members: members.service, disciplines: disciplines.service }),
   }).listen(0);
   await new Promise<void>((resolve) => server.once('listening', resolve));

@@ -144,6 +144,21 @@ a:hover {
   color: #fff;
 }
 
+.sidebar__group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.sidebar__group-label {
+  padding: 4px 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--color-sidebar-muted);
+}
+
 .sidebar__link-index {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -1084,7 +1099,7 @@ a:hover {
   margin-top: 16px;
 }
 
-/* Printing a receipt shows only the receipt block. */
+/* Printing a receipt shows only that block; the report sheet has its own rules in report-print.css. */
 @media print {
   body * {
     visibility: hidden;
@@ -1106,4 +1121,154 @@ a:hover {
   .receipt__actions {
     display: none;
   }
+}
+
+/* Reports */
+
+.report-kind {
+  display: flex;
+  gap: 18px;
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+}
+
+.report-kind legend {
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.report-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.report-result {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.report-result__range {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.report-result__total {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin: 0;
+}
+
+.report-result__total strong {
+  font-family: var(--font-mono);
+  font-size: 18px;
+}
+
+.report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.report-actions__hint {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+/*
+ * The login screen styles every bare form, input and button (app.css), so the report and cash count
+ * forms undo what leaks into them: the column direction, the 49px full-width inputs and the blue buttons.
+ */
+.report-page {
+  padding: 20px;
+}
+
+.report-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 16px;
+}
+
+.arqueo-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  margin: 18px 0;
+}
+
+.report-filters {
+  flex-direction: row;
+}
+
+.report-filters input,
+.report-filters select,
+.report-filters textarea,
+.arqueo-form input,
+.arqueo-form select,
+.arqueo-form textarea {
+  width: auto;
+  height: auto;
+  margin: 0;
+}
+
+.arqueo-form textarea {
+  width: 24rem;
+  max-width: 100%;
+}
+
+.report-filters label,
+.arqueo-form label {
+  margin: 0;
+}
+
+.report-filters button,
+.arqueo-form button {
+  display: inline-block;
+  height: auto;
+  transition: none;
+}
+
+.report-filters .button--primary:hover:not(:disabled),
+.arqueo-form .button--primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  transform: none;
+}
+
+.report-filters .button--secondary:hover:not(:disabled),
+.arqueo-form .button--secondary:hover:not(:disabled) {
+  background: #e9e7e2;
+  transform: none;
+}
+
+.report-page > * + * {
+  margin-top: 18px;
+}
+
+.arqueo-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #faf9f7;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.arqueo-confirm p {
+  flex-basis: 100%;
+  margin: 0;
 }
