@@ -67,6 +67,15 @@ function sanitizeConcepts(concepts: readonly ChargeConcept[]): ChargeConcept[] {
   });
 }
 
+// A non-empty list of distinct, non-blank discipline ids; anything else is a client error.
+function sanitizeDisciplineIds(ids: unknown): string[] {
+  if (!Array.isArray(ids) || ids.length === 0) throw new ValidationError({ disciplineIds: 'Must be a non-empty list' });
+  const cleaned = ids.map((id) => (typeof id === 'string' ? id.trim() : ''));
+  if (cleaned.some((id) => id === '')) throw new ValidationError({ disciplineIds: 'Every discipline id must be text' });
+  if (new Set(cleaned).size !== cleaned.length) throw new ValidationError({ disciplineIds: 'Repeated discipline' });
+  return cleaned;
+}
+
 // The concepts a stored payment settled, compared with a new request regardless of order. Surcharge
 // lines are derived from activity fees, so they are not concepts the client asked for.
 function sameConcepts(payment: Payment, concepts: readonly ChargeConcept[]): boolean {
@@ -180,6 +189,19 @@ export function createPaymentService({ repository, members, memberships, pricing
       if (registration) assertEnrollmentOpen(payments, memberId, standing);
       assertOffered(sanitized, member, history, payments, config, owed, standing);
       return chargeFor(config, sanitized, registration, standing === 'up_to_date');
+    },
+
+    // What a brand-new member pays today: enrollment, the month's social fee and one activity fee per chosen
+    // discipline, priced as a first-time registration. Nothing exists yet, so nothing is read or written.
+    async previewEnrollment(disciplineIds: readonly string[]): Promise<Charge> {
+      const ids = sanitizeDisciplineIds(disciplineIds);
+      const period = today().slice(0, 7);
+      const concepts: ChargeConcept[] = [
+        { kind: 'enrollment' },
+        { kind: 'socialFee', period },
+        ...ids.map((disciplineId) => ({ kind: 'activityFee' as const, period, disciplineId })),
+      ];
+      return chargeFor(await pricing.get(), concepts, registrationFor({}));
     },
 
     // Recomputes the charge server-side and writes one payment with the next receipt number, atomically.
