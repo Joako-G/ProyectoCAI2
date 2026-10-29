@@ -21,6 +21,11 @@ export function previewCharge(body: PreviewRequest): Promise<Charge> {
   return request<Charge>(`${BASE}/preview`, sendJson('POST', body));
 }
 
+/** What a member who does not exist yet pays for the chosen disciplines; nothing is read or written. */
+export function previewEnrollment(disciplineIds: string[], signal?: AbortSignal): Promise<Charge> {
+  return request<Charge>(`${BASE}/enrollment-preview`, { ...sendJson('POST', { disciplineIds }), signal });
+}
+
 /** Registers a payment; the server recomputes every amount and allocates the receipt number. */
 export function registerPayment(body: RegisterRequest): Promise<Payment> {
   return request<Payment>(BASE, sendJson('POST', body));
