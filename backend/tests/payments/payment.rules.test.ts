@@ -114,6 +114,43 @@ describe('advance payment of the next month', () => {
   });
 });
 
+describe('only what the member is offered can be charged', () => {
+  it('rejects an activity fee for a discipline the member is not in and writes nothing', async () => {
+    const { service, repository } = await contexts.create(joinedThisMonth);
+    await expect(
+      service.register(MEMBER_ID, { concepts: [activity('2026-10', 'chess')], method: 'cash' }, ACTOR),
+    ).rejects.toBeInstanceOf(ValidationError);
+    expect(await repository.list()).toHaveLength(0);
+  });
+
+  it('rejects a month before the member joined', async () => {
+    const { service } = await contexts.create(joinedThisMonth);
+    await expect(
+      service.register(MEMBER_ID, { concepts: [social('2026-09')], method: 'cash' }, ACTOR),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('refuses the same concepts in the preview, so the screen and the server agree', async () => {
+    const { service } = await contexts.create(joinedThisMonth);
+    await expect(service.preview(MEMBER_ID, [activity('2026-10', 'chess')])).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('rejects an advance activity fee for a discipline the member is not in', async () => {
+    const { service } = await contexts.create(joinedThisMonth);
+    await payOctober(service);
+    await expect(
+      service.register(MEMBER_ID, { concepts: [activity('2026-11', 'chess')], method: 'cash' }, ACTOR),
+    ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it('names the concept that is not offered', async () => {
+    const { service } = await contexts.create(joinedThisMonth);
+    await expect(
+      service.register(MEMBER_ID, { concepts: [social('2026-10'), activity('2026-10', 'chess')], method: 'cash' }, ACTOR),
+    ).rejects.toMatchObject({ fieldErrors: { concepts: 'Not owed: activityFee:2026-10:chess' } });
+  });
+});
+
 describe('what the account tells the Cobros screen', () => {
   it('offers enrollment to a new member and nothing in advance while October is owed', async () => {
     const { service } = await contexts.create(joinedThisMonth);

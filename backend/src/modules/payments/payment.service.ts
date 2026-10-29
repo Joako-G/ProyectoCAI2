@@ -127,6 +127,26 @@ export function createPaymentService({ repository, members, memberships, pricing
     return { owed, standing: accountStanding(owed) };
   }
 
+  // The social and activity fees a client asks for must be ones the member owes today or is offered in advance;
+  // anything else (a discipline the member is not in, a month before joining) is never charged.
+  function assertOffered(
+    concepts: readonly ChargeConcept[],
+    member: AccountMember,
+    history: readonly Membership[],
+    payments: readonly Payment[],
+    config: PricingConfig,
+    owed: readonly OwedPeriod[],
+    standing: AccountStanding,
+  ): void {
+    const advance = standing === 'up_to_date' && member.status === 'active' ? advanceOffer(member, history, payments, config, today()) : undefined;
+    const offered = new Set([...owed, ...(advance ? [advance] : [])].flatMap((entry) => entry.concepts.map(conceptKey)));
+    const notOffered = concepts
+      .filter((concept) => concept.kind === 'socialFee' || concept.kind === 'activityFee')
+      .map(conceptKey)
+      .filter((key) => !offered.has(key));
+    if (notOffered.length > 0) throw new ValidationError({ concepts: `Not owed: ${notOffered.join(', ')}` });
+  }
+
   // Enrollment belongs to a new member (no payment yet) or to one who fell to deregistered; anyone else already paid it.
   function enrollmentOpen(payments: readonly Payment[], memberId: string, standing: AccountStanding): boolean {
     const hasPaid = payments.some((payment) => payment.memberId === memberId && !payment.annulment);
@@ -156,8 +176,9 @@ export function createPaymentService({ repository, members, memberships, pricing
       const sanitized = sanitizeConcepts(concepts);
       const registration = registrationFor(options.registration);
       const [config, history, payments] = await Promise.all([pricing.get(), memberships.list({ memberId }), repository.list()]);
-      const { standing } = standingFor(member, history, payments, config);
+      const { owed, standing } = standingFor(member, history, payments, config);
       if (registration) assertEnrollmentOpen(payments, memberId, standing);
+      assertOffered(sanitized, member, history, payments, config, owed, standing);
       return chargeFor(config, sanitized, registration, standing === 'up_to_date');
     },
 
@@ -187,8 +208,9 @@ export function createPaymentService({ repository, members, memberships, pricing
         const settled = settledKeys(payments, memberId);
         const alreadyPaid = concepts.map(conceptKey).filter((key) => settled.has(key));
         if (alreadyPaid.length > 0) throw new ConflictError(`Already paid: ${alreadyPaid.join(', ')}`);
-        const { standing } = standingFor(member, history, payments, config);
+        const { owed, standing } = standingFor(member, history, payments, config);
         if (registration) assertEnrollmentOpen(payments, memberId, standing);
+        assertOffered(concepts, member, history, payments, config, owed, standing);
         const charge = chargeFor(config, concepts, registration, standing === 'up_to_date');
         // Annulled payments stay in the list, so the maximum never goes back and numbers are never reused.
         const receiptNumber = payments.reduce((highest, payment) => Math.max(highest, payment.receiptNumber), 0) + 1;

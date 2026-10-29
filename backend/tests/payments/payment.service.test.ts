@@ -189,8 +189,9 @@ describe('getReceipt and history', () => {
   });
 
   it('lists only the member payments, oldest receipt first', async () => {
-    const { service, members } = await contexts.create();
+    const { service, members, memberships } = await contexts.create();
     members.push({ id: 'other', status: 'active' });
+    memberships.push(membership('basket', '2026-01-01', undefined, 'other'));
     await service.register(MEMBER_ID, { concepts: [social('2026-09')], method: 'cash' }, ACTOR);
     await service.register('other', { concepts: [social('2026-10')], method: 'cash' }, ACTOR);
     await service.register(MEMBER_ID, { concepts: [social('2026-10')], method: 'cash' }, ACTOR);
@@ -336,6 +337,8 @@ describe('stored lines round trip', () => {
     await context.service.register(MEMBER_ID, {
       concepts: [{ kind: 'enrollment' }, social('2026-10'), activity('2026-10')], method: 'cash', registration: {},
     }, ACTOR);
+    // The member joins volleyball in September, so that month's volley fee is owed.
+    context.memberships.push(membership('volley', '2026-09-01'));
     const late = await context.service.register(MEMBER_ID, { concepts: [activity('2026-09', 'volley')], method: 'qr' }, ACTOR);
     await context.service.register(MEMBER_ID, { concepts: [{ kind: 'carnetReplacement' }], method: 'debit' }, ACTOR);
     expect(late.lines.map((line) => line.kind)).toContain('activitySurcharge');
