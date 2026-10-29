@@ -22,6 +22,11 @@ export interface ChargeInput {
   paymentDate: ClubDate;
   registration?: FirstTimeRegistration;
   concepts: readonly ChargeConcept[];
+  /**
+   * The caller states the member is up to date, so the month after the payment month may be paid in
+   * advance, only while its social and activity fees equal the current month's. Off by default.
+   */
+  allowAdvance?: boolean;
 }
 
 export const CHARGE_LINE_KINDS = ['enrollment', 'socialFee', 'activityFee', 'activitySurcharge', 'carnetReplacement'] as const;

@@ -49,7 +49,7 @@ export function MemberPayments({ member, canCollect, canAnnul }: MemberPaymentsP
   const canPay = canCollect && member.status === 'active';
   // The form restarts clean whenever anything it was built from changes: a confirmed payment (epoch), the
   // owed concepts, or the history including annulments (an annulment makes concepts owed again).
-  const formKey = [epoch, ...account.owed.flatMap((entry) => entry.concepts.map(conceptKey)), ...history.map((payment) => `${payment.id}${payment.annulment ? '!' : ''}`)].join('|');
+  const formKey = [epoch, account.enrollmentAvailable, ...[...account.owed, ...(account.advance ? [account.advance] : [])].flatMap((entry) => entry.concepts.map(conceptKey)),...history.map((payment) => `${payment.id}${payment.annulment ? '!' : ''}`)].join('|');
 
   // Every write re-reads the account and history so the screen shows what the server holds. A failed write
   // whose outcome is unknown or stale is re-read too, and its error still reaches the caller.

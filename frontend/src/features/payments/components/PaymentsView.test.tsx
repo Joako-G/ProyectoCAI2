@@ -172,6 +172,38 @@ describe('PaymentsView account states', () => {
     expect(within(formRegion()).getByRole('button', { name: 'Calcular total' })).toBeDisabled();
   });
 
+  it('does not offer the enrollment to a member who already paid it', async () => {
+    stubApi({
+      [ACCOUNT]: () => jsonResponse(buildAccount({ standing: 'up_to_date', unpaidPeriodCount: 0, owed: [], enrollmentAvailable: false })),
+    });
+    await openMember();
+
+    await screen.findByRole('region', { name: 'Registrar cobro' });
+    expect(within(formRegion()).queryByRole('checkbox', { name: 'Inscripción (socio nuevo)' })).not.toBeInTheDocument();
+    expect(within(formRegion()).getByRole('checkbox', { name: 'Reposición de carnet' })).toBeInTheDocument();
+  });
+
+  it('offers next month as an unselected advance only when the server sends it', async () => {
+    const advance = {
+      period: '2026-11',
+      concepts: [{ kind: 'socialFee' as const, period: '2026-11' }, { kind: 'activityFee' as const, period: '2026-11', disciplineId: 'disc-1' }],
+    };
+    const fetchMock = stubApi({
+      [ACCOUNT]: () => jsonResponse(buildAccount({ standing: 'up_to_date', unpaidPeriodCount: 0, owed: [], enrollmentAvailable: false, advance })),
+    });
+    const user = await openMember();
+
+    const group = await within(formRegion()).findByRole('group', { name: /Pago adelantado/ });
+    const boxes = within(group).getAllByRole('checkbox');
+    expect(boxes).toHaveLength(2);
+    boxes.forEach((box) => expect(box).not.toBeChecked());
+
+    await user.click(boxes[0]!);
+    await user.click(within(formRegion()).getByRole('button', { name: 'Calcular total' }));
+    await screen.findByRole('table', { name: 'Detalle del cobro' });
+    expect(bodyOf(fetchMock, 'POST /api/payments/preview').concepts).toEqual([{ kind: 'socialFee', period: '2026-11' }]);
+  });
+
   it('blocks an inactive member: it cannot pay and no form is offered', async () => {
     stubApi({
       'GET /api/members?search=30123456': () => jsonResponse([buildMember({ status: 'inactive' })]),

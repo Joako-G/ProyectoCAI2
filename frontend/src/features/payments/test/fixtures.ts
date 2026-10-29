@@ -11,6 +11,7 @@ export function buildAccount(overrides: Partial<MemberAccount> = {}): MemberAcco
       { period: '2026-09', concepts: [{ kind: 'socialFee', period: '2026-09' }, { kind: 'activityFee', period: '2026-09', disciplineId: 'disc-1' }] },
       { period: '2026-10', concepts: [{ kind: 'socialFee', period: '2026-10' }, { kind: 'activityFee', period: '2026-10', disciplineId: 'disc-1' }] },
     ],
+    enrollmentAvailable: true,
     ...overrides,
   };
 }

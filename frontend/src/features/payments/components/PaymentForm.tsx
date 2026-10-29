@@ -21,6 +21,8 @@ interface PaymentFormProps {
  */
 export function PaymentForm({ memberId, account, disciplines, error, onPreview, onRegister }: PaymentFormProps) {
   const owed = account.owed.flatMap((entry) => entry.concepts);
+  // The next month, offered by the server only to an up-to-date member while its price does not rise; never preselected.
+  const advance = account.advance?.concepts ?? [];
   const [selected, setSelected] = useState(() => new Set(owed.map(conceptKey)));
   const [enrollment, setEnrollment] = useState(false);
   const [carnet, setCarnet] = useState(false);
@@ -33,7 +35,7 @@ export function PaymentForm({ memberId, account, disciplines, error, onPreview, 
   const latestPreview = useRef(0);
 
   const concepts: ChargeConcept[] = [
-    ...owed.filter((concept) => selected.has(conceptKey(concept))),
+    ...[...owed, ...advance].filter((concept) => selected.has(conceptKey(concept))),
     ...(enrollment ? [{ kind: 'enrollment' as const }] : []),
     ...(carnet ? [{ kind: 'carnetReplacement' as const }] : []),
   ];
@@ -96,12 +98,25 @@ export function PaymentForm({ memberId, account, disciplines, error, onPreview, 
           ))}
         </fieldset>
       ))}
+      {account.advance ? (
+        <fieldset className="payments-period">
+          <legend>Pago adelantado: {formatPeriod(account.advance.period)}</legend>
+          {advance.map((concept) => (
+            <label key={conceptKey(concept)} className="payments-check">
+              <input type="checkbox" checked={selected.has(conceptKey(concept))} onChange={() => toggleOwed(conceptKey(concept))} />
+              {conceptLabel(concept, disciplines)}
+            </label>
+          ))}
+        </fieldset>
+      ) : null}
       <fieldset className="payments-period">
         <legend>Otros conceptos</legend>
-        <label className="payments-check">
-          <input type="checkbox" checked={enrollment} onChange={() => change(() => setEnrollment(!enrollment))} />
-          Inscripción (socio nuevo)
-        </label>
+        {account.enrollmentAvailable ? (
+          <label className="payments-check">
+            <input type="checkbox" checked={enrollment} onChange={() => change(() => setEnrollment(!enrollment))} />
+            Inscripción (socio nuevo)
+          </label>
+        ) : null}
         <label className="payments-check">
           <input type="checkbox" checked={carnet} onChange={() => change(() => setCarnet(!carnet))} />
           Reposición de carnet
