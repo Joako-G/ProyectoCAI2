@@ -1,4 +1,4 @@
-﻿import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { ChargeConcept } from '../../src/modules/payments/charge.types.js';
 import { ConflictError, ValidationError } from '../../src/shared/errors.js';
 import { ACTOR, MEMBER_ID, membership, trackContexts } from './payment.helpers.js';
@@ -19,7 +19,7 @@ async function payOctober(service: Awaited<ReturnType<typeof contexts.create>>['
 }
 
 describe('enrollment is charged only to a new member', () => {
-  it('rejects the enrollment of a member who already paid (RocÃ­o Ferreyra case) and writes nothing', async () => {
+  it('rejects the enrollment of a member who already paid (Rocío Ferreyra case) and writes nothing', async () => {
     const { service, repository } = await contexts.create(joinedThisMonth);
     await payOctober(service);
     expect((await service.account(MEMBER_ID)).standing).toBe('up_to_date');
