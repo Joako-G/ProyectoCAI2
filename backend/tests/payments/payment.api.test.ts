@@ -51,6 +51,7 @@ describe('payments API: authorization', () => {
   const routes: Array<[string, string, unknown]> = [
     ['GET', `/api/payments/members/${MEMBER_ID}/account`, undefined],
     ['POST', '/api/payments/preview', { memberId: MEMBER_ID, concepts: [social('2026-10')] }],
+    ['POST', '/api/payments/enrollment-preview', { disciplineIds: ['basket'] }],
     ['POST', '/api/payments', { memberId: MEMBER_ID, ...pay([social('2026-10')]) }],
     ['GET', `/api/payments/members/${MEMBER_ID}`, undefined],
     ['GET', '/api/payments/receipts/1', undefined],
@@ -94,6 +95,14 @@ describe('payments API: account and preview', () => {
     expect(response.status).toBe(200);
     expect((await response.json()).total).toBe(20_000);
     expect(await (await send('GET', `/api/payments/members/${MEMBER_ID}`, 'head_secretary')).json()).toEqual(before);
+  });
+
+  it('prices a new member from the chosen disciplines alone and 400s on a bad list', async () => {
+    const response = await send('POST', '/api/payments/enrollment-preview', 'secretary', { disciplineIds: ['basket'] });
+    expect(response.status).toBe(200);
+    expect((await response.json()).lines.map((line: { kind: string }) => line.kind)).toEqual(['enrollment', 'socialFee', 'activityFee']);
+    expect((await send('POST', '/api/payments/enrollment-preview', 'secretary', { disciplineIds: [] })).status).toBe(400);
+    expect((await send('POST', '/api/payments/enrollment-preview', 'secretary', {})).status).toBe(400);
   });
 
   it('ignores a backdated registration.enrollmentDate', async () => {

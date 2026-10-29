@@ -1,6 +1,6 @@
 import { ValidationError } from '../../shared/errors.js';
 import type { Charge, ChargeConcept, ChargeInput, ChargeLine, ClubDate } from './charge.types.js';
-import { prorateActivityFee, resolveTariff, surchargeForDay } from './pricing.js';
+import { nextPeriod, prorateActivityFee, resolveTariff, sameMonthlyFees, surchargeForDay } from './pricing.js';
 import type { Period } from './pricing.types.js';
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -34,7 +34,7 @@ function isAfter(a: ParsedDate, b: ParsedDate): boolean {
 }
 
 /** Rejects malformed concepts and duplicates the system must never charge twice in one payment. */
-function assertConcepts(concepts: readonly ChargeConcept[], paymentPeriod: Period, isFirstTime: boolean): void {
+function assertConcepts(concepts: readonly ChargeConcept[], paymentPeriod: Period, isFirstTime: boolean, advancePeriod?: Period): void {
   if (concepts.length === 0) fail('concepts', 'At least one concept is required');
   const seen = new Set<string>();
   for (const concept of concepts) {
@@ -50,8 +50,10 @@ function assertConcepts(concepts: readonly ChargeConcept[], paymentPeriod: Perio
       case 'socialFee':
       case 'activityFee': {
         if (!PERIOD_PATTERN.test(concept.period)) fail('period', 'Must be a period formatted as YYYY-MM');
-        // YYYY-MM strings compare chronologically. Advance payment is not a system rule.
-        if (concept.period > paymentPeriod) fail('period', `${concept.period} is after the payment month`);
+        // YYYY-MM strings compare chronologically. Only the one month `advancePeriod` may be ahead of the payment.
+        if (concept.period > paymentPeriod && concept.period !== advancePeriod) {
+          fail('period', `${concept.period} is after the payment month`);
+        }
         if (concept.kind === 'activityFee') {
           if (!concept.disciplineId) fail('disciplineId', 'An activity fee needs a discipline');
           key = `activityFee:${concept.period}:${concept.disciplineId}`;
@@ -86,7 +88,10 @@ export function calculateCharge(input: ChargeInput): Charge {
   if (enrollment && isAfter(enrollment, payment)) {
     fail('enrollmentDate', 'Must not be after the payment date');
   }
-  assertConcepts(input.concepts, payment.period, enrollment !== undefined);
+  // The next month is open for advance payment only when the caller allows it and its fees do not rise.
+  const next = nextPeriod(payment.period);
+  const advancePeriod = input.allowAdvance && sameMonthlyFees(input.tariffs, payment.period, next) ? next : undefined;
+  assertConcepts(input.concepts, payment.period, enrollment !== undefined, advancePeriod);
 
   const paymentTariff = resolveTariff(input.tariffs, payment.period);
   const lines: ChargeLine[] = [];
@@ -121,7 +126,9 @@ export function calculateCharge(input: ChargeInput): Charge {
           amount,
           prorated: amount !== fee,
         });
-        const surcharge = enrollmentDay === undefined ? surchargeForDay(input.surchargeTiers, payment.day) : 0;
+        // An advanced month has no due date yet, so it is never surcharged.
+        const surcharge =
+          enrollmentDay === undefined && concept.period <= payment.period ? surchargeForDay(input.surchargeTiers, payment.day) : 0;
         if (surcharge > 0) {
           lines.push({
             kind: 'activitySurcharge',

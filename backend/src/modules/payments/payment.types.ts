@@ -50,6 +50,10 @@ export interface MemberAccount {
   standing: AccountStanding;
   unpaidPeriodCount: number;
   owed: OwedPeriod[];
+  /** Whether the enrollment fee can be charged: a new member, or one deregistered; false once it was paid. */
+  enrollmentAvailable: boolean;
+  /** The next month's fees, offered only to an up-to-date member while that month costs the same. */
+  advance?: OwedPeriod;
 }
 
 /**

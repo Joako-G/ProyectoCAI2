@@ -830,6 +830,15 @@ a:hover {
   cursor: pointer;
 }
 
+/* app.css styles every `form input` for the login (width 100%, 49px high); without this a checkbox shrinks by a different amount for each label length. */
+.check-group__option input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+}
+
 .check-group__option:has(input:checked) {
   border-color: var(--color-accent);
 }

@@ -23,6 +23,26 @@ interface MemberFormProps {
   submitError?: string;
   onSubmit: (input: MemberInput) => void;
   onCancel: () => void;
+  /**
+   * Step-by-step use (enrollment): which sections this form shows. Hidden sections are not validated and
+   * keep their values in `initialValues`. Defaults to both.
+   */
+  sections?: readonly FormSection[];
+  /** Step-by-step use: called with the raw values once the visible sections are valid, instead of `onSubmit`. */
+  onContinue?: (values: MemberFormValues) => void;
+  /** Step-by-step use: shows a Volver button; it hands back the current values, valid or not, so nothing typed is lost. */
+  onBack?: (values: MemberFormValues) => void;
+  /** Label of the main button; defaults to the create / edit wording. */
+  submitLabel?: string;
+}
+
+export type FormSection = 'data' | 'disciplines';
+
+/** Errors of the sections on screen only: a hidden section is neither shown nor allowed to block the step. */
+function errorsForSections(errors: FieldErrors, sections: readonly FormSection[]): FieldErrors {
+  return Object.fromEntries(
+    Object.entries(errors).filter(([field]) => sections.includes(field === 'disciplineIds' ? 'disciplines' : 'data')),
+  );
 }
 
 // Guardian inputs use the backend's dotted names so errors map 1:1; their state keys are flat.
@@ -95,7 +115,13 @@ export function MemberForm({
   submitError,
   onSubmit,
   onCancel,
+  sections = ['data', 'disciplines'],
+  onContinue,
+  onBack,
+  submitLabel,
 }: MemberFormProps) {
+  const showData = sections.includes('data');
+  const showDisciplines = sections.includes('disciplines');
   const [values, setValues] = useState<MemberFormValues>(initialValues);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [focusRequest, setFocusRequest] = useState(0);
@@ -143,9 +169,11 @@ export function MemberForm({
     event.preventDefault();
     if (saving) return;
     const result = validateMemberForm(values, today);
-    setErrors(result.errors);
-    if (result.input) onSubmit(result.input);
-    else setFocusRequest((current) => current + 1);
+    const visible = errorsForSections(result.errors, sections);
+    setErrors(visible);
+    if (Object.keys(visible).length > 0) setFocusRequest((current) => current + 1);
+    else if (onContinue) onContinue(values);
+    else if (result.input) onSubmit(result.input);
   }
 
   const text = (name: keyof MemberFormValues, fieldName: string = name) => ({
@@ -162,6 +190,8 @@ export function MemberForm({
         </p>
       ) : null}
 
+      {showData ? (
+      <>
       <fieldset className="member-form__section">
         <legend className="member-form__legend">Datos personales</legend>
         <div className="member-form__grid">
@@ -206,7 +236,10 @@ export function MemberForm({
           </Field>
         </div>
       </fieldset>
+      </>
+      ) : null}
 
+      {showDisciplines ? (
       <fieldset className="member-form__section" aria-describedby={errors.disciplineIds ? disciplinesErrorId : undefined}>
         <legend className="member-form__legend">Disciplinas</legend>
         {options.length === 0 ? (
@@ -235,8 +268,9 @@ export function MemberForm({
           </p>
         ) : null}
       </fieldset>
+      ) : null}
 
-      {isMinor ? (
+      {showData && isMinor ? (
         <fieldset className="member-form__section">
           <legend className="member-form__legend">Tutor o responsable</legend>
           <p className="member-form__hint">El socio es menor de 18 años: el tutor es obligatorio.</p>
@@ -253,8 +287,13 @@ export function MemberForm({
 
       <div className="member-form__actions">
         <button type="submit" className="button button--primary" disabled={saving}>
-          {saving ? 'Guardando…' : mode === 'create' ? 'Crear socio' : 'Guardar cambios'}
+          {saving ? 'Guardando…' : (submitLabel ?? (mode === 'create' ? 'Crear socio' : 'Guardar cambios'))}
         </button>
+        {onBack ? (
+          <button type="button" className="button button--secondary" disabled={saving} onClick={() => onBack(values)}>
+            Volver
+          </button>
+        ) : null}
         <button type="button" className="button button--secondary" disabled={saving} onClick={onCancel}>
           Cancelar
         </button>

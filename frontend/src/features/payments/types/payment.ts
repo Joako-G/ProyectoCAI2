@@ -62,6 +62,10 @@ export interface MemberAccount {
   standing: AccountStanding;
   unpaidPeriodCount: number;
   owed: OwedPeriod[];
+  /** False once the enrollment fee was paid (and the member is not deregistered). */
+  enrollmentAvailable: boolean;
+  /** The next month's fees, present only when an up-to-date member may pay it in advance. */
+  advance?: OwedPeriod;
 }
 
 /** Body of `POST /api/payments/preview`; `registration: {}` marks a first-time registration. */

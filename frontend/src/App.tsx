@@ -6,6 +6,7 @@ import type { AuthUser } from './features/auth/types/auth';
 import { can } from './features/auth/utils/can';
 import { ArqueoView } from './features/cashcount/components/ArqueoView';
 import { DisciplinesView } from './features/disciplines/components/DisciplinesView';
+import { EnrollmentScreen } from './features/enrollment/components/EnrollmentScreen';
 import { PaymentsView } from './features/payments/components/PaymentsView';
 import { PricingView } from './features/pricing/components/PricingView';
 import { ReportsView } from './features/reports/components/ReportsView';
@@ -19,7 +20,10 @@ import { SECTIONS, sectionsFor, type Section } from './layouts/sections';
 /** The screen of each section; built only for routes whose capability was already checked. */
 function pageFor(section: Section, user: AuthUser) {
   switch (section) {
-    case 'members': return <MembersView canWrite={can(user, 'members:write')} />;
+    case 'members': return <MembersView
+      canWrite={can(user, 'members:write')}
+      renderCreate={can(user, 'payments:collect') ? (props) => <EnrollmentScreen {...props} /> : undefined}
+    />;
     case 'disciplines': return <DisciplinesView canWrite={can(user, 'disciplines:write')} />;
     case 'payments': return <PaymentsView canCollect={can(user, 'payments:collect')} canAnnul={can(user, 'payments:annul')} />;
     case 'cashcount': return <ArqueoView />;

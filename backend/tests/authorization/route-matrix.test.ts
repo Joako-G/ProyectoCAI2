@@ -47,6 +47,7 @@ const routes: Array<[string, string, readonly RoleName[]]> = [
   ['GET', '/api/payments/members/missing', both],
   ['GET', '/api/payments/receipts/1', both],
   ['POST', '/api/payments/preview', both],
+  ['POST', '/api/payments/enrollment-preview', both],
   ['POST', '/api/payments', both],
   ['POST', '/api/payments/missing/annul', headOnly],
   ['GET', '/api/reports/revenue', both],

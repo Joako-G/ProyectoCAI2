@@ -277,6 +277,37 @@ describe('MembersView discipline catalog failure', () => {
 });
 
 
+describe('MembersView create with a composed screen', () => {
+  it('shows the screen it is given instead of the plain form, and opens the saved member from it', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(
+      <MembersView
+        today={TODAY}
+        canWrite
+        renderCreate={({ onSaved, onCancel }) => (
+          <div>
+            <p>Alta compuesta</p>
+            <button type="button" onClick={() => onSaved(buildMember({ id: 'member-1' }))}>Guardado</button>
+            <button type="button" onClick={onCancel}>Cancelar alta</button>
+          </div>
+        )}
+      />,
+    );
+    await screen.findByText('Ana Álvarez');
+
+    await user.click(screen.getByRole('button', { name: 'Alta de socio' }));
+    expect(screen.getByText('Alta compuesta')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Crear socio' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Cancelar alta' }));
+    expect(await screen.findByText('Ana Álvarez')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Alta de socio' }));
+    await user.click(screen.getByRole('button', { name: 'Guardado' }));
+    expect(await screen.findByRole('heading', { level: 2, name: 'Lucía Ríos' })).toBeInTheDocument();
+  });
+});
+
 describe('MembersView create', () => {
   it('creates a member and shows its detail', async () => {
     const created = buildMember({ id: 'member-9', memberNumber: '0009', firstName: 'Valentina', lastName: 'Ferreyra', dni: '39884120' });

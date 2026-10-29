@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireCapability } from '../../middlewares/require-role.js';
 import type { Authenticator } from '../auth/auth.session.js';
 import type { PaymentService } from './payment.service.js';
-import { parseAnnulBody, parsePreviewBody, parseReceiptNumber, parseRegisterBody } from './payment.validation.js';
+import { parseAnnulBody, parseEnrollmentPreviewBody, parsePreviewBody, parseReceiptNumber, parseRegisterBody } from './payment.validation.js';
 
 // Mounted behind requireCapability('payments:read'); each write route adds its own capability.
 // The actor of a payment or annulment is always the signed-in user, never a value from the request body.
@@ -26,6 +26,10 @@ export function createPaymentRouter(service: PaymentService, authenticate: Authe
   router.post('/preview', collect, async (request, response) => {
     const { memberId, concepts, registration } = parsePreviewBody(request.body);
     response.json(await service.preview(memberId, concepts, registration ? { registration } : {}));
+  });
+
+  router.post('/enrollment-preview', collect, async (request, response) => {
+    response.json(await service.previewEnrollment(parseEnrollmentPreviewBody(request.body).disciplineIds));
   });
 
   router.post('/', collect, async (request, response) => {

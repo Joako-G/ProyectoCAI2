@@ -61,6 +61,11 @@ export function parsePreviewBody(body: unknown): PreviewBody {
   };
 }
 
+// The list is passed through; the service rejects anything that is not a list of distinct discipline ids.
+export function parseEnrollmentPreviewBody(body: unknown): { disciplineIds: string[] } {
+  return { disciplineIds: asRecord(body).disciplineIds as string[] };
+}
+
 // `method` is passed through; the service rejects anything that is not a known payment method.
 export function parseRegisterBody(body: unknown): RegisterBody {
   return { ...parsePreviewBody(body), method: asRecord(body).method as PaymentMethod, requestId: parseRequestId(asRecord(body).requestId) };

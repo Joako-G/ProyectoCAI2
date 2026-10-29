@@ -2,6 +2,7 @@ import { activeDisciplineIdsForPeriod } from '../memberships/membership.period.j
 import type { Membership } from '../memberships/membership.types.js';
 import type { ChargeConcept, ClubDate } from './charge.types.js';
 import type { AccountStanding, OwedPeriod, Payment } from './payment.types.js';
+import { nextPeriod } from './pricing.js';
 import type { Period } from './pricing.types.js';
 import { isDeregistered } from './standing.js';
 
@@ -53,12 +54,6 @@ export function settledKeys(payments: readonly Payment[], memberId: string): Set
     }
   }
   return keys;
-}
-
-function nextPeriod(period: Period): Period {
-  const year = Number(period.slice(0, 4));
-  const month = Number(period.slice(5, 7));
-  return month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, '0')}`;
 }
 
 /**

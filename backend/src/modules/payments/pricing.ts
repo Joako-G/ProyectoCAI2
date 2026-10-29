@@ -77,6 +77,20 @@ export function resolveTariff(tariffs: readonly Tariff[], period: Period): Tarif
 }
 
 /** Tiers must start at day 1, ascend strictly, stay within the month and carry valid amounts. */
+/** The month after a `YYYY-MM` period. */
+export function nextPeriod(period: Period): Period {
+  const year = Number(period.slice(0, 4));
+  const month = Number(period.slice(5, 7));
+  return month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, '0')}`;
+}
+
+/** Advance payment is allowed only while the fees do not rise: same social and activity fee as the current month. */
+export function sameMonthlyFees(tariffs: readonly Tariff[], a: Period, b: Period): boolean {
+  const first = resolveTariff(tariffs, a);
+  const second = resolveTariff(tariffs, b);
+  return first.socialFee === second.socialFee && first.activityFee === second.activityFee;
+}
+
 export function assertSurchargeTiers(tiers: readonly SurchargeTier[]): void {
   if (tiers.length === 0) fail('surchargeTiers', 'At least one tier is required');
   if (tiers[0].fromDay !== 1) fail('surchargeTiers', 'The first tier must start on day 1');
