@@ -1,6 +1,10 @@
+import { discardAudit } from '../audit/audit.service.js';
 import type { DisciplineRepository } from './discipline.repository.js';
 import { createDisciplineService } from './discipline.service.js';
 import type { Discipline, DisciplineInput } from './discipline.types.js';
+
+// Seeding is not an audited operation (the audit log starts empty), so it writes through a discarding recorder.
+const SEED_ACTOR = 'seed';
 
 // Seed entries carry a fixed id so other seeds (members) can reference them deterministically.
 export interface DisciplineSeedEntry extends DisciplineInput {
@@ -36,8 +40,8 @@ export async function buildSeededDisciplines(
     throw new Error('Discipline seed entries need a unique non-empty id each');
   }
   const scratch = createInMemoryRepository();
-  const service = createDisciplineService({ repository: scratch, now });
-  for (const { id: _id, ...input } of entries) await service.create(input);
+  const service = createDisciplineService({ repository: scratch, audit: discardAudit, now });
+  for (const { id: _id, ...input } of entries) await service.create(input, SEED_ACTOR);
   // The service generates ids; swap in the seed's (creation order is preserved).
   return (await scratch.list()).map((discipline, index) => ({ ...discipline, id: entries[index]!.id }));
 }

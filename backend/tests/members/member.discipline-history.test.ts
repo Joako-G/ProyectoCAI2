@@ -6,6 +6,7 @@ import type { DisciplineHistory } from '../../src/modules/members/discipline-his
 import { createJsonMemberRepository } from '../../src/modules/members/json-member.repository.js';
 import { createMemberService } from '../../src/modules/members/member.service.js';
 import { adultInput, BASKET, fakeDisciplineLookup, TODAY, VOLLEY } from './helpers.js';
+import { noAudit } from '../audit/helpers.js';
 
 const dirs: string[] = [];
 
@@ -18,6 +19,7 @@ async function setup(disciplineHistory?: DisciplineHistory, now: () => Date = ()
   const dir = await mkdtemp(join(tmpdir(), 'members-history-'));
   dirs.push(dir);
   const service = createMemberService({
+    audit: noAudit,
     repository: createJsonMemberRepository(join(dir, 'members.json')),
     disciplineLookup: fakeDisciplineLookup(),
     disciplineHistory,
@@ -34,14 +36,14 @@ function spyHistory() {
 describe('members discipline history port', () => {
   it('works without a port', async () => {
     const service = await setup();
-    const member = await service.create(adultInput);
-    await expect(service.update(member.id, { ...adultInput, disciplineIds: [VOLLEY] })).resolves.toBeTruthy();
+    const member = await service.create(adultInput, 'user-test');
+    await expect(service.update(member.id, { ...adultInput, disciplineIds: [VOLLEY] }, 'user-test')).resolves.toBeTruthy();
   });
 
   it('is called on create with the member id, its disciplines and the club-local date', async () => {
     const { history, onDisciplinesChanged } = spyHistory();
     const service = await setup(history, () => new Date('2026-10-06T01:30:00Z'));
-    const member = await service.create({ ...adultInput, disciplineIds: [BASKET, VOLLEY] });
+    const member = await service.create({ ...adultInput, disciplineIds: [BASKET, VOLLEY] }, 'user-test');
     expect(onDisciplinesChanged).toHaveBeenCalledTimes(1);
     expect(onDisciplinesChanged).toHaveBeenCalledWith(member.id, [BASKET, VOLLEY], '2026-10-05');
   });
@@ -49,8 +51,8 @@ describe('members discipline history port', () => {
   it('is called on update with the current disciplines', async () => {
     const { history, onDisciplinesChanged } = spyHistory();
     const service = await setup(history);
-    const member = await service.create(adultInput);
-    await service.update(member.id, { ...adultInput, disciplineIds: [VOLLEY] });
+    const member = await service.create(adultInput, 'user-test');
+    await service.update(member.id, { ...adultInput, disciplineIds: [VOLLEY] }, 'user-test');
     expect(onDisciplinesChanged).toHaveBeenCalledTimes(2);
     expect(onDisciplinesChanged).toHaveBeenLastCalledWith(member.id, [VOLLEY], '2026-10-05');
   });
@@ -58,23 +60,23 @@ describe('members discipline history port', () => {
   it('is not called when the write fails', async () => {
     const { history, onDisciplinesChanged } = spyHistory();
     const service = await setup(history);
-    const member = await service.create(adultInput);
+    const member = await service.create(adultInput, 'user-test');
     onDisciplinesChanged.mockClear();
 
-    await expect(service.create(adultInput)).rejects.toThrow(); // duplicate DNI
-    await expect(service.create({ ...adultInput, dni: '1' })).rejects.toThrow(); // invalid input
-    await expect(service.update('missing', adultInput)).rejects.toThrow(); // not found
-    await expect(service.update(member.id, { ...adultInput, disciplineIds: ['unknown'] })).rejects.toThrow();
+    await expect(service.create(adultInput, 'user-test')).rejects.toThrow(); // duplicate DNI
+    await expect(service.create({ ...adultInput, dni: '1' }, 'user-test')).rejects.toThrow(); // invalid input
+    await expect(service.update('missing', adultInput, 'user-test')).rejects.toThrow(); // not found
+    await expect(service.update(member.id, { ...adultInput, disciplineIds: ['unknown'] }, 'user-test')).rejects.toThrow();
     expect(onDisciplinesChanged).not.toHaveBeenCalled();
   });
 
   it('is not called on deactivate or reactivate (cascade is an undecided owner rule)', async () => {
     const { history, onDisciplinesChanged } = spyHistory();
     const service = await setup(history);
-    const member = await service.create(adultInput);
+    const member = await service.create(adultInput, 'user-test');
     onDisciplinesChanged.mockClear();
-    await service.deactivate(member.id, 'Moved');
-    await service.reactivate(member.id);
+    await service.deactivate(member.id, 'Moved', 'user-test');
+    await service.reactivate(member.id, 'user-test');
     expect(onDisciplinesChanged).not.toHaveBeenCalled();
   });
 
@@ -85,7 +87,7 @@ describe('members discipline history port', () => {
         throw new Error('history down');
       },
     });
-    const member = await service.create(adultInput);
+    const member = await service.create(adultInput, 'user-test');
     expect(await service.getById(member.id)).toEqual(member);
     expect(error).toHaveBeenCalled();
   });
@@ -126,12 +128,12 @@ describe('members discipline history: ordering and dating', () => {
   it('ends with history matching the final disciplines when port calls resolve out of order', async () => {
     const { history, drain, applied } = controlledHistory();
     const service = await setup(history);
-    const created = service.create({ ...adultInput, disciplineIds: [BASKET, VOLLEY] });
+    const created = service.create({ ...adultInput, disciplineIds: [BASKET, VOLLEY] }, 'user-test');
     await drain(created);
     const member = await created;
 
-    const first = service.update(member.id, { ...adultInput, disciplineIds: [BASKET] });
-    const second = service.update(member.id, { ...adultInput, disciplineIds: [VOLLEY] });
+    const first = service.update(member.id, { ...adultInput, disciplineIds: [BASKET] }, 'user-test');
+    const second = service.update(member.id, { ...adultInput, disciplineIds: [VOLLEY] }, 'user-test');
     await drain(first, second);
 
     expect(applied()).toEqual((await service.getById(member.id)).disciplineIds);
@@ -147,11 +149,11 @@ describe('members discipline history: ordering and dating', () => {
         running -= 1;
       },
     });
-    const member = await service.create(adultInput);
+    const member = await service.create(adultInput, 'user-test');
     await Promise.all([
-      service.update(member.id, { ...adultInput, disciplineIds: [VOLLEY] }),
-      service.update(member.id, { ...adultInput, disciplineIds: [BASKET] }),
-      service.update(member.id, { ...adultInput, disciplineIds: [VOLLEY, BASKET] }),
+      service.update(member.id, { ...adultInput, disciplineIds: [VOLLEY] }, 'user-test'),
+      service.update(member.id, { ...adultInput, disciplineIds: [BASKET] }, 'user-test'),
+      service.update(member.id, { ...adultInput, disciplineIds: [VOLLEY, BASKET] }, 'user-test'),
     ]);
     expect(maxRunning).toBe(1);
   });
@@ -160,15 +162,15 @@ describe('members discipline history: ordering and dating', () => {
     let instant = new Date('2026-10-05T15:00:00Z');
     const { history, onDisciplinesChanged } = spyHistory();
     const service = await setup(history, () => instant);
-    const member = await service.create({ ...adultInput, disciplineIds: [BASKET, VOLLEY] });
+    const member = await service.create({ ...adultInput, disciplineIds: [BASKET, VOLLEY] }, 'user-test');
     expect(member.disciplinesChangedOn).toBe('2026-10-05');
 
     instant = new Date('2026-10-20T15:00:00Z');
-    const reordered = await service.update(member.id, { ...adultInput, disciplineIds: [VOLLEY, BASKET], whatsapp: '1155550000' });
+    const reordered = await service.update(member.id, { ...adultInput, disciplineIds: [VOLLEY, BASKET], whatsapp: '1155550000' }, 'user-test');
     expect(reordered.disciplinesChangedOn).toBe('2026-10-05');
     expect(onDisciplinesChanged).toHaveBeenLastCalledWith(member.id, [VOLLEY, BASKET], '2026-10-05');
 
-    const changed = await service.update(member.id, { ...adultInput, disciplineIds: [VOLLEY] });
+    const changed = await service.update(member.id, { ...adultInput, disciplineIds: [VOLLEY] }, 'user-test');
     expect(changed.disciplinesChangedOn).toBe('2026-10-20');
     expect((await service.getById(member.id)).disciplinesChangedOn).toBe('2026-10-20');
     expect(onDisciplinesChanged).toHaveBeenLastCalledWith(member.id, [VOLLEY], '2026-10-20');
@@ -176,7 +178,7 @@ describe('members discipline history: ordering and dating', () => {
 
   it('ignores a client-supplied disciplinesChangedOn', async () => {
     const service = await setup();
-    const member = await service.create({ ...adultInput, disciplinesChangedOn: '1999-01-01' } as never);
+    const member = await service.create({ ...adultInput, disciplinesChangedOn: '1999-01-01' } as never, 'user-test');
     expect(member.disciplinesChangedOn).toBe('2026-10-05');
   });
 
@@ -186,15 +188,15 @@ describe('members discipline history: ordering and dating', () => {
     dirs.push(dir);
     const file = join(dir, 'members.json');
     const repository = createJsonMemberRepository(file);
-    const created = await createMemberService({ repository, disciplineLookup: fakeDisciplineLookup(), now: () => TODAY }).create(adultInput);
+    const created = await createMemberService({ audit: noAudit, repository, disciplineLookup: fakeDisciplineLookup(), now: () => TODAY }).create(adultInput, 'user-test');
     await repository.mutate((members) => ({
       members: members.map(({ disciplinesChangedOn: _omit, ...legacy }) => legacy),
       result: undefined,
     }));
 
-    const service = createMemberService({ repository, disciplineLookup: fakeDisciplineLookup(), disciplineHistory: history, now: () => TODAY });
+    const service = createMemberService({ audit: noAudit, repository, disciplineLookup: fakeDisciplineLookup(), disciplineHistory: history, now: () => TODAY });
     expect((await service.getById(created.id)).disciplinesChangedOn).toBeUndefined();
-    await service.update(created.id, { ...adultInput, whatsapp: '1155550000' });
+    await service.update(created.id, { ...adultInput, whatsapp: '1155550000' }, 'user-test');
     expect(onDisciplinesChanged).toHaveBeenLastCalledWith(created.id, [BASKET], '2026-10-05');
   });
 });

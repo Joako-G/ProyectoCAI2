@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { toIsoDate } from '../../shared/date.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../shared/errors.js';
+import type { AuditRecorder } from '../audit/audit.service.js';
 import type { Membership } from '../memberships/membership.types.js';
 import { accountStanding, conceptKey, owedConcepts, settledKeys, type AccountMember } from './account.js';
 import { nextPeriod, sameMonthlyFees } from './pricing.js';
@@ -39,6 +40,7 @@ export interface PaymentServiceDeps {
   members: PaymentMemberLookup;
   memberships: PaymentMembershipSource;
   pricing: PaymentPricingSource;
+  audit: AuditRecorder;
   now?: () => Date;
 }
 
@@ -110,7 +112,7 @@ function advanceOffer(
   return owedThrough.find((entry) => entry.period === period);
 }
 
-export function createPaymentService({ repository, members, memberships, pricing, now = () => new Date() }: PaymentServiceDeps) {
+export function createPaymentService({ repository, members, memberships, pricing, audit, now = () => new Date() }: PaymentServiceDeps) {
   const today = () => toIsoDate(now());
 
   function chargeFor(
@@ -217,7 +219,8 @@ export function createPaymentService({ repository, members, memberships, pricing
       const config = await pricing.get();
       const registration = registrationFor(input.registration);
       const history = await memberships.list({ memberId });
-      return repository.mutate((payments) => {
+      let created = false as boolean;
+      const registered = await repository.mutate((payments) => {
         // Idempotency: a repeated request returns the payment it already created and writes nothing. This
         // runs before the already-paid check, because that payment is what settled the concepts.
         const previous = requestId === undefined ? undefined : payments.find((payment) => payment.requestId === requestId && !payment.annulment);
@@ -249,25 +252,32 @@ export function createPaymentService({ repository, members, memberships, pricing
           createdAt: now().toISOString(),
           ...(requestId === undefined ? {} : { requestId }),
         };
+        created = true;
         return { payments: [...payments, payment], result: payment };
       });
+      // A replayed request wrote nothing, so it leaves no entry either.
+      if (created) await audit.record({ actorId: actor, action: 'create', entityType: 'payment', entityId: registered.id });
+      return registered;
     },
 
     // Who may annul is enforced by the route; this records the reason, the actor and the date.
     async annul(paymentId: string, reason: string, actorId: string): Promise<Payment> {
       const text = requireText(reason, 'reason', MAX_REASON_LENGTH);
       const actor = requireText(actorId, 'actorId', 100);
-      return repository.mutate((payments) => {
+      const annulled = await repository.mutate((payments) => {
         const index = payments.findIndex((payment) => payment.id === paymentId);
         if (index === -1) throw new NotFoundError('Payment not found');
         const current = payments[index]!;
         if (current.annulment) throw new ConflictError('Payment is already annulled');
-        const annulled: Payment = {
+        const result: Payment = {
           ...current,
           annulment: { reason: text, annulledBy: actor, annulledAt: now().toISOString() },
         };
-        return { payments: payments.map((payment, position) => (position === index ? annulled : payment)), result: annulled };
+        return { payments: payments.map((payment, position) => (position === index ? result : payment)), result };
       });
+      // The reason is free text and stays out of the log.
+      await audit.record({ actorId: actor, action: 'annul', entityType: 'payment', entityId: annulled.id });
+      return annulled;
     },
 
     // A number looks up by receipt number, a string by payment id.

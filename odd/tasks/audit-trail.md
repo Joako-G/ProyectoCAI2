@@ -39,7 +39,7 @@ Strategy: `single-pr`, because the user wants all work on `manu`. Forecast about
   - Acceptance: entries have id, timestamp, actor snapshot, action, entity type, entity id and changed field names; list is newest first; no update or delete path exists; a corrupt store fails loudly; a secretary and a teacher get 403.
   - Design: services call `record({ actorId, action, entityType, entityId, changedFields })` on an injected `AuditRecorder`; the audit service snapshots name and role from the users repository (shared with `createApp` through the new `userRepository` option) and never rejects. `changedFields(before, after, ignore)` returns key names only.
   - Evidence: RED `vitest run tests/audit` -> 4 files failed, "Cannot find module '../../src/modules/audit/audit.service.js'" (and the repository module). GREEN: tests/audit 28 passed; full backend suite 873 passed (50 files); typecheck clean. REFACTOR: none needed.
-- [ ] T2 — Record every write. Route: same writer.
+- [x] T2 — Record every write. Route: same writer.
   - Routers pass the actor; services record after a successful change: members, disciplines, pricing, users, payments, cash closes.
   - Acceptance: each state-changing route in `route-matrix.test.ts` produces exactly one entry on success and none on failure; a failing audit write leaves the change in place and logs an error; a shared test fails if a write route has no audit coverage; no forbidden data appears in the store.
 - [ ] T3 — Frontend "Auditoría" section. Route: same writer.
@@ -56,6 +56,7 @@ Strategy: `single-pr`, because the user wants all work on `manu`. Forecast about
 ## Progress
 - 2026-11-01: requirements and code mapped; this document created.
 - 2026-11-01: T1 done (append-only audit module, `GET /api/audit`, `audit:read`).
+- 2026-11-01: T2 done (every write route records its actor; coverage test over the route table).
 
 ## Next step
 T2.

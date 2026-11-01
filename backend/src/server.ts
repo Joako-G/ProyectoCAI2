@@ -40,6 +40,7 @@ const auditService = createAuditService({
 });
 const disciplineService = createDisciplineService({
   repository: createJsonDisciplineRepository(disciplinesFilePath()),
+  audit: auditService,
 });
 // Memberships are the dated history derived from each member's disciplines.
 const membershipService = createMembershipService({
@@ -49,6 +50,7 @@ const membershipService = createMembershipService({
 const memberService = createMemberService({
   repository: createJsonMemberRepository(membersFilePath()),
   disciplineLookup: disciplineService,
+  audit: auditService,
   disciplineHistory: {
     onDisciplinesChanged: (memberId, disciplineIds, date) =>
       membershipService.syncMember(memberId, disciplineIds, date),
@@ -57,6 +59,7 @@ const memberService = createMemberService({
 // Prices live in their own file; a missing file means the club defaults.
 const pricingConfigService = createPricingConfigService({
   repository: createJsonPricingConfigRepository(pricingConfigFilePath()),
+  audit: auditService,
 });
 // Payments are append-only receipts, served under /api/payments.
 const paymentRepository = createJsonPaymentRepository(paymentsFilePath());
@@ -65,6 +68,7 @@ const paymentService = createPaymentService({
   members: memberService,
   memberships: membershipService,
   pricing: pricingConfigService,
+  audit: auditService,
 });
 // A teacher's roster is composed from the three services through the roster module's own ports.
 const rosterService = createRosterService({ memberships: membershipService, members: memberService, disciplines: disciplineService });
@@ -77,6 +81,7 @@ const reportService = createReportService({
 const cashCountService = createCashCountService({
   repository: createJsonCashCountRepository(cashCountsFilePath()),
   revenue: reportService,
+  audit: auditService,
 });
 // Debt notices read the four sources once per request and prepare wa.me links; a Business API sender can replace the sender later.
 const noticeService = createNoticeService({

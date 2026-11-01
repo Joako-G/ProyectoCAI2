@@ -7,6 +7,7 @@ import { createPaymentService } from '../../src/modules/payments/payment.service
 import { createPricingConfigService } from '../../src/modules/payments/pricing-config.service.js';
 import type { Membership } from '../../src/modules/memberships/membership.types.js';
 import { NotFoundError } from '../../src/shared/errors.js';
+import { noAudit } from '../audit/helpers.js';
 
 /** 2026-10-05 in the club time zone: day 5 has no surcharge. */
 export const TODAY = new Date('2026-10-05T15:00:00Z');
@@ -41,9 +42,10 @@ export async function createTestContext(
   const members = options.members ?? [{ id: MEMBER_ID, status: 'active' as const }];
   const memberships = options.memberships ?? [membership('basket', '2026-01-01')];
   const now = options.now ?? (() => TODAY);
-  const pricing = createPricingConfigService({ repository: createJsonPricingConfigRepository(pricingFile), now });
+  const pricing = createPricingConfigService({ audit: noAudit, repository: createJsonPricingConfigRepository(pricingFile), now });
   const repository = createJsonPaymentRepository(file);
   const service = createPaymentService({
+    audit: noAudit,
     repository,
     now,
     pricing,

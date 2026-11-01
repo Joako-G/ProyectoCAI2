@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { changedFields } from '../audit/audit.fields.js';
+import type { AuditRecorder } from '../audit/audit.service.js';
 import { hashPassword } from './password.js';
 import type { DisciplineIdLookup } from './discipline-lookup.js';
 import type { UserRepository } from './user.repository.js';
@@ -7,9 +9,9 @@ import { validDisciplineIds, validEmail, validName, validPassword, validRole, va
 
 export interface UserService {
   list(): SafeUser[];
-  create(input: unknown): Promise<UserResult>;
-  update(id: string, input: unknown): Promise<UserResult>;
-  deactivate(id: string): UserResult;
+  create(input: unknown, actorId: string): Promise<UserResult>;
+  update(id: string, input: unknown, actorId: string): Promise<UserResult>;
+  deactivate(id: string, actorId: string): UserResult;
 }
 
 export function hasActiveHeadSecretary(users: readonly DemoUser[]): boolean {
@@ -27,11 +29,12 @@ export function toSafeUser(user: DemoUser): SafeUser {
 }
 
 export interface UserServiceOptions {
+  audit: AuditRecorder;
   // Checks that assigned disciplines exist; without it no discipline can be assigned.
   disciplineLookup?: DisciplineIdLookup;
 }
 
-export function createUserService(repository: UserRepository, { disciplineLookup }: UserServiceOptions = {}): UserService {
+export function createUserService(repository: UserRepository, { disciplineLookup, audit }: UserServiceOptions): UserService {
   type Assignment = { kind: 'not-teacher' } | { kind: 'invalid' } | { kind: 'valid'; ids: string[] };
   // "unknown": no lookup is configured. "skipped": the lookup was not needed (no ids sent, or the body sets a
   // non-teacher role), so the result must never decide a teacher assignment.
@@ -78,7 +81,7 @@ export function createUserService(repository: UserRepository, { disciplineLookup
   return {
     list: () => repository.list().map(toSafeUser),
 
-    async create(input) {
+    async create(input, actorId) {
       const { name, email, role, password, disciplineIds } = (input ?? {}) as Record<string, unknown>;
       if (!validName(name) || !validEmail(email) || !validRole(role) || !validPassword(password)) return { ok: false, failure: 'invalid' };
       if (disciplineIds !== undefined && !validDisciplineIds(disciplineIds)) return { ok: false, failure: 'invalid' };
@@ -86,10 +89,12 @@ export function createUserService(repository: UserRepository, { disciplineLookup
       if (assignment.kind === 'invalid') return { ok: false, failure: 'invalid' };
       if (emailTaken(email)) return { ok: false, failure: 'duplicate-email' };
       const user: DemoUser = { id: randomUUID(), name: name.trim(), email: email.trim(), role, passwordHash: hashPassword(password), active: true, ...(assignment.kind === 'valid' ? { disciplineIds: assignment.ids } : {}) };
-      return commit([...repository.list(), user], user);
+      const result = commit([...repository.list(), user], user);
+      if (result.ok) await audit.record({ actorId, action: 'create', entityType: 'user', entityId: user.id });
+      return result;
     },
 
-    async update(id, input) {
+    async update(id, input, actorId) {
       if (!repository.list().some((candidate) => candidate.id === id)) return { ok: false, failure: 'not-found' };
       const body = (input ?? {}) as Record<string, unknown>;
       if (!validUserUpdate(body)) return { ok: false, failure: 'invalid' };
@@ -111,13 +116,23 @@ export function createUserService(repository: UserRepository, { disciplineLookup
       if (typeof body.email === 'string') updated.email = body.email.trim();
       if (typeof body.active === 'boolean') updated.active = body.active;
       if (typeof body.password === 'string') updated.passwordHash = hashPassword(body.password);
-      return replaceUser(updated);
+      const result = replaceUser(updated);
+      if (result.ok) {
+        // Field names only. The password is named, never its value or hash.
+        const fields = changedFields({ ...user }, { ...updated }, ['id', 'passwordHash']);
+        if (typeof body.password === 'string') fields.push('password');
+        await audit.record({ actorId, action: 'update', entityType: 'user', entityId: id, changedFields: fields.sort() });
+      }
+      return result;
     },
 
-    deactivate(id) {
+    deactivate(id, actorId) {
       const user = repository.list().find((candidate) => candidate.id === id);
       if (!user) return { ok: false, failure: 'not-found' };
-      return replaceUser({ ...user, active: false });
+      const result = replaceUser({ ...user, active: false });
+      // This method is synchronous and `record` never rejects, so the entry is started and not awaited.
+      if (result.ok) void audit.record({ actorId, action: 'deactivate', entityType: 'user', entityId: id });
+      return result;
     },
   };
 }

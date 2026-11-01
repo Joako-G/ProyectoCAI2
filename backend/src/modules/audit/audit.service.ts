@@ -7,6 +7,9 @@ export interface AuditRecorder {
   record(input: AuditRecordInput): Promise<void>;
 }
 
+/** For callers that make changes outside the audited flow (seeding) and in tests that ignore the log. */
+export const discardAudit: AuditRecorder = { record: () => Promise.resolve() };
+
 /** Looks an actor up by id to snapshot their name and role. */
 export interface AuditActorDirectory {
   find(id: string): AuditActor | undefined;

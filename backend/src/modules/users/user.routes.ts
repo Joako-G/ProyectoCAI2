@@ -1,4 +1,5 @@
 import { Router, type Response } from 'express';
+import type { Authenticator } from '../auth/auth.session.js';
 import type { UserService } from './user.service.js';
 import type { UserFailure, UserResult } from './user.types.js';
 
@@ -19,13 +20,14 @@ function send(response: Response, result: UserResult, successStatus = 200): void
   response.status(successStatus).json(result.user);
 }
 
-export function createUsersRouter(service: UserService): Router {
+// The actor of every change is the signed-in user, never a value from the request body.
+export function createUsersRouter(service: UserService, authenticate: Authenticator): Router {
   const router = Router();
 
   router.get('/', (_request, response) => { response.json(service.list()); });
-  router.post('/', async (request, response) => send(response, await service.create(request.body), 201));
-  router.patch('/:id', async (request, response) => send(response, await service.update(request.params.id, request.body)));
-  router.delete('/:id', (request, response) => send(response, service.deactivate(request.params.id)));
+  router.post('/', async (request, response) => send(response, await service.create(request.body, authenticate(request)!.id), 201));
+  router.patch('/:id', async (request, response) => send(response, await service.update(request.params.id, request.body, authenticate(request)!.id)));
+  router.delete('/:id', (request, response) => send(response, service.deactivate(request.params.id, authenticate(request)!.id)));
 
   return router;
 }

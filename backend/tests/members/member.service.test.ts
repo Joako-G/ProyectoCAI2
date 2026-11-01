@@ -6,6 +6,7 @@ import { createJsonMemberRepository } from '../../src/modules/members/json-membe
 import { createMemberService } from '../../src/modules/members/member.service.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../src/shared/errors.js';
 import { adultInput, fakeDisciplineLookup, minorInput, TODAY, trackContexts } from './helpers.js';
+import { noAudit } from '../audit/helpers.js';
 
 const contexts = trackContexts();
 let ctx: Awaited<ReturnType<typeof contexts.create>>;
@@ -27,7 +28,7 @@ async function fieldErrors(action: Promise<unknown>): Promise<Record<string, str
 
 describe('create', () => {
   it('creates an active member with generated id, normalized fields and timestamps', async () => {
-    const member = await ctx.service.create({ ...adultInput, firstName: '  Lucía ', email: 'lucia@example.com' });
+    const member = await ctx.service.create({ ...adultInput, firstName: '  Lucía ', email: 'lucia@example.com' }, 'user-test');
 
     expect(member).toMatchObject({
       memberNumber: '0001',
@@ -46,22 +47,22 @@ describe('create', () => {
   });
 
   it('persists the member so getById returns it', async () => {
-    const created = await ctx.service.create(adultInput);
+    const created = await ctx.service.create(adultInput, 'user-test');
 
     expect(await ctx.service.getById(created.id)).toEqual(created);
   });
 
   it('assigns sequential zero-padded member numbers', async () => {
-    const first = await ctx.service.create(adultInput);
-    const second = await ctx.service.create({ ...minorInput });
+    const first = await ctx.service.create(adultInput, 'user-test');
+    const second = await ctx.service.create({ ...minorInput }, 'user-test');
 
     expect([first.memberNumber, second.memberNumber]).toEqual(['0001', '0002']);
   });
 
   it('never reuses a member number, even for inactive members', async () => {
-    const first = await ctx.service.create(adultInput);
-    await ctx.service.deactivate(first.id, 'Moved away');
-    const second = await ctx.service.create({ ...minorInput });
+    const first = await ctx.service.create(adultInput, 'user-test');
+    await ctx.service.deactivate(first.id, 'Moved away', 'user-test');
+    const second = await ctx.service.create({ ...minorInput }, 'user-test');
 
     expect(second.memberNumber).toBe('0002');
   });
@@ -78,7 +79,7 @@ describe('create', () => {
         whatsapp: 'abc',
         disciplineIds: [],
         email: 'not-an-email',
-      }),
+      }, 'user-test'),
     );
 
     expect(Object.keys(errors).sort()).toEqual([
@@ -95,35 +96,35 @@ describe('create', () => {
   });
 
   it('rejects non-object input and non-string fields', async () => {
-    const errors = await fieldErrors(ctx.service.create({ ...adultInput, firstName: 42 as never }));
+    const errors = await fieldErrors(ctx.service.create({ ...adultInput, firstName: 42 as never }, 'user-test'));
 
     expect(errors).toHaveProperty('firstName');
-    await expect(ctx.service.create(null as never)).rejects.toBeInstanceOf(ValidationError);
+    await expect(ctx.service.create(null as never, 'user-test')).rejects.toBeInstanceOf(ValidationError);
   });
 
   it('rejects a birth date in the future', async () => {
-    const errors = await fieldErrors(ctx.service.create({ ...adultInput, birthDate: '2026-10-06' }));
+    const errors = await fieldErrors(ctx.service.create({ ...adultInput, birthDate: '2026-10-06' }, 'user-test'));
 
     expect(errors).toHaveProperty('birthDate');
   });
 
   it('rejects a member-since date in the future or before the birth date', async () => {
-    const future = await fieldErrors(ctx.service.create({ ...adultInput, memberSince: '2026-10-06' }));
-    const early = await fieldErrors(ctx.service.create({ ...adultInput, memberSince: '1989-01-01' }));
+    const future = await fieldErrors(ctx.service.create({ ...adultInput, memberSince: '2026-10-06' }, 'user-test'));
+    const early = await fieldErrors(ctx.service.create({ ...adultInput, memberSince: '1989-01-01' }, 'user-test'));
 
     expect(future).toHaveProperty('memberSince');
     expect(early).toHaveProperty('memberSince');
   });
 
   it('accepts a member-since date equal to today', async () => {
-    const member = await ctx.service.create({ ...adultInput, memberSince: '2026-10-05' });
+    const member = await ctx.service.create({ ...adultInput, memberSince: '2026-10-05' }, 'user-test');
 
     expect(member.memberSince).toBe('2026-10-05');
   });
 
   it('only accepts real calendar dates', async () => {
-    const leap = await ctx.service.create({ ...adultInput, birthDate: '2000-02-29' });
-    const errors = await fieldErrors(ctx.service.create({ ...adultInput, dni: '30999888', birthDate: '2001-02-29' }));
+    const leap = await ctx.service.create({ ...adultInput, birthDate: '2000-02-29' }, 'user-test');
+    const errors = await fieldErrors(ctx.service.create({ ...adultInput, dni: '30999888', birthDate: '2001-02-29' }, 'user-test'));
 
     expect(leap.birthDate).toBe('2000-02-29');
     expect(errors).toHaveProperty('birthDate');
@@ -131,30 +132,30 @@ describe('create', () => {
 
   describe('dni', () => {
     it.each(['30.123.456', '30 123 456', '30123456'])('normalizes %s to digits only', async (dni) => {
-      const member = await ctx.service.create({ ...adultInput, dni });
+      const member = await ctx.service.create({ ...adultInput, dni }, 'user-test');
 
       expect(member.dni).toBe('30123456');
     });
 
     it.each(['1234567', '12345678'])('accepts %s digits', async (dni) => {
-      expect((await ctx.service.create({ ...adultInput, dni })).dni).toBe(dni);
+      expect((await ctx.service.create({ ...adultInput, dni }, 'user-test')).dni).toBe(dni);
     });
 
     it.each(['123456', '123456789', '12a45678', ''])('rejects %j', async (dni) => {
-      expect(await fieldErrors(ctx.service.create({ ...adultInput, dni }))).toHaveProperty('dni');
+      expect(await fieldErrors(ctx.service.create({ ...adultInput, dni }, 'user-test'))).toHaveProperty('dni');
     });
 
     it('rejects a duplicate dni regardless of formatting', async () => {
-      await ctx.service.create(adultInput);
+      await ctx.service.create(adultInput, 'user-test');
 
-      await expect(ctx.service.create({ ...minorInput, dni: '30 123 456' })).rejects.toBeInstanceOf(ConflictError);
+      await expect(ctx.service.create({ ...minorInput, dni: '30 123 456' }, 'user-test')).rejects.toBeInstanceOf(ConflictError);
     });
 
     it('rejects a dni that belongs to an inactive member', async () => {
-      const first = await ctx.service.create(adultInput);
-      await ctx.service.deactivate(first.id, 'Left the club');
+      const first = await ctx.service.create(adultInput, 'user-test');
+      await ctx.service.deactivate(first.id, 'Left the club', 'user-test');
 
-      await expect(ctx.service.create({ ...minorInput, dni: first.dni })).rejects.toBeInstanceOf(ConflictError);
+      await expect(ctx.service.create({ ...minorInput, dni: first.dni }, 'user-test')).rejects.toBeInstanceOf(ConflictError);
     });
   });
 
@@ -163,17 +164,17 @@ describe('create', () => {
       ['(011) 5555-1234', '01155551234'],
       ['+54 9 11 5555 1234', '+5491155551234'],
     ])('normalizes %s', async (input, expected) => {
-      expect((await ctx.service.create({ ...adultInput, whatsapp: input })).whatsapp).toBe(expected);
+      expect((await ctx.service.create({ ...adultInput, whatsapp: input }, 'user-test')).whatsapp).toBe(expected);
     });
 
     it.each(['1234567', '1234567890123456', '12-ab-5678', ''])('rejects %j', async (whatsapp) => {
-      expect(await fieldErrors(ctx.service.create({ ...adultInput, whatsapp }))).toHaveProperty('whatsapp');
+      expect(await fieldErrors(ctx.service.create({ ...adultInput, whatsapp }, 'user-test'))).toHaveProperty('whatsapp');
     });
   });
 
   describe('email', () => {
     it('is optional and empty values are dropped', async () => {
-      const member = await ctx.service.create({ ...adultInput, email: '  ' });
+      const member = await ctx.service.create({ ...adultInput, email: '  ' }, 'user-test');
 
       expect(member).not.toHaveProperty('email');
     });
@@ -183,14 +184,14 @@ describe('create', () => {
     it('is required for minors', async () => {
       const { guardian: _guardian, ...withoutGuardian } = minorInput;
 
-      const errors = await fieldErrors(ctx.service.create(withoutGuardian));
+      const errors = await fieldErrors(ctx.service.create(withoutGuardian, 'user-test'));
 
       expect(Object.keys(errors).sort()).toEqual(['guardian.contact', 'guardian.name']);
     });
 
     it('requires the guardian contact to be a valid phone', async () => {
       const errors = await fieldErrors(
-        ctx.service.create({ ...minorInput, guardian: { name: 'Ana', contact: 'call me' } }),
+        ctx.service.create({ ...minorInput, guardian: { name: 'Ana', contact: 'call me' } }, 'user-test'),
       );
 
       expect(Object.keys(errors)).toEqual(['guardian.contact']);
@@ -200,19 +201,19 @@ describe('create', () => {
       const member = await ctx.service.create({
         ...minorInput,
         guardian: { name: ' Ana Gómez ', contact: '11 5555-2222' },
-      });
+      }, 'user-test');
 
       expect(member.guardian).toEqual({ name: 'Ana Gómez', contact: '1155552222' });
     });
 
     it('is optional for adults and dropped when empty', async () => {
-      const member = await ctx.service.create({ ...adultInput, guardian: { name: '', contact: ' ' } });
+      const member = await ctx.service.create({ ...adultInput, guardian: { name: '', contact: ' ' } }, 'user-test');
 
       expect(member).not.toHaveProperty('guardian');
     });
 
     it('validates a partially filled guardian for adults', async () => {
-      const errors = await fieldErrors(ctx.service.create({ ...adultInput, guardian: { name: 'Ana', contact: '' } }));
+      const errors = await fieldErrors(ctx.service.create({ ...adultInput, guardian: { name: 'Ana', contact: '' } }, 'user-test'));
 
       expect(Object.keys(errors)).toEqual(['guardian.contact']);
     });
@@ -223,7 +224,7 @@ describe('create', () => {
       const dayBefore = await contexts.create(() => new Date('2026-10-04T15:00:00Z'));
       const { guardian: _guardian, ...input } = minorInput;
 
-      const errors = await fieldErrors(dayBefore.service.create({ ...input, birthDate: '2008-10-05', memberSince: '2020-01-01' }));
+      const errors = await fieldErrors(dayBefore.service.create({ ...input, birthDate: '2008-10-05', memberSince: '2020-01-01' }, 'user-test'));
 
       expect(errors).toHaveProperty('guardian.name');
     });
@@ -231,7 +232,7 @@ describe('create', () => {
     it('is an adult on the 18th birthday', async () => {
       const { guardian: _guardian, ...input } = minorInput;
 
-      const member = await ctx.service.create({ ...input, birthDate: '2008-10-05', memberSince: '2020-01-01' });
+      const member = await ctx.service.create({ ...input, birthDate: '2008-10-05', memberSince: '2020-01-01' }, 'user-test');
 
       expect(member).not.toHaveProperty('guardian');
     });
@@ -239,7 +240,7 @@ describe('create', () => {
     it('is a minor one day before the 18th birthday on the current date', async () => {
       const { guardian: _guardian, ...input } = minorInput;
 
-      const errors = await fieldErrors(ctx.service.create({ ...input, birthDate: '2008-10-06', memberSince: '2020-01-01' }));
+      const errors = await fieldErrors(ctx.service.create({ ...input, birthDate: '2008-10-06', memberSince: '2020-01-01' }, 'user-test'));
 
       expect(errors).toHaveProperty('guardian.name');
     });
@@ -255,11 +256,11 @@ describe('club calendar date', () => {
     ['2026-10-05T03:00:00Z', '2026-10-05'],
   ])('dates a deactivation at %s as %s in Tucumán', async (instant, date) => {
     const local = await at('2026-01-01T12:00:00Z');
-    const created = await local.service.create(adultInput);
+    const created = await local.service.create(adultInput, 'user-test');
     const later = await at(instant);
     await later.repository.mutate(() => ({ members: [created], result: null }));
 
-    const inactive = await later.service.deactivate(created.id, 'Left');
+    const inactive = await later.service.deactivate(created.id, 'Left', 'user-test');
 
     expect(inactive.deactivation?.date).toBe(date);
     expect(inactive.updatedAt).toBe(instant.replace('Z', '.000Z'));
@@ -270,8 +271,8 @@ describe('club calendar date', () => {
     const before = await at('2026-10-05T02:00:00Z');
     const after = await at('2026-10-05T03:30:00Z');
 
-    const errors = await fieldErrors(before.service.create(input));
-    const adult = await after.service.create(input);
+    const errors = await fieldErrors(before.service.create(input, 'user-test'));
+    const adult = await after.service.create(input, 'user-test');
 
     expect(errors).toHaveProperty('guardian.name');
     expect(adult).not.toHaveProperty('guardian');
@@ -280,7 +281,7 @@ describe('club calendar date', () => {
   it('rejects dates in the future relative to the club date, not UTC', async () => {
     const late = await at('2026-10-05T02:00:00Z');
 
-    const errors = await fieldErrors(late.service.create({ ...adultInput, memberSince: '2026-10-05' }));
+    const errors = await fieldErrors(late.service.create({ ...adultInput, memberSince: '2026-10-05' }, 'user-test'));
 
     expect(errors).toHaveProperty('memberSince');
   });
@@ -290,8 +291,8 @@ describe('club calendar date', () => {
     const eve = await at('2026-02-28T15:00:00Z');
     const day = await at('2026-03-01T15:00:00Z');
 
-    const errors = await fieldErrors(eve.service.create(input));
-    const adult = await day.service.create(input);
+    const errors = await fieldErrors(eve.service.create(input, 'user-test'));
+    const adult = await day.service.create(input, 'user-test');
 
     expect(errors).toHaveProperty('guardian.name');
     expect(adult).not.toHaveProperty('guardian');
@@ -302,10 +303,10 @@ describe('update', () => {
   it('changes personal fields and keeps identity, number, status and createdAt', async () => {
     const clock = { value: TODAY };
     const local = await contexts.create(() => clock.value);
-    const created = await local.service.create(adultInput);
+    const created = await local.service.create(adultInput, 'user-test');
     clock.value = new Date('2026-10-06T15:00:00Z');
 
-    const updated = await local.service.update(created.id, { ...adultInput, lastName: 'Rios Pérez', dni: '31000111' });
+    const updated = await local.service.update(created.id, { ...adultInput, lastName: 'Rios Pérez', dni: '31000111' }, 'user-test');
 
     expect(updated).toMatchObject({
       id: created.id,
@@ -319,22 +320,22 @@ describe('update', () => {
   });
 
   it('ignores attempts to change protected fields', async () => {
-    const created = await ctx.service.create(adultInput);
+    const created = await ctx.service.create(adultInput, 'user-test');
 
     const updated = await ctx.service.update(created.id, {
       ...adultInput,
       memberNumber: '9999',
       status: 'inactive',
       id: 'other',
-    } as never);
+    } as never, 'user-test');
 
     expect(updated).toMatchObject({ id: created.id, memberNumber: '0001', status: 'active' });
   });
 
   it('removes email and guardian that the update omits', async () => {
-    const created = await ctx.service.create({ ...adultInput, email: 'lucia@example.com', guardian: minorInput.guardian });
+    const created = await ctx.service.create({ ...adultInput, email: 'lucia@example.com', guardian: minorInput.guardian }, 'user-test');
 
-    const updated = await ctx.service.update(created.id, adultInput);
+    const updated = await ctx.service.update(created.id, adultInput, 'user-test');
 
     expect(updated).not.toHaveProperty('email');
     expect(updated).not.toHaveProperty('guardian');
@@ -343,53 +344,53 @@ describe('update', () => {
   });
 
   it('replaces email and guardian when the update provides them', async () => {
-    const created = await ctx.service.create({ ...adultInput, email: 'old@example.com', guardian: minorInput.guardian });
+    const created = await ctx.service.create({ ...adultInput, email: 'old@example.com', guardian: minorInput.guardian }, 'user-test');
 
     const updated = await ctx.service.update(created.id, {
       ...adultInput,
       email: 'new@example.com',
       guardian: { name: 'Berta', contact: '1155553333' },
-    });
+    }, 'user-test');
 
     expect(updated).toMatchObject({ email: 'new@example.com', guardian: { name: 'Berta', contact: '1155553333' } });
     expect(await ctx.service.getById(created.id)).toEqual(updated);
   });
 
   it('allows keeping the same dni', async () => {
-    const created = await ctx.service.create(adultInput);
+    const created = await ctx.service.create(adultInput, 'user-test');
 
-    const updated = await ctx.service.update(created.id, { ...adultInput, firstName: 'Lu' });
+    const updated = await ctx.service.update(created.id, { ...adultInput, firstName: 'Lu' }, 'user-test');
 
     expect(updated.firstName).toBe('Lu');
   });
 
   it('rejects the dni of another member, including inactive ones', async () => {
-    const first = await ctx.service.create(adultInput);
-    const second = await ctx.service.create(minorInput);
-    await ctx.service.deactivate(first.id, 'Left');
+    const first = await ctx.service.create(adultInput, 'user-test');
+    const second = await ctx.service.create(minorInput, 'user-test');
+    await ctx.service.deactivate(first.id, 'Left', 'user-test');
 
-    await expect(ctx.service.update(second.id, { ...minorInput, dni: first.dni })).rejects.toBeInstanceOf(
+    await expect(ctx.service.update(second.id, { ...minorInput, dni: first.dni }, 'user-test')).rejects.toBeInstanceOf(
       ConflictError,
     );
   });
 
   it('validates the input', async () => {
-    const created = await ctx.service.create(adultInput);
+    const created = await ctx.service.create(adultInput, 'user-test');
 
-    expect(await fieldErrors(ctx.service.update(created.id, { ...adultInput, firstName: '' }))).toHaveProperty(
+    expect(await fieldErrors(ctx.service.update(created.id, { ...adultInput, firstName: '' }, 'user-test'))).toHaveProperty(
       'firstName',
     );
   });
 
   it('fails with NotFoundError for an unknown id', async () => {
-    await expect(ctx.service.update('missing', adultInput)).rejects.toBeInstanceOf(NotFoundError);
+    await expect(ctx.service.update('missing', adultInput, 'user-test')).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it('can edit an inactive member without reactivating it', async () => {
-    const created = await ctx.service.create(adultInput);
-    await ctx.service.deactivate(created.id, 'Left');
+    const created = await ctx.service.create(adultInput, 'user-test');
+    await ctx.service.deactivate(created.id, 'Left', 'user-test');
 
-    const updated = await ctx.service.update(created.id, { ...adultInput, firstName: 'Lu' });
+    const updated = await ctx.service.update(created.id, { ...adultInput, firstName: 'Lu' }, 'user-test');
 
     expect(updated.status).toBe('inactive');
     expect(updated.deactivation).toBeDefined();
@@ -398,9 +399,9 @@ describe('update', () => {
 
 describe('deactivate and reactivate', () => {
   it('deactivates with today as date and a trimmed reason', async () => {
-    const created = await ctx.service.create(adultInput);
+    const created = await ctx.service.create(adultInput, 'user-test');
 
-    const inactive = await ctx.service.deactivate(created.id, '  Moved abroad ');
+    const inactive = await ctx.service.deactivate(created.id, '  Moved abroad ', 'user-test');
 
     expect(inactive.status).toBe('inactive');
     expect(inactive.deactivation).toEqual({ date: '2026-10-05', reason: 'Moved abroad' });
@@ -408,29 +409,29 @@ describe('deactivate and reactivate', () => {
   });
 
   it('requires a non-empty reason', async () => {
-    const created = await ctx.service.create(adultInput);
+    const created = await ctx.service.create(adultInput, 'user-test');
 
-    expect(await fieldErrors(ctx.service.deactivate(created.id, '   '))).toHaveProperty('reason');
+    expect(await fieldErrors(ctx.service.deactivate(created.id, '   ', 'user-test'))).toHaveProperty('reason');
     expect((await ctx.service.getById(created.id)).status).toBe('active');
   });
 
   it('fails with ConflictError when already inactive', async () => {
-    const created = await ctx.service.create(adultInput);
-    await ctx.service.deactivate(created.id, 'Left');
+    const created = await ctx.service.create(adultInput, 'user-test');
+    await ctx.service.deactivate(created.id, 'Left', 'user-test');
 
-    await expect(ctx.service.deactivate(created.id, 'Again')).rejects.toBeInstanceOf(ConflictError);
+    await expect(ctx.service.deactivate(created.id, 'Again', 'user-test')).rejects.toBeInstanceOf(ConflictError);
   });
 
   it('fails with NotFoundError for an unknown id', async () => {
-    await expect(ctx.service.deactivate('missing', 'Left')).rejects.toBeInstanceOf(NotFoundError);
-    await expect(ctx.service.reactivate('missing')).rejects.toBeInstanceOf(NotFoundError);
+    await expect(ctx.service.deactivate('missing', 'Left', 'user-test')).rejects.toBeInstanceOf(NotFoundError);
+    await expect(ctx.service.reactivate('missing', 'user-test')).rejects.toBeInstanceOf(NotFoundError);
   });
 
   it('reactivates and removes the deactivation data', async () => {
-    const created = await ctx.service.create(adultInput);
-    await ctx.service.deactivate(created.id, 'Left');
+    const created = await ctx.service.create(adultInput, 'user-test');
+    await ctx.service.deactivate(created.id, 'Left', 'user-test');
 
-    const active = await ctx.service.reactivate(created.id);
+    const active = await ctx.service.reactivate(created.id, 'user-test');
 
     expect(active.status).toBe('active');
     expect(active).not.toHaveProperty('deactivation');
@@ -438,9 +439,9 @@ describe('deactivate and reactivate', () => {
   });
 
   it('fails with ConflictError when already active', async () => {
-    const created = await ctx.service.create(adultInput);
+    const created = await ctx.service.create(adultInput, 'user-test');
 
-    await expect(ctx.service.reactivate(created.id)).rejects.toBeInstanceOf(ConflictError);
+    await expect(ctx.service.reactivate(created.id, 'user-test')).rejects.toBeInstanceOf(ConflictError);
   });
 });
 
@@ -452,10 +453,10 @@ describe('getById', () => {
 
 describe('list', () => {
   beforeEach(async () => {
-    await ctx.service.create({ ...adultInput, firstName: 'Lucía', lastName: 'Ríos', dni: '30111111' });
-    await ctx.service.create({ ...adultInput, firstName: 'Ana', lastName: 'Ríos', dni: '30222222' });
-    const third = await ctx.service.create({ ...adultInput, firstName: 'Bruno', lastName: 'Álvarez', dni: '30333333' });
-    await ctx.service.deactivate(third.id, 'Left');
+    await ctx.service.create({ ...adultInput, firstName: 'Lucía', lastName: 'Ríos', dni: '30111111' }, 'user-test');
+    await ctx.service.create({ ...adultInput, firstName: 'Ana', lastName: 'Ríos', dni: '30222222' }, 'user-test');
+    const third = await ctx.service.create({ ...adultInput, firstName: 'Bruno', lastName: 'Álvarez', dni: '30333333' }, 'user-test');
+    await ctx.service.deactivate(third.id, 'Left', 'user-test');
   });
 
   const names = async (query?: Parameters<typeof ctx.service.list>[0]) =>
@@ -487,13 +488,13 @@ describe('list', () => {
   });
 
   it.each(['55.812', '55 812', '55-812'])('matches dni with separators in %j', async (search) => {
-    await ctx.service.create({ ...adultInput, firstName: 'Zoe', lastName: 'Paz', dni: '30558123' });
+    await ctx.service.create({ ...adultInput, firstName: 'Zoe', lastName: 'Paz', dni: '30558123' }, 'user-test');
 
     expect(await names({ search })).toEqual(['Paz Zoe']);
   });
 
   it('does not extract digits from a query that mixes text and digits', async () => {
-    await ctx.service.create({ ...adultInput, firstName: 'Rocío', lastName: 'Vega', dni: '30444555' });
+    await ctx.service.create({ ...adultInput, firstName: 'Rocío', lastName: 'Vega', dni: '30444555' }, 'user-test');
 
     expect(await names({ search: 'Rocío 2' })).toEqual([]);
     expect(await names({ search: 'Rocío' })).toEqual(['Vega Rocío']);
@@ -565,12 +566,13 @@ describe('member numbers with corrupted data', () => {
       JSON.stringify([stored('0007', '30000001'), stored('abc', '30000002'), stored('-3', '30000003'), stored('1.5', '30000004')]),
     );
     const service = createMemberService({
+      audit: noAudit,
       repository: createJsonMemberRepository(file),
       now: () => TODAY,
       disciplineLookup: fakeDisciplineLookup(),
     });
 
-    const member = await service.create({ ...adultInput, dni: '30999999' });
+    const member = await service.create({ ...adultInput, dni: '30999999' }, 'user-test');
     await rm(dir, { recursive: true, force: true });
 
     expect(member.memberNumber).toBe('0008');
@@ -581,14 +583,14 @@ describe('concurrency', () => {
   it('gives distinct member numbers to concurrent creates', async () => {
     const inputs = Array.from({ length: 10 }, (_, i) => ({ ...adultInput, dni: `3000000${i}` }));
 
-    const members = await Promise.all(inputs.map((input) => ctx.service.create(input)));
+    const members = await Promise.all(inputs.map((input) => ctx.service.create(input, 'user-test')));
 
     expect(new Set(members.map((m) => m.memberNumber)).size).toBe(10);
     expect((await ctx.service.list()).length).toBe(10);
   });
 
   it('lets only one of two concurrent creates with the same dni succeed', async () => {
-    const results = await Promise.allSettled([ctx.service.create(adultInput), ctx.service.create(adultInput)]);
+    const results = await Promise.allSettled([ctx.service.create(adultInput, 'user-test'), ctx.service.create(adultInput, 'user-test')]);
 
     expect(results.map((r) => r.status).sort()).toEqual(['fulfilled', 'rejected']);
     expect((results.find((r) => r.status === 'rejected') as PromiseRejectedResult).reason).toBeInstanceOf(

@@ -3,7 +3,7 @@ import express from 'express';
 import { apiNotFound, errorHandler } from './middlewares/error-handler.js';
 import { requireCapability, requireCapabilityByMethod } from './middlewares/require-role.js';
 import { createAuditRouter } from './modules/audit/audit.routes.js';
-import type { AuditService } from './modules/audit/audit.service.js';
+import { discardAudit, type AuditService } from './modules/audit/audit.service.js';
 import { createAuthRouter } from './modules/auth/auth.routes.js';
 import { createAuthService } from './modules/auth/auth.service.js';
 import { createAuthenticator, createSessionStore } from './modules/auth/auth.session.js';
@@ -70,21 +70,21 @@ const sessions = createSessionStore();
 const authenticate = createAuthenticator(sessions, authService);
 
 app.use('/auth', createAuthRouter(authService, sessions, authenticate));
-app.use('/users', requireCapability(authenticate, 'users:manage'), createUsersRouter(createUserService(repository, { disciplineLookup: options.disciplineService })));
+app.use('/users', requireCapability(authenticate, 'users:manage'), createUsersRouter(createUserService(repository, { disciplineLookup: options.disciplineService, audit: options.auditService ?? discardAudit }), authenticate));
 
 // Every route below needs a session and a role allowed by modules/auth/permissions.ts; only /auth and /health are public.
 if (options.memberService) {
-  app.use('/api/members', requireCapabilityByMethod(authenticate, { read: 'members:read', write: 'members:write' }), createMembersRouter(options.memberService));
+  app.use('/api/members', requireCapabilityByMethod(authenticate, { read: 'members:read', write: 'members:write' }), createMembersRouter(options.memberService, authenticate));
 }
 if (options.disciplineService) {
-  app.use('/api/disciplines', requireCapabilityByMethod(authenticate, { read: 'disciplines:read', write: 'disciplines:write' }), createDisciplinesRouter(options.disciplineService));
+  app.use('/api/disciplines', requireCapabilityByMethod(authenticate, { read: 'disciplines:read', write: 'disciplines:write' }), createDisciplinesRouter(options.disciplineService, authenticate));
 }
 if (options.membershipService) {
   // Read-only guard for every method: memberships has no write routes. Add a write capability before adding one.
   app.use('/api/memberships', requireCapability(authenticate, 'memberships:read'), createMembershipsRouter(options.membershipService));
 }
 if (options.pricingConfigService) {
-  app.use('/api/pricing', requireCapabilityByMethod(authenticate, { read: 'config:read', write: 'config:manage' }), createPricingConfigRouter(options.pricingConfigService));
+  app.use('/api/pricing', requireCapabilityByMethod(authenticate, { read: 'config:read', write: 'config:manage' }), createPricingConfigRouter(options.pricingConfigService, authenticate));
 }
 if (options.paymentService) {
   // Reading needs payments:read; the write routes add payments:collect or payments:annul themselves.

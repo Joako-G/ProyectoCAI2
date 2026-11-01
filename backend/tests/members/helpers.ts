@@ -5,6 +5,7 @@ import { createJsonMemberRepository } from '../../src/modules/members/json-membe
 import { createMemberService } from '../../src/modules/members/member.service.js';
 import type { DisciplineLookup, DisciplineRef } from '../../src/modules/members/discipline-lookup.js';
 import type { MemberInput } from '../../src/modules/members/member.types.js';
+import { noAudit } from '../audit/helpers.js';
 
 export const TODAY = new Date('2026-10-05T15:00:00Z');
 
@@ -53,7 +54,7 @@ export async function createTestContext(
   const dir = await mkdtemp(join(tmpdir(), 'members-'));
   const file = join(dir, 'members.json');
   const repository = createJsonMemberRepository(file);
-  const service = createMemberService({ repository, now, disciplineLookup });
+  const service = createMemberService({ audit: noAudit, repository, now, disciplineLookup });
   return { service, repository, file, cleanup: () => rm(dir, { recursive: true, force: true }) };
 }
 
