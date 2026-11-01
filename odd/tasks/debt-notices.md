@@ -51,6 +51,8 @@ Strategy: `ask-on-risk`. Forecast about 700 authored lines, two work-unit commit
 - 2026-11-01: requirements and code mapped; branch and this document created.
 - 2026-11-01: T2 done (frontend Avisos section).
 - 2026-11-01: T1 done (backend notices module, capability `notices:read`, route-matrix row).
+- 2026-11-01: Gentle-AI review (lineage `review-d2e980a6b2f06b7b`, base `045b932`, `2f29780`..`4e644eb`, 30 files, 938 lines, high risk, consent granted): approved and acknowledged; 11 non-blocking findings left as later work (R2-001 to R2-004, R3-001 to R3-006, `R4-no-tariffs-retry-copy`).
+- 2026-11-01: browser check with synthetic data at `/avisos` as `demo@club.test`, on day 1 (no surcharge): 7 members listed, inactive member 0007 excluded, all "Dado de baja" with 11 months; totals $440,000 and $660,000 match 11 months at $40,000 and $60,000; minors show their guardian; `wa.me` links use `549` plus 10 digits with the message and open in a new tab. The check found the send link wrapped and clipped in the table; fixed with `.notice-send` and re-checked; notices view tests 9/9. Not checked: the secretary and teacher views in a browser (covered by tests), and an actual WhatsApp send.
 
 ## Next step
-Browser check of the Avisos screen with synthetic members, then the user decides on push and PR.
+The user decides on push and PR. RF-21 stays partial.

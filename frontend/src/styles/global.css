@@ -536,6 +536,12 @@ a:hover {
   color: var(--color-error);
 }
 
+.notice-send {
+  display: inline-block;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
 .notice-issue {
   font-size: 12.5px;
   color: var(--color-error);

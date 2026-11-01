@@ -50,7 +50,7 @@ export function NoticesView() {
                 <td>{recipientLabel(notice)}</td>
                 <td>
                   {notice.link ? (
-                    <a className="button button--secondary" href={notice.link} target="_blank" rel="noopener noreferrer" aria-label={`Enviar por WhatsApp a ${notice.recipientName}`}>
+                    <a className="button button--secondary notice-send" href={notice.link} target="_blank" rel="noopener noreferrer" aria-label={`Enviar por WhatsApp a ${notice.recipientName}`}>
                       Enviar por WhatsApp
                     </a>
                   ) : (
