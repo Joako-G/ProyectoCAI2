@@ -22,6 +22,8 @@ export const permissions = {
   'notices:read': ['secretary', 'head_secretary'],
   'config:read': ['secretary', 'head_secretary'],
   'config:manage': ['head_secretary'],
+  // The audit log (RF-27) is the head secretary's alone.
+  'audit:read': ['head_secretary'],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Capability = keyof typeof permissions;

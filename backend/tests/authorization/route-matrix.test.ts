@@ -10,6 +10,7 @@ import { createTestContext as createPricing } from '../payments/pricing-config.h
 import { createTestContext as createPayments } from '../payments/payment.helpers.js';
 import { createRosterService } from '../../src/modules/roster/roster.service.js';
 import { roles, type Role as RoleName } from '../../src/modules/users/user.types.js';
+import { createTestContext as createAudit } from '../audit/helpers.js';
 import { createUsersFile, signIn } from './helpers.js';
 
 const both: readonly RoleName[] = ['head_secretary', 'secretary'];
@@ -56,6 +57,7 @@ const routes: Array<[string, string, readonly RoleName[]]> = [
   ['GET', '/api/cashcount/today', headOnly],
   ['GET', '/api/cashcount', headOnly],
   ['POST', '/api/cashcount', headOnly],
+  ['GET', '/api/audit', headOnly],
 ];
 
 let baseUrl: string;
@@ -71,7 +73,8 @@ beforeAll(async () => {
   const pricing = await createPricing();
   const payments = await createPayments();
   const cashCount = await createCashCount();
-  cleanups.push(users.cleanup, members.cleanup, disciplines.cleanup, memberships.cleanup, pricing.cleanup, payments.cleanup, cashCount.cleanup);
+  const audit = await createAudit();
+  cleanups.push(audit.cleanup, users.cleanup, members.cleanup, disciplines.cleanup, memberships.cleanup, pricing.cleanup, payments.cleanup, cashCount.cleanup);
   server = createApp({
     storePath: users.storePath,
     memberService: members.service,
@@ -81,6 +84,7 @@ beforeAll(async () => {
     paymentService: payments.service,
     reportService: cashCount.reports,
     cashCountService: cashCount.cashCount,
+    auditService: audit.service,
     noticeService: { debtNotices: async () => ({ asOf: '2026-11-01', rows: [] }) },
     rosterService: createRosterService({ memberships: memberships.service, members: members.service, disciplines: disciplines.service }),
   }).listen(0);

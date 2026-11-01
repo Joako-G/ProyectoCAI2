@@ -2,6 +2,8 @@ import cors from 'cors';
 import express from 'express';
 import { apiNotFound, errorHandler } from './middlewares/error-handler.js';
 import { requireCapability, requireCapabilityByMethod } from './middlewares/require-role.js';
+import { createAuditRouter } from './modules/audit/audit.routes.js';
+import type { AuditService } from './modules/audit/audit.service.js';
 import { createAuthRouter } from './modules/auth/auth.routes.js';
 import { createAuthService } from './modules/auth/auth.service.js';
 import { createAuthenticator, createSessionStore } from './modules/auth/auth.session.js';
@@ -39,6 +41,9 @@ export interface AppDependencies {
   cashCountService?: CashCountService;
   rosterService?: RosterService;
   noticeService?: Pick<NoticeService, 'debtNotices'>;
+  auditService?: AuditService;
+  // Lets the process share one users repository with the audit log, which reads actor names from it.
+  userRepository?: UserRepository;
   storePath?: string;
   // Origin allowed to send credentialed requests; defaults to the Vite dev server.
   frontendOrigin?: string;
@@ -46,7 +51,7 @@ export interface AppDependencies {
 }
 
 export function createApp(options: AppDependencies) {
-const repository = new UserRepository(options.storePath ?? defaultUsersFilePath, options.persist);
+const repository = options.userRepository ?? new UserRepository(options.storePath ?? defaultUsersFilePath, options.persist);
 if (!hasActiveHeadSecretary(repository.list())) {
   // No automatic promotion: an operator must restore a head_secretary account in the users file.
   console.warn('Users store has no active head_secretary: nobody can manage users. Set an account role to "head_secretary" and active to true in the users file, then restart.');
@@ -99,6 +104,10 @@ if (options.rosterService) {
 if (options.noticeService) {
   // Read-only: notices:read for every request, and the router has no write route.
   app.use('/api/notices', requireCapability(authenticate, 'notices:read'), createNoticeRouter(options.noticeService));
+}
+if (options.auditService) {
+  // Read-only: audit:read for every request, and the router has no write route.
+  app.use('/api/audit', requireCapability(authenticate, 'audit:read'), createAuditRouter(options.auditService));
 }
 app.use('/api', apiNotFound);
 app.use(errorHandler);
