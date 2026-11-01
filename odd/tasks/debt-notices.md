@@ -34,8 +34,9 @@ Strategy: `ask-on-risk`. Forecast about 700 authored lines, two work-unit commit
   - Evidence (route: delegated direct writer; triggers: 2+ non-trivial files, 4+ files read). RED: `npx vitest run tests/notices tests/authorization/route-matrix.test.ts` failed with "Cannot find module '../../src/modules/notices/notice.number.js'" (and the message/sender/service suites), and 4 API/route-matrix tests failed because `/api/notices/debt` was not mounted. GREEN: the same run passes; `pnpm --filter @club-socios/backend test` 46 files / 839 tests passed, `typecheck` clean. REFACTOR: none needed.
   - Minor rule: `isMinor(birthDate, asOf)` from the members validation (under 18) with a stored guardian sends to the guardian contact; an adult with a stored guardian, or a minor without one, goes to the member's own number. An unusable guardian contact is flagged, never replaced by the member's number.
   - Acceptance: up-to-date and inactive members excluded; debtor and deregistered members included with standing, unpaid months and today's total; a minor uses the guardian contact; an unusable number returns no link and a flag; files are read once per request.
-- [ ] T2 — Frontend "Avisos" section. Route: same delegated writer.
+- [x] T2 — Frontend "Avisos" section. Route: same delegated writer.
   - `Capability` union, `sections.ts`, `App.tsx`, feature under `frontend/src/features/notices`.
+  - Evidence (route: same delegated writer). RED: `npx vitest run src/features/notices src/layouts/sections.test.ts src/App.routing.test.tsx` failed with 'Failed to resolve import "./NoticesView"', the sections test (no `notices` section) and 2 App routing tests (heading "Avisos" not found). GREEN: same files pass (84 tests across layouts/App/notices); `pnpm --filter @club-socios/frontend test` 468 passed, both typechecks clean. REFACTOR: none needed. Browser check with synthetic members not run by the writer.
   - Acceptance: section visible to secretary and head secretary, not to teacher; loading, error with retry, and empty states; deregistered members identified; each usable row opens the link in a new tab; an unusable number shows a correction notice and no link.
 
 ## Checks
@@ -48,7 +49,8 @@ Strategy: `ask-on-risk`. Forecast about 700 authored lines, two work-unit commit
 
 ## Progress
 - 2026-11-01: requirements and code mapped; branch and this document created.
+- 2026-11-01: T2 done (frontend Avisos section).
 - 2026-11-01: T1 done (backend notices module, capability `notices:read`, route-matrix row).
 
 ## Next step
-T2.
+Browser check of the Avisos screen with synthetic members, then the user decides on push and PR.

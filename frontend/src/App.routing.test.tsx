@@ -66,6 +66,28 @@ describe('URL routing', () => {
     expect(within(screen.getByRole('main')).getByRole('link', { name: 'Volver al inicio' })).toHaveAttribute('href', '/socios');
   });
 
+  it('opens Avisos at /avisos for a user who may read notices and lists it in the sidebar', async () => {
+    const user = { id: '1', name: 'Demo', email: 'demo@example.com', role: 'secretary' };
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (input === '/auth/me') return json({ user, capabilities: ['members:read', 'notices:read'] });
+      if (input === '/api/notices/debt') return json({ asOf: '2026-11-01', rows: [] });
+      return json([]);
+    }));
+    renderApp('/avisos');
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Avisos' })).toBeInTheDocument();
+    expect(await screen.findByText('No hay socios con deuda para avisar.')).toBeInTheDocument();
+    expect(within(screen.getByRole('navigation', { name: 'Navegación principal' })).getByRole('link', { name: /Avisos/ })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('shows a forbidden page for /avisos, without loading notices, when notices:read is missing', async () => {
+    stubSession('teacher', ['roster:read']);
+    renderApp('/avisos');
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Sin acceso' })).toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalledWith('/api/notices/debt', expect.anything());
+  });
+
   it('shows a not-found page for an unknown URL, keeping the shell', async () => {
     stubSession('head_secretary', HEAD);
     renderApp('/no-existe');

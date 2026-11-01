@@ -7,6 +7,7 @@ import { can } from './features/auth/utils/can';
 import { ArqueoView } from './features/cashcount/components/ArqueoView';
 import { DisciplinesView } from './features/disciplines/components/DisciplinesView';
 import { EnrollmentScreen } from './features/enrollment/components/EnrollmentScreen';
+import { NoticesView } from './features/notices/components/NoticesView';
 import { PaymentsView } from './features/payments/components/PaymentsView';
 import { PricingView } from './features/pricing/components/PricingView';
 import { ReportsView } from './features/reports/components/ReportsView';
@@ -26,6 +27,7 @@ function pageFor(section: Section, user: AuthUser) {
     />;
     case 'disciplines': return <DisciplinesView canWrite={can(user, 'disciplines:write')} />;
     case 'payments': return <PaymentsView canCollect={can(user, 'payments:collect')} canAnnul={can(user, 'payments:annul')} />;
+    case 'notices': return <NoticesView />;
     case 'cashcount': return <ArqueoView />;
     case 'reports': return <ReportsView issuedBy={user.name} canReadCashCount={can(user, 'cashcount:run')} />;
     case 'roster': return <RosterView />;

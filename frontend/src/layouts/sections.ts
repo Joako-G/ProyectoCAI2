@@ -1,7 +1,7 @@
 import type { AuthUser, Capability } from '../features/auth/types/auth';
 import { can } from '../features/auth/utils/can';
 
-export type Section = 'members' | 'disciplines' | 'payments' | 'cashcount' | 'reports' | 'users' | 'roster' | 'pricing';
+export type Section = 'members' | 'disciplines' | 'payments' | 'notices' | 'cashcount' | 'reports' | 'users' | 'roster' | 'pricing';
 
 /**
  * Navigation order; each section lives at its own URL and needs one capability to be reachable.
@@ -11,6 +11,7 @@ export const SECTIONS: ReadonlyArray<{ id: Section; label: string; subtitle: str
   { id: 'members', label: 'Socios', subtitle: 'Búsqueda por N° de socio, DNI o nombre', path: '/socios', capability: 'members:read' },
   { id: 'disciplines', label: 'Disciplinas', subtitle: 'Catálogo de disciplinas y sus profesores', path: '/disciplinas', capability: 'disciplines:read' },
   { id: 'payments', label: 'Cobros', subtitle: 'Cobro de cuotas por DNI, comprobantes y anulaciones', path: '/cobros', capability: 'payments:read' },
+  { id: 'notices', label: 'Avisos', subtitle: 'Avisos de deuda por WhatsApp, uno por socio', path: '/avisos', capability: 'notices:read' },
   { id: 'cashcount', label: 'Arqueo', subtitle: 'Cierre diario de caja: efectivo contado y diferencia', path: '/caja/arqueo', capability: 'cashcount:run' },
   { id: 'reports', label: 'Reportes', subtitle: 'Recaudación por período y liquidación por disciplina', path: '/reportes', capability: 'reports:read' },
   { id: 'users', label: 'Usuarios', subtitle: 'Administración de cuentas de demostración', path: '/usuarios', capability: 'users:manage' },
