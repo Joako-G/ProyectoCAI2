@@ -52,6 +52,7 @@ const routes: Array<[string, string, readonly RoleName[]]> = [
   ['POST', '/api/payments/missing/annul', headOnly],
   ['GET', '/api/reports/revenue', both],
   ['GET', '/api/reports/discipline-settlement', both],
+  ['GET', '/api/notices/debt', both],
   ['GET', '/api/cashcount/today', headOnly],
   ['GET', '/api/cashcount', headOnly],
   ['POST', '/api/cashcount', headOnly],
@@ -80,6 +81,7 @@ beforeAll(async () => {
     paymentService: payments.service,
     reportService: cashCount.reports,
     cashCountService: cashCount.cashCount,
+    noticeService: { debtNotices: async () => ({ asOf: '2026-11-01', rows: [] }) },
     rosterService: createRosterService({ memberships: memberships.service, members: members.service, disciplines: disciplines.service }),
   }).listen(0);
   await new Promise<void>((resolve) => server.once('listening', resolve));

@@ -18,6 +18,8 @@ import { createMembershipService } from './modules/memberships/membership.servic
 import { createJsonMemberRepository } from './modules/members/json-member.repository.js';
 import { createCashCountService } from './modules/cashcount/cashcount.service.js';
 import { createJsonCashCountRepository } from './modules/cashcount/json-cashcount.repository.js';
+import { createNoticeService } from './modules/notices/notice.service.js';
+import { createWaMeSender } from './modules/notices/notice.sender.js';
 import { createPaymentIncomeSource } from './modules/reports/income.source.js';
 import { createReportService } from './modules/reports/report.service.js';
 import { createRosterService } from './modules/roster/roster.service.js';
@@ -66,7 +68,15 @@ const cashCountService = createCashCountService({
   repository: createJsonCashCountRepository(cashCountsFilePath()),
   revenue: reportService,
 });
-const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService });
+// Debt notices read the four sources once per request and prepare wa.me links; a Business API sender can replace the sender later.
+const noticeService = createNoticeService({
+  members: memberService,
+  memberships: membershipService,
+  payments: paymentRepository,
+  pricing: pricingConfigService,
+  sender: createWaMeSender(),
+});
+const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService });
 
 bootstrap({
   memberService,

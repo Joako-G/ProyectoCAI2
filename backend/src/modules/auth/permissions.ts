@@ -19,6 +19,7 @@ export const permissions = {
   'payments:annul': ['head_secretary'],
   'cashcount:run': ['head_secretary'],
   'reports:read': ['secretary', 'head_secretary'],
+  'notices:read': ['secretary', 'head_secretary'],
   'config:read': ['secretary', 'head_secretary'],
   'config:manage': ['head_secretary'],
 } as const satisfies Record<string, readonly Role[]>;

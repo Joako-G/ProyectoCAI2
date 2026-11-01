@@ -13,6 +13,8 @@ import { createMembersRouter } from './modules/members/member.routes.js';
 import type { MemberService } from './modules/members/member.service.js';
 import { createMembershipsRouter } from './modules/memberships/membership.routes.js';
 import type { MembershipService } from './modules/memberships/membership.service.js';
+import { createNoticeRouter } from './modules/notices/notice.routes.js';
+import type { NoticeService } from './modules/notices/notice.service.js';
 import { createPaymentRouter } from './modules/payments/payment.routes.js';
 import { createPricingConfigRouter } from './modules/payments/pricing-config.routes.js';
 import type { PaymentService } from './modules/payments/payment.service.js';
@@ -36,6 +38,7 @@ export interface AppDependencies {
   reportService?: Pick<ReportService, 'revenue' | 'disciplineSettlement'>;
   cashCountService?: CashCountService;
   rosterService?: RosterService;
+  noticeService?: Pick<NoticeService, 'debtNotices'>;
   storePath?: string;
   // Origin allowed to send credentialed requests; defaults to the Vite dev server.
   frontendOrigin?: string;
@@ -92,6 +95,10 @@ if (options.cashCountService) {
 }
 if (options.rosterService) {
   app.use('/api/roster', requireCapability(authenticate, 'roster:read'), createRosterRouter(options.rosterService, authenticate));
+}
+if (options.noticeService) {
+  // Read-only: notices:read for every request, and the router has no write route.
+  app.use('/api/notices', requireCapability(authenticate, 'notices:read'), createNoticeRouter(options.noticeService));
 }
 app.use('/api', apiNotFound);
 app.use(errorHandler);
