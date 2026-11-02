@@ -74,6 +74,7 @@ Strategy: `single-pr`, because the user wants all work on `manu`. Forecast about
 
 - 2026-11-01: T4 done (failed audit writes counted in memory and shown on the screen; unreadable log has its own message).
 - 2026-11-01: T5 done (records show a readable label resolved at read time; the stored log is unchanged).
+- 2026-11-01: Gentle-AI review of T4 and T5 (`79d626c`..`6df31d6`, lineage `review-96ae3caa9acd2e56`, 19 files, 460 lines, medium risk, consent granted): approved and acknowledged. Non-blocking, later work: `R3-label-source-log-passes-raw-error`, `R3-production-label-wiring-untested`, `R3-unknown-entity-type-undefined-label`. Browser check: `/auditoria` shows "Socio 0007". The failure banner and the unreadable-log message are covered by tests only. Full-suite runs failed intermittently once each in backend and frontend during T4 without recorded test names; final runs pass.
 
 ## Next step
 The user decides on push and the PR from `manu` to `main`. Tell Joako first.
