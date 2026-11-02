@@ -10,6 +10,19 @@ export type AuditEntityType =
   | 'payment'
   | 'cash_count';
 
+/** Audit writes that failed since the server last started; it resets on restart. */
+export interface AuditFailedWrites {
+  count: number;
+  /** ISO instant, or null while nothing has failed. */
+  lastFailedAt: string | null;
+}
+
+/** What `GET /api/audit` answers: the entries newest first and the failed-write tally. */
+export interface AuditLog {
+  entries: AuditEntry[];
+  failedWrites: AuditFailedWrites;
+}
+
 /** Mirrors `AuditEntry` in backend/src/modules/audit/audit.types.ts. */
 export interface AuditEntry {
   id: string;

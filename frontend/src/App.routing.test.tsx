@@ -92,7 +92,7 @@ describe('URL routing', () => {
     const user = { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' };
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
       if (input === '/auth/me') return json({ user, capabilities: ['members:read', 'audit:read'] });
-      if (input === '/api/audit') return json([]);
+      if (input === '/api/audit') return json({ entries: [], failedWrites: { count: 0, lastFailedAt: null } });
       return json([]);
     }));
     renderApp('/auditoria');

@@ -86,8 +86,32 @@ describe('audit service', () => {
     expect(await service.list()).toHaveLength(1);
   });
 
-  it('exposes record and list only', async () => {
+  it('counts failed audit writes in memory with the time of the last one and nothing else', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    let tick = 0;
+    const repository: AuditRepository = { append: async () => { throw new Error('disk full'); }, list: async () => [] };
+    const service = createAuditService({ repository, actors, now: () => new Date(Date.UTC(2026, 10, 1, 12, tick++)) });
+    expect(service.failures()).toEqual({ count: 0, lastFailedAt: null });
+    await service.record({ actorId: HEAD_ACTOR.id, action: 'update', entityType: 'member', entityId: 'm1', changedFields: ['dni'] });
+    await service.record({ actorId: HEAD_ACTOR.id, action: 'create', entityType: 'user', entityId: 'u1' });
+    // The clock is read for the entry (tick 0, 2) and again for the failure (tick 1, 3).
+    expect(service.failures()).toEqual({ count: 2, lastFailedAt: '2026-11-01T12:03:00.000Z' });
+    expect(JSON.stringify(service.failures())).not.toContain('disk full');
+  });
+
+  it('counts a write that throws before it starts, and does not count successful writes', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const throwing = createAuditService({ repository: { append: () => { throw new Error('boom'); }, list: async () => [] }, actors });
+    await throwing.record({ actorId: HEAD_ACTOR.id, action: 'create', entityType: 'user', entityId: 'u1' });
+    expect(throwing.failures().count).toBe(1);
+
     const { service } = await setup();
-    expect(Object.keys(service).sort()).toEqual(['list', 'record']);
+    await service.record({ actorId: HEAD_ACTOR.id, action: 'create', entityType: 'member', entityId: 'm1' });
+    expect(service.failures()).toEqual({ count: 0, lastFailedAt: null });
+  });
+
+  it('exposes record, list and failures only', async () => {
+    const { service } = await setup();
+    expect(Object.keys(service).sort()).toEqual(['failures', 'list', 'record']);
   });
 });

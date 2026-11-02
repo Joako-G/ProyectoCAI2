@@ -267,7 +267,7 @@ async function startApp(failingAudit = false) {
     const text = await response.text();
     return { status: response.status, body: text ? JSON.parse(text) : {} };
   };
-  const api: Api = { call, entries: async () => (await call('GET', '/api/audit')).body as unknown as AuditEntry[] };
+  const api: Api = { call, entries: async () => ((await call('GET', '/api/audit')).body as unknown as { entries: AuditEntry[] }).entries };
   return { api, auditFile, userId: 'user-head_secretary' };
 }
 

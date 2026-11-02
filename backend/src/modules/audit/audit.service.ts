@@ -22,13 +22,27 @@ export interface AuditServiceDeps {
   newId?: () => string;
 }
 
+/** Audit writes that failed since the server started: a count and the last time, never an error text or a record. */
+export interface AuditFailures {
+  count: number;
+  /** ISO instant, or null while nothing has failed. */
+  lastFailedAt: string | null;
+}
+
 export function createAuditService({ repository, actors, now = () => new Date(), newId = randomUUID }: AuditServiceDeps) {
+  // Kept in memory only: it resets when the server restarts, so it says "since the last start", not "ever".
+  // The operator still has the console log for older failures.
+  let failureCount = 0;
+  let lastFailedAt: string | null = null;
+
   return {
     // The change is already committed when this runs, and the audit file cannot share its atomic write, so a
     // failure is logged and swallowed. Not `async`: the append starts before this returns, so a read queued
     // right after the call (the next request) always sees the entry.
     record(input: AuditRecordInput): Promise<void> {
       const fail = (error: unknown) => {
+        failureCount += 1;
+        lastFailedAt = now().toISOString();
         // Names the operation only: no ids, names or field values.
         console.error(`Could not write the audit entry for ${input.action} on ${input.entityType}`, error);
       };
@@ -50,6 +64,10 @@ export function createAuditService({ repository, actors, now = () => new Date(),
         fail(error);
         return Promise.resolve();
       }
+    },
+
+    failures(): AuditFailures {
+      return { count: failureCount, lastFailedAt };
     },
 
     // Newest first. Entries are appended in time order, so reversing keeps same-instant entries newest first too.

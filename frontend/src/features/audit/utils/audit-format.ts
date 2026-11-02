@@ -1,6 +1,6 @@
 import { NETWORK_ERROR_MESSAGE } from '../../disciplines/hooks/useDisciplinesList';
 import { ApiError } from '../../members/services/members-api';
-import type { AuditEntry } from '../types/audit';
+import type { AuditEntry, AuditFailedWrites } from '../types/audit';
 
 // The club's time zone; mirrors CLUB_TIME_ZONE in backend/src/config/club.ts.
 const CLUB_TIME_ZONE = 'America/Argentina/Tucuman';
@@ -85,9 +85,16 @@ export function changedFieldsLabel(fields: readonly string[]): string {
   return fields.length === 0 ? '—' : fields.map((field) => fieldLabels[field] ?? field).join(', ');
 }
 
+/** Warns that some operations may be missing from the log; the tally is since the server last started. */
+export function failedWritesMessage({ count, lastFailedAt }: AuditFailedWrites): string {
+  const when = lastFailedAt ? `, el último el ${formatInstant(lastFailedAt)}` : '';
+  return `Algunas operaciones pueden no haberse registrado en la auditoría: hubo ${count} ${count === 1 ? 'fallo' : 'fallos'} al registrar desde el último inicio del servidor${when}. Avise a quien mantiene el sistema.`;
+}
+
 /** Spanish copy for a failed read of the log. Backend messages are English and are never shown. */
 export function describeLoadError(error: unknown): string {
   if (!(error instanceof ApiError)) return NETWORK_ERROR_MESSAGE;
   if (error.status === 403) return 'No tiene permiso para ver la auditoría.';
+  if (error.code === 'audit_unreadable') return 'El registro de auditoría está dañado o no se puede leer. Avise a quien mantiene el sistema.';
   return 'Intente de nuevo.';
 }

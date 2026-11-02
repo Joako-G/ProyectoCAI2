@@ -34,6 +34,9 @@ describe('audit-format', () => {
   it('explains a failed read in Spanish and never shows the server message', () => {
     expect(describeLoadError(new ApiError(403, 'forbidden', 'Forbidden'))).toBe('No tiene permiso para ver la auditoría.');
     expect(describeLoadError(new ApiError(500, 'internal_error', 'boom'))).toBe('Intente de nuevo.');
+    expect(describeLoadError(new ApiError(500, 'audit_unreadable', 'The audit log could not be read'))).toBe(
+      'El registro de auditoría está dañado o no se puede leer. Avise a quien mantiene el sistema.',
+    );
     expect(describeLoadError(new TypeError('network'))).toBe('No se pudo conectar con el servidor.');
   });
 });

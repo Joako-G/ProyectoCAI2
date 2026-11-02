@@ -3,13 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jsonResponse } from '../../members/test/fixtures';
 import { buildEntry } from '../test/fixtures';
-import type { AuditEntry } from '../types/audit';
+import type { AuditEntry, AuditFailedWrites } from '../types/audit';
 import { AuditView } from './AuditView';
 
 afterEach(() => vi.unstubAllGlobals());
 
-function stubEntries(entries: AuditEntry[]) {
-  const fetchMock = vi.fn(async () => jsonResponse(entries));
+function stubEntries(entries: AuditEntry[], failedWrites: AuditFailedWrites = { count: 0, lastFailedAt: null }) {
+  const fetchMock = vi.fn(async () => jsonResponse({ entries, failedWrites }));
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
 }
@@ -59,7 +59,7 @@ describe('AuditView', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(jsonResponse({ error: 'internal_error', message: 'boom' }, 500))
-      .mockResolvedValueOnce(jsonResponse([buildEntry()]));
+      .mockResolvedValueOnce(jsonResponse({ entries: [buildEntry()], failedWrites: { count: 0, lastFailedAt: null } }));
     vi.stubGlobal('fetch', fetchMock);
     const user = userEvent.setup();
     render(<AuditView />);
@@ -69,6 +69,43 @@ describe('AuditView', () => {
 
     expect(await screen.findByRole('table', { name: 'Registro de auditoría' })).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows no warning while every audit write succeeded', async () => {
+    stubEntries([buildEntry()]);
+    render(<AuditView />);
+
+    await screen.findByRole('table');
+    expect(screen.queryByText(/pueden no haberse registrado/)).not.toBeInTheDocument();
+  });
+
+  it('warns with the count and the last time when audit writes failed, and still shows the entries', async () => {
+    stubEntries([buildEntry()], { count: 3, lastFailedAt: '2026-11-01T15:30:00.000Z' });
+    render(<AuditView />);
+
+    const warning = await screen.findByRole('alert');
+    expect(warning).toHaveTextContent('Algunas operaciones pueden no haberse registrado');
+    expect(warning).toHaveTextContent('3 fallos');
+    expect(warning).toHaveTextContent('01/11/2026 12:30');
+    expect(warning).toHaveTextContent('quien mantiene el sistema');
+    expect(screen.getByRole('table', { name: 'Registro de auditoría' })).toBeInTheDocument();
+  });
+
+  it('uses the singular for a single failed write', async () => {
+    stubEntries([], { count: 1, lastFailedAt: '2026-11-01T15:30:00.000Z' });
+    render(<AuditView />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('1 fallo ');
+  });
+
+  it('says the log cannot be read when the server reports an unreadable audit file', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ error: 'audit_unreadable', message: 'The audit log could not be read' }, 500)));
+    render(<AuditView />);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('El registro de auditoría está dañado o no se puede leer.');
+    expect(alert).toHaveTextContent('quien mantiene el sistema');
+    expect(alert).not.toHaveTextContent('Intente de nuevo.');
   });
 
   it('explains a missing permission and a lost connection', async () => {

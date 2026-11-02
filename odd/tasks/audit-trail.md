@@ -45,6 +45,13 @@ Strategy: `single-pr`, because the user wants all work on `manu`. Forecast about
 - [x] T3 — Frontend "Auditoría" section. Route: same writer.
   - `Capability` union, `sections.ts`, `App.tsx`, `frontend/src/features/audit`.
   - Acceptance: visible to the head secretary only; loading, error with retry, and empty states; newest-first table with date, user, role, action, record and changed fields; read-only.
+- [x] T4 — Make audit failures visible (review finding `R4-corrupt-audit-store-silent-loss`). Route: delegated direct writer.
+  - Business operations still succeed when an audit write fails (existing decision). The audit service now counts failed writes and keeps the time of the last one, in memory only: it holds no personal data and no error text, and it resets when the server restarts, so it says "since the last start", not "ever". The console log remains the record of older failures.
+  - `GET /api/audit` now answers `{ entries, failedWrites: { count, lastFailedAt } }` (was a bare array). A corrupt or unreadable file still fails with 500, now with the code `audit_unreadable` and a fixed message that names no path.
+  - The Auditoría screen shows a warning banner with the count and last time when writes failed, and a specific Spanish message for the unreadable log, distinct from the network error.
+  - Evidence: RED backend `vitest run tests/audit` -> 6 failed, "throwing.failures is not a function" and the API tests expecting the new body; RED frontend `vitest run src/features/audit` -> 9 failed, "TypeError: entries.map is not a function" (the screen received the new body shape). GREEN: tests/audit 55 passed; frontend audit and routing tests 25 passed. REFACTOR: none needed.
+- [ ] T5 — Readable records. Route: same writer.
+  - Resolve display labels at read time only, through injected ports read once per request; stored entries keep the entity id and no personal data is added. Members show their member number, disciplines their name, users their name, payments their receipt number, cash closes their date; a tariff already carries its period as its id; singletons keep their fixed label. No member names or DNI. An unresolvable record falls back to a short readable form and never fails the list.
 
 ## Checks
 - `pnpm --filter @club-socios/backend test`, `pnpm --filter @club-socios/backend typecheck`, `pnpm --filter @club-socios/frontend test`, `pnpm --filter @club-socios/frontend typecheck`.
@@ -62,6 +69,8 @@ Strategy: `single-pr`, because the user wants all work on `manu`. Forecast about
 - 2026-11-01: browser check with synthetic data as `demo@club.test`: reactivating and deactivating member 0007 through the API produced two entries at `/auditoria` with the actor snapshot, and `backend/data/audit.json` held neither the reason nor the DNI. Records appear as a raw id. One frontend test failed once under load and passed alone and on a full rerun; not investigated.
 
 - 2026-11-01: T2 `b2d138c`, chosen by the user: one independent read-only review of `backend/src` only, not a native review, so it has no receipt and its 22 test files were not reviewed. No blockers or warnings. Two suggestions for later: a user update or repeat deactivation, and an identical pricing replace, record an entry with nothing changed.
+
+- 2026-11-01: T4 done (failed audit writes counted in memory and shown on the screen; unreadable log has its own message).
 
 ## Next step
 The user decides on push and the PR from `manu` to `main`. Tell Joako first.

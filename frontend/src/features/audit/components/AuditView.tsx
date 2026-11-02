@@ -1,6 +1,6 @@
 import { roleLabel } from '../../users/utils/user-format';
 import { useAuditLog } from '../hooks/useAuditLog';
-import { actionLabel, changedFieldsLabel, entityLabel, formatInstant } from '../utils/audit-format';
+import { actionLabel, changedFieldsLabel, entityLabel, failedWritesMessage, formatInstant } from '../utils/audit-format';
 
 /** Container of the audit log (RF-27): who did what and when, newest first. Read-only. */
 export function AuditView() {
@@ -20,9 +20,14 @@ export function AuditView() {
     );
   }
 
-  const { entries } = state;
+  const { entries, failedWrites } = state;
   return (
     <section className="card members-page" aria-label="Auditoría">
+      {failedWrites.count > 0 && (
+        <div className="members-page__notice members-page__notice--error" role="alert">
+          <p>{failedWritesMessage(failedWrites)}</p>
+        </div>
+      )}
       <p className="members-page__summary">
         Registro de quién creó, modificó o anuló cada dato y cuándo. No se puede modificar y solo muestra los nombres de los campos cambiados, nunca sus valores.
       </p>
