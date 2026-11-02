@@ -58,6 +58,8 @@ Strategy: `single-pr`, because the user wants all work on `manu`. Forecast about
 - 2026-11-01: T1 done (append-only audit module, `GET /api/audit`, `audit:read`).
 - 2026-11-01: T2 done (every write route records its actor; coverage test over the route table).
 - 2026-11-01: T3 done (read-only Auditoría screen, head secretary only).
+- 2026-11-01: Gentle-AI review, high risk, consent granted per candidate. The whole range and T2 alone stopped with `lens_context_budget_exceeded`, so no T2 review exists yet. T1 `73da947` (lineage `review-5627f979070ab717`) and T3 `bd1e10c` (lineage `review-db0301859ca7df5f`) were reviewed in a temporary detached worktree: both approved and acknowledged. Their non-blocking findings are later work, notably `R4-corrupt-audit-store-silent-loss` and `R4-unbounded-audit-read`.
+- 2026-11-01: browser check with synthetic data as `demo@club.test`: reactivating and deactivating member 0007 through the API produced two entries at `/auditoria` with the actor snapshot, and `backend/data/audit.json` held neither the reason nor the DNI. Records appear as a raw id. One frontend test failed once under load and passed alone and on a full rerun; not investigated.
 
 ## Next step
-T2.
+The user decides how to cover T2, which the native review cannot take.
