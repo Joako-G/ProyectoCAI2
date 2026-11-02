@@ -8,6 +8,7 @@ import {
   paymentsFilePath,
   pricingConfigFilePath,
 } from './config/paths.js';
+import type { AuditLabelSources } from './modules/audit/audit.labels.js';
 import { createAuditService } from './modules/audit/audit.service.js';
 import { createJsonAuditRepository } from './modules/audit/json-audit.repository.js';
 import { UserRepository, defaultUsersFilePath } from './modules/users/user.repository.js';
@@ -34,9 +35,18 @@ import { toIsoDate } from './shared/date.js';
 const port = Number(process.env.PORT ?? 3001);
 // The audit log snapshots each actor's name and role from the users repository, which the app shares.
 const userRepository = new UserRepository(defaultUsersFilePath);
+// Display labels are read when the log is read, from the services built below; the thunks run later, never here.
+const auditLabels: AuditLabelSources = {
+  members: async () => memberService.list(),
+  disciplines: async () => disciplineService.list(),
+  users: async () => userRepository.list(),
+  payments: async () => paymentRepository.list(),
+  cashCounts: async () => cashCountRepository.list(),
+};
 const auditService = createAuditService({
   repository: createJsonAuditRepository(auditFilePath()),
   actors: { find: (id) => userRepository.list().find((user) => user.id === id) },
+  labels: auditLabels,
 });
 const disciplineService = createDisciplineService({
   repository: createJsonDisciplineRepository(disciplinesFilePath()),
@@ -78,8 +88,9 @@ const reportService = createReportService({
   members: memberService,
   disciplines: disciplineService,
 });
+const cashCountRepository = createJsonCashCountRepository(cashCountsFilePath());
 const cashCountService = createCashCountService({
-  repository: createJsonCashCountRepository(cashCountsFilePath()),
+  repository: cashCountRepository,
   revenue: reportService,
   audit: auditService,
 });

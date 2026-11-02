@@ -1,6 +1,6 @@
 import { NETWORK_ERROR_MESSAGE } from '../../disciplines/hooks/useDisciplinesList';
 import { ApiError } from '../../members/services/members-api';
-import type { AuditEntry, AuditFailedWrites } from '../types/audit';
+import type { AuditFailedWrites } from '../types/audit';
 
 // The club's time zone; mirrors CLUB_TIME_ZONE in backend/src/config/club.ts.
 const CLUB_TIME_ZONE = 'America/Argentina/Tucuman';
@@ -33,26 +33,6 @@ const actionLabels: Record<string, string> = {
 };
 
 export const actionLabel = (action: string) => actionLabels[action] ?? action;
-
-const entityLabels: Record<string, string> = {
-  member: 'Socio',
-  discipline: 'Disciplina',
-  user: 'Usuario',
-  tariff: 'Tarifa desde',
-  payment: 'Pago',
-  cash_count: 'Arqueo',
-};
-
-// The club has one of each, so the id adds nothing and only the name is shown.
-const singletonLabels: Record<string, string> = {
-  surcharge_tiers: 'Recargos por pago tardío',
-  proration_rule: 'Prorrateo',
-};
-
-/** What was touched: the kind of record and its id; for a tariff, the month it starts. */
-export function entityLabel({ entityType, entityId }: Pick<AuditEntry, 'entityType' | 'entityId'>): string {
-  return singletonLabels[entityType] ?? `${entityLabels[entityType] ?? entityType} ${entityId}`;
-}
 
 const fieldLabels: Record<string, string> = {
   firstName: 'Nombre',

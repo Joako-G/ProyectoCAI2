@@ -50,8 +50,10 @@ Strategy: `single-pr`, because the user wants all work on `manu`. Forecast about
   - `GET /api/audit` now answers `{ entries, failedWrites: { count, lastFailedAt } }` (was a bare array). A corrupt or unreadable file still fails with 500, now with the code `audit_unreadable` and a fixed message that names no path.
   - The Auditoría screen shows a warning banner with the count and last time when writes failed, and a specific Spanish message for the unreadable log, distinct from the network error.
   - Evidence: RED backend `vitest run tests/audit` -> 6 failed, "throwing.failures is not a function" and the API tests expecting the new body; RED frontend `vitest run src/features/audit` -> 9 failed, "TypeError: entries.map is not a function" (the screen received the new body shape). GREEN: tests/audit 55 passed; frontend audit and routing tests 25 passed. REFACTOR: none needed.
-- [ ] T5 — Readable records. Route: same writer.
+- [x] T5 — Readable records. Route: same writer.
   - Resolve display labels at read time only, through injected ports read once per request; stored entries keep the entity id and no personal data is added. Members show their member number, disciplines their name, users their name, payments their receipt number, cash closes their date; a tariff already carries its period as its id; singletons keep their fixed label. No member names or DNI. An unresolvable record falls back to a short readable form and never fails the list.
+  - `GET /api/audit` entries gain `entityLabel` (for example "Socio 0007", "Disciplina Fútbol", "Usuario Ana Gómez", "Pago N.º 12", "Arqueo del 01/11/2026"). `audit.labels.ts` owns the Spanish text and the ports (`AuditLabelSources`); `server.ts` wires them to the member, discipline, user, payment and cash-close lists, returning only the id and the one field a label needs. A source is read only when an entry of its type is listed, once per request. A source that fails logs a short message and its entries show the fallback, for example "Socio ea722372…". The frontend shows the label and no longer builds one from the id.
+  - Evidence: RED backend `vitest run tests/audit` -> 8 failed, "expected undefined to be 'Socio 0007'"; RED frontend `vitest run src/features/audit` -> 1 failed, the row did not show the server label. GREEN: tests/audit 62 passed; frontend audit and routing tests 24 passed. REFACTOR: removed the frontend `entityLabel` helper and its maps. The log file is unchanged: a test asserts the stored entry has no label and no member number, name or DNI.
 
 ## Checks
 - `pnpm --filter @club-socios/backend test`, `pnpm --filter @club-socios/backend typecheck`, `pnpm --filter @club-socios/frontend test`, `pnpm --filter @club-socios/frontend typecheck`.
@@ -71,6 +73,7 @@ Strategy: `single-pr`, because the user wants all work on `manu`. Forecast about
 - 2026-11-01: T2 `b2d138c`, chosen by the user: one independent read-only review of `backend/src` only, not a native review, so it has no receipt and its 22 test files were not reviewed. No blockers or warnings. Two suggestions for later: a user update or repeat deactivation, and an identical pricing replace, record an entry with nothing changed.
 
 - 2026-11-01: T4 done (failed audit writes counted in memory and shown on the screen; unreadable log has its own message).
+- 2026-11-01: T5 done (records show a readable label resolved at read time; the stored log is unchanged).
 
 ## Next step
 The user decides on push and the PR from `manu` to `main`. Tell Joako first.

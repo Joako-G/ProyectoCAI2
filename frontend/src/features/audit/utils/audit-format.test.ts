@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../../members/services/members-api';
-import { buildEntry } from '../test/fixtures';
-import { actionLabel, changedFieldsLabel, describeLoadError, entityLabel, formatInstant } from './audit-format';
+import { actionLabel, changedFieldsLabel, describeLoadError, formatInstant } from './audit-format';
 
 describe('audit-format', () => {
   it('writes the instant in the club time zone as day/month/year and 24-hour time', () => {
@@ -15,13 +14,6 @@ describe('audit-format', () => {
     expect(['create', 'update', 'deactivate', 'reactivate', 'delete', 'annul', 'close'].map(actionLabel)).toEqual([
       'Alta', 'Modificación', 'Baja', 'Reactivación', 'Eliminación', 'Anulación', 'Cierre',
     ]);
-  });
-
-  it('names the record by its kind and id, and a tariff by the month it starts', () => {
-    expect(entityLabel(buildEntry({ entityType: 'member', entityId: 'member-1' }))).toBe('Socio member-1');
-    expect(entityLabel(buildEntry({ entityType: 'tariff', entityId: '2027-03' }))).toBe('Tarifa desde 2027-03');
-    expect(entityLabel(buildEntry({ entityType: 'cash_count', entityId: 'c1' }))).toBe('Arqueo c1');
-    expect(entityLabel(buildEntry({ entityType: 'surcharge_tiers', entityId: 'surcharge_tiers' }))).toBe('Recargos por pago tardío');
   });
 
   it('lists changed fields with friendly names, keeps unknown ones as they are and shows a dash for none', () => {

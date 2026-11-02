@@ -33,6 +33,8 @@ export interface AuditEntry {
   action: AuditAction;
   entityType: AuditEntityType;
   entityId: string;
+  /** A readable name for the record, resolved by the server when the log is read; never stored. */
+  entityLabel: string;
   /** Names of the fields an update changed; never their values. */
   changedFields: string[];
 }

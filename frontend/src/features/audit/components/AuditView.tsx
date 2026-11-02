@@ -1,6 +1,6 @@
 import { roleLabel } from '../../users/utils/user-format';
 import { useAuditLog } from '../hooks/useAuditLog';
-import { actionLabel, changedFieldsLabel, entityLabel, failedWritesMessage, formatInstant } from '../utils/audit-format';
+import { actionLabel, changedFieldsLabel, failedWritesMessage, formatInstant } from '../utils/audit-format';
 
 /** Container of the audit log (RF-27): who did what and when, newest first. Read-only. */
 export function AuditView() {
@@ -49,7 +49,7 @@ export function AuditView() {
                 <td>{entry.actor.name}</td>
                 <td>{roleLabel(entry.actor.role)}</td>
                 <td>{actionLabel(entry.action)}</td>
-                <td>{entityLabel(entry)}</td>
+                <td>{entry.entityLabel}</td>
                 <td>{changedFieldsLabel(entry.changedFields)}</td>
               </tr>
             ))}

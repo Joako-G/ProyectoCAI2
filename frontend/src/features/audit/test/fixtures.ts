@@ -8,6 +8,7 @@ export function buildEntry(overrides: Partial<AuditEntry> = {}): AuditEntry {
     action: 'update',
     entityType: 'member',
     entityId: 'member-1',
+    entityLabel: 'Socio 0007',
     changedFields: ['category', 'whatsapp'],
     ...overrides,
   };

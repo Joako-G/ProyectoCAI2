@@ -2,6 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createAuditService, type AuditActorDirectory, type AuditRecorder } from '../../src/modules/audit/audit.service.js';
+import type { AuditLabelSources } from '../../src/modules/audit/audit.labels.js';
 import { createJsonAuditRepository } from '../../src/modules/audit/json-audit.repository.js';
 
 /** A recorder for tests that do not care about the audit log. */
@@ -16,7 +17,7 @@ export const actors: AuditActorDirectory = {
 };
 
 /** The real audit service over a temporary file, with a fixed clock and predictable ids. */
-export async function createTestContext(options: { now?: () => Date } = {}) {
+export async function createTestContext(options: { now?: () => Date; labels?: AuditLabelSources } = {}) {
   const dir = await mkdtemp(join(tmpdir(), 'audit-'));
   const file = join(dir, 'audit.json');
   const repository = createJsonAuditRepository(file);
@@ -24,6 +25,7 @@ export async function createTestContext(options: { now?: () => Date } = {}) {
   const service = createAuditService({
     repository,
     actors,
+    labels: options.labels,
     now: options.now ?? (() => new Date('2026-11-01T15:00:00Z')),
     newId: () => `entry-${++sequence}`,
   });

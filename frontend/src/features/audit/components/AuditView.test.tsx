@@ -17,7 +17,7 @@ function stubEntries(entries: AuditEntry[], failedWrites: AuditFailedWrites = { 
 describe('AuditView', () => {
   it('shows a loading message, then the entries newest first with date, user, role, action, record and fields', async () => {
     const fetchMock = stubEntries([
-      buildEntry({ id: 'e2', action: 'annul', entityType: 'payment', entityId: 'pay-9', changedFields: [], at: '2026-11-01T16:00:00.000Z' }),
+      buildEntry({ id: 'e2', action: 'annul', entityType: 'payment', entityId: 'pay-9', entityLabel: 'Pago N.º 12', changedFields: [], at: '2026-11-01T16:00:00.000Z' }),
       buildEntry({ id: 'e1' }),
     ]);
     render(<AuditView />);
@@ -30,10 +30,10 @@ describe('AuditView', () => {
     expect(rows[0]).toHaveTextContent('Ana Prueba');
     expect(rows[0]).toHaveTextContent('Jefa de secretaría');
     expect(rows[0]).toHaveTextContent('Anulación');
-    expect(rows[0]).toHaveTextContent('Pago pay-9');
+    expect(rows[0]).toHaveTextContent('Pago N.º 12');
     expect(rows[0]).toHaveTextContent('—');
     expect(rows[1]).toHaveTextContent('Modificación');
-    expect(rows[1]).toHaveTextContent('Socio member-1');
+    expect(rows[1]).toHaveTextContent('Socio 0007');
     expect(rows[1]).toHaveTextContent('Categoría, WhatsApp');
     expect(fetchMock).toHaveBeenCalledWith('/api/audit', expect.anything());
   });

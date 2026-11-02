@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { resolveEntityLabels, type AuditLabelSources } from './audit.labels.js';
 import type { AuditRepository } from './audit.repository.js';
 import type { AuditActor, AuditEntry, AuditRecordInput } from './audit.types.js';
 
@@ -18,6 +19,8 @@ export interface AuditActorDirectory {
 export interface AuditServiceDeps {
   repository: AuditRepository;
   actors: AuditActorDirectory;
+  /** Without sources every label is the short fallback. */
+  labels?: AuditLabelSources;
   now?: () => Date;
   newId?: () => string;
 }
@@ -29,7 +32,10 @@ export interface AuditFailures {
   lastFailedAt: string | null;
 }
 
-export function createAuditService({ repository, actors, now = () => new Date(), newId = randomUUID }: AuditServiceDeps) {
+/** An entry as the API shows it: the stored fields plus a readable name for the record, never stored. */
+export type AuditEntryView = AuditEntry & { entityLabel: string };
+
+export function createAuditService({ repository, actors, labels, now = () => new Date(), newId = randomUUID }: AuditServiceDeps) {
   // Kept in memory only: it resets when the server restarts, so it says "since the last start", not "ever".
   // The operator still has the console log for older failures.
   let failureCount = 0;
@@ -71,8 +77,10 @@ export function createAuditService({ repository, actors, now = () => new Date(),
     },
 
     // Newest first. Entries are appended in time order, so reversing keeps same-instant entries newest first too.
-    async list(): Promise<AuditEntry[]> {
-      return (await repository.list()).reverse();
+    async list(): Promise<AuditEntryView[]> {
+      const entries = (await repository.list()).reverse();
+      const entityLabels = await resolveEntityLabels(entries, labels);
+      return entries.map((entry, index) => ({ ...entry, entityLabel: entityLabels[index]! }));
     },
   };
 }

@@ -27,6 +27,7 @@ describe('audit service', () => {
         action: 'update',
         entityType: 'member',
         entityId: 'm1',
+        entityLabel: 'Socio m1',
         changedFields: ['category', 'whatsapp'],
       },
     ]);
