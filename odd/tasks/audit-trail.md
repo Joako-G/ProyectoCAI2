@@ -42,7 +42,7 @@ Strategy: `single-pr`, because the user wants all work on `manu`. Forecast about
 - [x] T2 — Record every write. Route: same writer.
   - Routers pass the actor; services record after a successful change: members, disciplines, pricing, users, payments, cash closes.
   - Acceptance: each state-changing route in `route-matrix.test.ts` produces exactly one entry on success and none on failure; a failing audit write leaves the change in place and logs an error; a shared test fails if a write route has no audit coverage; no forbidden data appears in the store.
-- [ ] T3 — Frontend "Auditoría" section. Route: same writer.
+- [x] T3 — Frontend "Auditoría" section. Route: same writer.
   - `Capability` union, `sections.ts`, `App.tsx`, `frontend/src/features/audit`.
   - Acceptance: visible to the head secretary only; loading, error with retry, and empty states; newest-first table with date, user, role, action, record and changed fields; read-only.
 
@@ -57,6 +57,7 @@ Strategy: `single-pr`, because the user wants all work on `manu`. Forecast about
 - 2026-11-01: requirements and code mapped; this document created.
 - 2026-11-01: T1 done (append-only audit module, `GET /api/audit`, `audit:read`).
 - 2026-11-01: T2 done (every write route records its actor; coverage test over the route table).
+- 2026-11-01: T3 done (read-only Auditoría screen, head secretary only).
 
 ## Next step
 T2.

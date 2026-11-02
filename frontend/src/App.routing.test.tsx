@@ -88,6 +88,29 @@ describe('URL routing', () => {
     expect(fetch).not.toHaveBeenCalledWith('/api/notices/debt', expect.anything());
   });
 
+  it('opens Auditoría at /auditoria for a user who may read the audit log and lists it in the sidebar', async () => {
+    const user = { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' };
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (input === '/auth/me') return json({ user, capabilities: ['members:read', 'audit:read'] });
+      if (input === '/api/audit') return json([]);
+      return json([]);
+    }));
+    renderApp('/auditoria');
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Auditoría' })).toBeInTheDocument();
+    expect(await screen.findByText('Todavía no hay operaciones registradas.')).toBeInTheDocument();
+    expect(within(screen.getByRole('navigation', { name: 'Navegación principal' })).getByRole('link', { name: /Auditoría/ })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('shows a forbidden page for /auditoria, without loading the log, when audit:read is missing', async () => {
+    stubSession('secretary', SECRETARY);
+    renderApp('/auditoria');
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Sin acceso' })).toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalledWith('/api/audit', expect.anything());
+    expect(within(screen.getByRole('navigation', { name: 'Navegación principal' })).queryByRole('link', { name: /Auditoría/ })).not.toBeInTheDocument();
+  });
+
   it('shows a not-found page for an unknown URL, keeping the shell', async () => {
     stubSession('head_secretary', HEAD);
     renderApp('/no-existe');

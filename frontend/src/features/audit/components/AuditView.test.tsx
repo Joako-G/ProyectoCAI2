@@ -1,0 +1,84 @@
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { jsonResponse } from '../../members/test/fixtures';
+import { buildEntry } from '../test/fixtures';
+import type { AuditEntry } from '../types/audit';
+import { AuditView } from './AuditView';
+
+afterEach(() => vi.unstubAllGlobals());
+
+function stubEntries(entries: AuditEntry[]) {
+  const fetchMock = vi.fn(async () => jsonResponse(entries));
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
+describe('AuditView', () => {
+  it('shows a loading message, then the entries newest first with date, user, role, action, record and fields', async () => {
+    const fetchMock = stubEntries([
+      buildEntry({ id: 'e2', action: 'annul', entityType: 'payment', entityId: 'pay-9', changedFields: [], at: '2026-11-01T16:00:00.000Z' }),
+      buildEntry({ id: 'e1' }),
+    ]);
+    render(<AuditView />);
+
+    expect(screen.getByRole('status')).toHaveTextContent('Cargando la auditoría');
+    const table = await screen.findByRole('table', { name: 'Registro de auditoría' });
+    const rows = within(table).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent('01/11/2026 13:00');
+    expect(rows[0]).toHaveTextContent('Ana Prueba');
+    expect(rows[0]).toHaveTextContent('Jefa de secretaría');
+    expect(rows[0]).toHaveTextContent('Anulación');
+    expect(rows[0]).toHaveTextContent('Pago pay-9');
+    expect(rows[0]).toHaveTextContent('—');
+    expect(rows[1]).toHaveTextContent('Modificación');
+    expect(rows[1]).toHaveTextContent('Socio member-1');
+    expect(rows[1]).toHaveTextContent('Categoría, WhatsApp');
+    expect(fetchMock).toHaveBeenCalledWith('/api/audit', expect.anything());
+  });
+
+  it('is read-only: it offers no button or form to change the log', async () => {
+    stubEntries([buildEntry()]);
+    render(<AuditView />);
+
+    await screen.findByRole('table');
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  it('shows an empty state when nothing was recorded yet', async () => {
+    stubEntries([]);
+    render(<AuditView />);
+
+    expect(await screen.findByText('Todavía no hay operaciones registradas.')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('shows an error with a retry that loads the log again', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ error: 'internal_error', message: 'boom' }, 500))
+      .mockResolvedValueOnce(jsonResponse([buildEntry()]));
+    vi.stubGlobal('fetch', fetchMock);
+    const user = userEvent.setup();
+    render(<AuditView />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo cargar la auditoría');
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByRole('table', { name: 'Registro de auditoría' })).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('explains a missing permission and a lost connection', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ error: 'forbidden', message: 'Forbidden' }, 403)));
+    const { unmount } = render(<AuditView />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('No tiene permiso para ver la auditoría.');
+    unmount();
+
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('network'); }));
+    render(<AuditView />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo conectar con el servidor.');
+  });
+});

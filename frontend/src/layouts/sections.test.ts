@@ -42,6 +42,13 @@ describe('sectionsFor', () => {
     expect(sectionsFor(userWith(['roster:read']))).not.toContain('notices');
   });
 
+  it('gives the audit section to audit:read holders only, last in the navigation', () => {
+    expect(sectionsFor(userWith(['members:read', 'audit:read']))).toEqual(['members', 'audit']);
+    expect(sectionsFor(userWith(['users:manage', 'config:read', 'audit:read']))).toEqual(['users', 'pricing', 'audit']);
+    expect(sectionsFor(userWith(['members:read', 'users:manage']))).not.toContain('audit');
+    expect(sectionsFor(userWith(['roster:read']))).not.toContain('audit');
+  });
+
   it('is empty for a user without capabilities', () => {
     expect(sectionsFor(userWith([]))).toEqual([]);
   });

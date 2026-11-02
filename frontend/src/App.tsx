@@ -4,6 +4,7 @@ import { LoginScreen } from './features/auth/components/LoginScreen';
 import { useSession } from './features/auth/hooks/useSession';
 import type { AuthUser } from './features/auth/types/auth';
 import { can } from './features/auth/utils/can';
+import { AuditView } from './features/audit/components/AuditView';
 import { ArqueoView } from './features/cashcount/components/ArqueoView';
 import { DisciplinesView } from './features/disciplines/components/DisciplinesView';
 import { EnrollmentScreen } from './features/enrollment/components/EnrollmentScreen';
@@ -32,6 +33,7 @@ function pageFor(section: Section, user: AuthUser) {
     case 'reports': return <ReportsView issuedBy={user.name} canReadCashCount={can(user, 'cashcount:run')} />;
     case 'roster': return <RosterView />;
     case 'pricing': return <PricingView canWrite={can(user, 'config:manage')} />;
+    case 'audit': return <AuditView />;
     case 'users': return <UsersView currentUserId={user.id} />;
   }
 }

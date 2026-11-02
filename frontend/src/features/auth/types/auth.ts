@@ -14,7 +14,8 @@ export type Capability =
   | 'cashcount:run'
   | 'reports:read'
   | 'config:read'
-  | 'config:manage';
+  | 'config:manage'
+  | 'audit:read';
 
 /** The signed-in account as returned by `POST /auth/login`, with the capabilities of its role. */
 export interface AuthUser {
