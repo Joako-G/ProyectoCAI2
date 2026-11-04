@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import {
   auditFilePath,
+  backupDirectory,
   cashCountsFilePath,
   disciplinesFilePath,
   membershipsFilePath,
@@ -10,6 +11,9 @@ import {
 } from './config/paths.js';
 import type { AuditLabelSources } from './modules/audit/audit.labels.js';
 import { createAuditService } from './modules/audit/audit.service.js';
+import { startBackupScheduler } from './modules/backup/backup.scheduler.js';
+import { createBackupService } from './modules/backup/backup.service.js';
+import { backupSources } from './modules/backup/backup.sources.js';
 import { createJsonAuditRepository } from './modules/audit/json-audit.repository.js';
 import { UserRepository, defaultUsersFilePath } from './modules/users/user.repository.js';
 import { createJsonPricingConfigRepository } from './modules/payments/json-pricing-config.repository.js';
@@ -102,7 +106,15 @@ const noticeService = createNoticeService({
   pricing: pricingConfigService,
   sender: createWaMeSender(),
 });
-const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, auditService, userRepository });
+// The daily backup copies the data files to BACKUP_DIR (an external drive, or backend/backups); see docs/backup-restore.md.
+const backup = backupDirectory();
+const backupService = createBackupService({
+  sources: backupSources(),
+  destination: backup.path,
+  isDefaultDestination: backup.isDefault,
+  audit: auditService,
+});
+const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, auditService, backupService, userRepository });
 
 bootstrap({
   memberService,
@@ -111,6 +123,8 @@ bootstrap({
   listen: () => {
     app.listen(port, () => {
       console.log(`Server listening on port ${port}`);
+      // Checks now and then every hour; a copy is made when the last good one is a day old.
+      startBackupScheduler({ service: backupService });
     });
   },
   log: (message, error) => console.error(message, error),

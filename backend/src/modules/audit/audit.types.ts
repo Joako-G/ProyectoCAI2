@@ -10,6 +10,7 @@ export const AUDIT_ENTITY_TYPES = [
   'proration_rule',
   'payment',
   'cash_count',
+  'backup',
 ] as const;
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
 

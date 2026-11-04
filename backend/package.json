@@ -7,7 +7,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
     "start": "node dist/server.js",
     "seed": "tsc -p tsconfig.json && node dist/scripts/seed.js",
-    "test": "pnpm run build && node --test tests/auth.test.mjs tests/users.test.mjs && vitest run tests/config tests/json-store.test.ts tests/members tests/disciplines tests/memberships tests/payments tests/cashcount tests/authorization tests/user-roles tests/roster tests/notices tests/reports tests/shared tests/scripts tests/audit"
+    "test": "pnpm run build && node --test tests/auth.test.mjs tests/users.test.mjs && vitest run tests/config tests/json-store.test.ts tests/members tests/disciplines tests/memberships tests/payments tests/cashcount tests/authorization tests/user-roles tests/roster tests/notices tests/reports tests/shared tests/scripts tests/audit tests/backup"
   },
   "dependencies": {
     "cors": "2.8.5",

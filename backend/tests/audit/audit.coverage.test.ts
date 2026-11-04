@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -8,6 +8,7 @@ import { createApp } from '../../src/app.js';
 import type { AuditRepository } from '../../src/modules/audit/audit.repository.js';
 import { createAuditService } from '../../src/modules/audit/audit.service.js';
 import type { AuditEntry } from '../../src/modules/audit/audit.types.js';
+import { createBackupService } from '../../src/modules/backup/backup.service.js';
 import { createJsonAuditRepository } from '../../src/modules/audit/json-audit.repository.js';
 import { createCashCountService } from '../../src/modules/cashcount/cashcount.service.js';
 import { createJsonCashCountRepository } from '../../src/modules/cashcount/json-cashcount.repository.js';
@@ -204,6 +205,10 @@ const scenarios: Record<string, (api: Api) => Promise<Prepared>> = {
     send: () => api.call('POST', '/api/cashcount', { countedCash: 0, varianceNote: 'Faltó vuelto' }),
     expected: (response) => ({ action: 'close', entityType: 'cash_count', entityId: response.body.id!, changedFields: [] }),
   }),
+  'POST /api/backups': async (api) => ({
+    send: () => api.call('POST', '/api/backups'),
+    expected: (response) => ({ action: 'create', entityType: 'backup', entityId: response.body.name as string, changedFields: [] }),
+  }),
 };
 
 const servers: Server[] = [];
@@ -242,6 +247,15 @@ async function startApp(failingAudit = false) {
   const paymentService = createPaymentService({ repository: paymentRepository, members: memberService, memberships: membershipService, pricing: pricingConfigService, audit: auditService, now });
   const reportService = createReportService({ income: createPaymentIncomeSource(paymentRepository), members: memberService, disciplines: disciplineService });
   const cashCountService = createCashCountService({ repository: createJsonCashCountRepository(join(dir, 'cashcounts.json')), revenue: reportService, audit: auditService, now });
+  // One real source file; the clock is fixed, so a second copy in the same second is refused.
+  await writeFile(join(dir, 'sample.json'), '[]');
+  const backupService = createBackupService({
+    sources: [{ name: 'sample.json', path: join(dir, 'sample.json') }],
+    destination: join(dir, 'backups'),
+    isDefaultDestination: false,
+    audit: auditService,
+    now,
+  });
   const server = createApp({
     storePath: users.storePath,
     userRepository,
@@ -252,6 +266,7 @@ async function startApp(failingAudit = false) {
     paymentService,
     reportService,
     cashCountService,
+    backupService,
     auditService,
   }).listen(0);
   servers.push(server);

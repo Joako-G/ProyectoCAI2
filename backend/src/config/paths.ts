@@ -12,6 +12,16 @@ function dataFilePath(env: NodeJS.ProcessEnv, variable: string, defaultName: str
   return isAbsolute(configured) ? configured : resolve(process.cwd(), configured);
 }
 
+const DEFAULT_BACKUP_DIR = resolve(BACKEND_DIR, 'backups');
+
+/** Where the dated backup folders go: BACKUP_DIR, for example an external drive, or backend/backups. */
+export function backupDirectory(env: NodeJS.ProcessEnv = process.env): { path: string; isDefault: boolean } {
+  const configured = env.BACKUP_DIR;
+  if (!configured) return { path: DEFAULT_BACKUP_DIR, isDefault: true };
+  const path = isAbsolute(configured) ? configured : resolve(process.cwd(), configured);
+  return { path, isDefault: path === DEFAULT_BACKUP_DIR };
+}
+
 export function membersFilePath(env: NodeJS.ProcessEnv = process.env): string {
   return dataFilePath(env, 'MEMBERS_FILE', 'members.json');
 }

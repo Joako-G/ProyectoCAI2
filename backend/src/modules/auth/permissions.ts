@@ -24,6 +24,8 @@ export const permissions = {
   'config:manage': ['head_secretary'],
   // The audit log (RF-27) is the head secretary's alone.
   'audit:read': ['head_secretary'],
+  // The daily backup (RNF-03): see when the last copy ran and make one now. Provisional: the club has yet to confirm who may.
+  'backup:run': ['head_secretary'],
 } as const satisfies Record<string, readonly Role[]>;
 
 export type Capability = keyof typeof permissions;

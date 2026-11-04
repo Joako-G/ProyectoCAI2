@@ -49,6 +49,12 @@ describe('audit labels', () => {
     for (const source of Object.values(all)) expect(source).not.toHaveBeenCalled();
   });
 
+  it('names a backup by the day it was made, read from its folder name without any source', async () => {
+    const { service } = await setup(sources());
+    expect(await labelOf(service, 'backup', 'backup-20261104T150000Z')).toBe('Respaldo del 04/11/2026');
+    expect(await labelOf(service, 'backup', 'something-else')).toBe('Respaldo somethin…');
+  });
+
   it('reads each source once per request, however many entries there are, and skips sources it does not need', async () => {
     const all = sources();
     const { service } = await setup(all);

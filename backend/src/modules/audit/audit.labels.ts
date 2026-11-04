@@ -1,3 +1,5 @@
+import { toIsoDate } from '../../shared/date.js';
+import { copyFolderInstant } from '../backup/backup.naming.js';
 import type { AuditEntityType, AuditEntry } from './audit.types.js';
 
 /**
@@ -25,6 +27,7 @@ const kindLabels: Record<AuditEntityType, string> = {
   proration_rule: 'Prorrateo',
   payment: 'Pago',
   cash_count: 'Arqueo',
+  backup: 'Respaldo',
 };
 
 // A club has one of each, so the id adds nothing and only the fixed name is shown.
@@ -73,6 +76,11 @@ export async function resolveEntityLabels(entries: readonly AuditEntry[], source
   return entries.map(({ entityType, entityId }) => {
     if (singletons.has(entityType)) return kindLabels[entityType];
     if (entityType === 'tariff') return `${kindLabels.tariff} ${entityId}`;
+    if (entityType === 'backup') {
+      // The id is the copy's folder name, which carries its date.
+      const madeAt = copyFolderInstant(entityId);
+      if (madeAt) return `${kindLabels.backup} del ${dayMonthYear(toIsoDate(madeAt))}`;
+    }
     if (isLookup(entityType)) {
       const value = names.get(entityType)?.get(entityId);
       if (value !== undefined) return lookups[entityType].text(value);

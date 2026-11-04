@@ -7,6 +7,8 @@ import { discardAudit, type AuditService } from './modules/audit/audit.service.j
 import { createAuthRouter } from './modules/auth/auth.routes.js';
 import { createAuthService } from './modules/auth/auth.service.js';
 import { createAuthenticator, createSessionStore } from './modules/auth/auth.session.js';
+import { createBackupRouter } from './modules/backup/backup.routes.js';
+import type { BackupService } from './modules/backup/backup.service.js';
 import { createCashCountRouter } from './modules/cashcount/cashcount.routes.js';
 import type { CashCountService } from './modules/cashcount/cashcount.service.js';
 import { createDisciplinesRouter } from './modules/disciplines/discipline.routes.js';
@@ -42,6 +44,7 @@ export interface AppDependencies {
   rosterService?: RosterService;
   noticeService?: Pick<NoticeService, 'debtNotices'>;
   auditService?: AuditService;
+  backupService?: Pick<BackupService, 'status' | 'run'>;
   // Lets the process share one users repository with the audit log, which reads actor names from it.
   userRepository?: UserRepository;
   storePath?: string;
@@ -108,6 +111,10 @@ if (options.noticeService) {
 if (options.auditService) {
   // Read-only: audit:read for every request, and the router has no write route.
   app.use('/api/audit', requireCapability(authenticate, 'audit:read'), createAuditRouter(options.auditService));
+}
+if (options.backupService) {
+  // The head secretary's alone: GET reads the status and POST makes a copy now, so one capability guards both.
+  app.use('/api/backups', requireCapability(authenticate, 'backup:run'), createBackupRouter(options.backupService, authenticate));
 }
 app.use('/api', apiNotFound);
 app.use(errorHandler);

@@ -6,7 +6,7 @@ describe('permission policy', () => {
   const allowed = (capability: Capability) => [...permissions[capability]].sort();
 
   it('lets only the head secretary manage users, configuration, annulments, cash counts, discipline writes and the audit log', () => {
-    for (const capability of ['users:manage', 'config:manage', 'payments:annul', 'cashcount:run', 'disciplines:write', 'audit:read'] as const) {
+    for (const capability of ['users:manage', 'config:manage', 'payments:annul', 'cashcount:run', 'disciplines:write', 'audit:read', 'backup:run'] as const) {
       expect(allowed(capability)).toEqual(['head_secretary']);
     }
   });

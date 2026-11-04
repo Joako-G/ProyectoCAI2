@@ -9,3 +9,4 @@ backend/data/users.json
 backend/data/*
 !backend/data/members.seed.json
 !backend/data/disciplines.seed.json
+backend/backups/

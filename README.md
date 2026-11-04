@@ -15,6 +15,10 @@ pnpm --filter @club-socios/frontend dev
 
 In another terminal, run `pnpm --filter @club-socios/backend start` after building (`backend/src/server.ts` compiles to `backend/dist/server.js`). The frontend uses Vite's local address; the backend listens on port 3001 by default. Check `http://localhost:3001/health` for `{"status":"ok"}`. To change the backend port, set the `PORT` environment variable; `backend/.env.example` documents the default but is not loaded automatically. The root and frontend `.env.example` files are empty placeholders; no credentials are required.
 
+## Backups
+
+While the backend runs it copies every data file once a day to `backend/backups`, or to the folder in `BACKUP_DIR` (for example an external drive), and keeps the last 30 copies. The head secretary sees the last copy in the Respaldo section. To restore a copy, follow `docs/backup-restore.md`.
+
 ## Members API (demo)
 
 Members are stored in a JSON file (`backend/data/members.json`, or the path in `MEMBERS_FILE`). This is demo-only persistence: no real data, no concurrent use. Removal is logical, so there is no delete endpoint.
