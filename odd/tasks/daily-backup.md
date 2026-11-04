@@ -107,5 +107,7 @@ Work on `manu` (user preference). Forecast is about 700 authored lines in two wo
   - REFACTOR: none beyond `readDestination` replacing `listCopies`, shared by status and retention.
   - Note: one full frontend run failed `App.navigation.test.tsx > role-based navigation > shows the head secretary the three sections, numbered 01 to 03, and opens Socios first` (cannot find the Socios heading under load); it passed alone and on the full rerun.
 
+- 2026-11-04: Gentle-AI review of T3 `cca848b` (lineage `review-8d8646a838d35337`, 16 files, 353 lines, medium risk, consent granted): approved and acknowledged; one suggestion, `R3-keeprecent-zero-keeps-all`. Browser: `/respaldo` shows the new retention text with the default folder. The missing-drive and unreadable states are covered by tests only.
+
 ## Next step
-The user decides on push. Open: the two audit-failure warnings from the review.
+The user decides on push. Open: the two audit-failure warnings from the first review.
