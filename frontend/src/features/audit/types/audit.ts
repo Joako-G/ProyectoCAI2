@@ -8,7 +8,8 @@ export type AuditEntityType =
   | 'surcharge_tiers'
   | 'proration_rule'
   | 'payment'
-  | 'cash_count';
+  | 'cash_count'
+  | 'backup';
 
 /** Audit writes that failed since the server last started; it resets on restart. */
 export interface AuditFailedWrites {
