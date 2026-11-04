@@ -111,6 +111,29 @@ describe('URL routing', () => {
     expect(within(screen.getByRole('navigation', { name: 'Navegación principal' })).queryByRole('link', { name: /Auditoría/ })).not.toBeInTheDocument();
   });
 
+  it('opens Respaldo at /respaldo for the head secretary and lists it in the sidebar', async () => {
+    const user = { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' };
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (input === '/auth/me') return json({ user, capabilities: ['members:read', 'backup:run'] });
+      if (input === '/api/backups') return json({ destination: { isDefault: true }, keep: 30, copies: 0, lastSuccessAt: null, lastFailure: null, running: false });
+      return json([]);
+    }));
+    renderApp('/respaldo');
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Respaldo' })).toBeInTheDocument();
+    expect(await screen.findByText('Todavía no hay ningún respaldo.')).toBeInTheDocument();
+    expect(within(screen.getByRole('navigation', { name: 'Navegación principal' })).getByRole('link', { name: /Respaldo/ })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('shows a forbidden page for /respaldo, without loading the status, when backup:run is missing', async () => {
+    stubSession('secretary', SECRETARY);
+    renderApp('/respaldo');
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Sin acceso' })).toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalledWith('/api/backups', expect.anything());
+    expect(within(screen.getByRole('navigation', { name: 'Navegación principal' })).queryByRole('link', { name: /Respaldo/ })).not.toBeInTheDocument();
+  });
+
   it('shows a not-found page for an unknown URL, keeping the shell', async () => {
     stubSession('head_secretary', HEAD);
     renderApp('/no-existe');

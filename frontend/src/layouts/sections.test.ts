@@ -49,6 +49,12 @@ describe('sectionsFor', () => {
     expect(sectionsFor(userWith(['roster:read']))).not.toContain('audit');
   });
 
+  it('gives the backup section to backup:run holders only, after the audit', () => {
+    expect(sectionsFor(userWith(['members:read', 'audit:read', 'backup:run']))).toEqual(['members', 'audit', 'backup']);
+    expect(sectionsFor(userWith(['members:read', 'users:manage']))).not.toContain('backup');
+    expect(sectionsFor(userWith(['roster:read']))).not.toContain('backup');
+  });
+
   it('is empty for a user without capabilities', () => {
     expect(sectionsFor(userWith([]))).toEqual([]);
   });

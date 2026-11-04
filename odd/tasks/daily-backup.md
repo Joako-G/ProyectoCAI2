@@ -51,7 +51,7 @@ Work on `manu` (user preference). Forecast is about 700 authored lines in two wo
     - The schedule skips a run when the last successful copy is fresh.
     - Secretary and teacher get 403.
     - Status says whether the destination is the default folder.
-- [ ] T2 — Frontend "Respaldo" section. Route: same writer.
+- [x] T2 — Frontend "Respaldo" section. Route: same writer.
   - Shows the last successful copy, the last failure, the destination kind and the number of kept copies, with a "Hacer un respaldo ahora" button.
   - Loading, error with retry, and in-progress states. Visible only to the head secretary.
 
@@ -68,6 +68,12 @@ Work on `manu` (user preference). Forecast is about 700 authored lines in two wo
   - RED: `Error: Cannot find module '../../src/modules/backup/backup.service.js'` (service, scheduler, sources suites and the audit coverage suite); `expected 404 to be 401/403/200/201/409/500` for `/api/backups` in the route matrix and `backup.api.test.ts`; `TypeError: permissions[capability] is not iterable` for `backup:run`; label test failed for the missing `backup` entity type.
   - GREEN: backend tests 56 files, 947 passed; backend and frontend typecheck clean; frontend tests 45 files, 484 passed; `git diff --check origin/manu...HEAD` clean.
   - REFACTOR: moved folder-name parsing into `backup.naming.ts`, shared by the service and the audit label.
+- 2026-11-04: T1 committed as 52b5dc9 `feat(backup): copy the data files daily to a configurable folder`.
+- 2026-11-04: T2 done (same writer). New `frontend/src/features/backup` (types, api, format utils, `useBackups`, `BackupView`), section `backup` at `/respaldo` for `backup:run`, listed after Auditoría. Failure code and server text are never shown; the screen says the last attempt failed and that older copies are kept. A refused second copy (409) says one is already running.
+  - RED: `Failed to resolve import "./BackupView"`; `expected [ 'members', 'audit' ] to deeply equal [ 'members', 'audit', 'backup' ]`; `Unable to find role="heading" and name "Respaldo"` and `"Sin acceso"` for `/respaldo` in the routing tests.
+  - GREEN: frontend 8 related files, 90 passed; full verification recorded in the final report (backend, frontend, typechecks, diff check).
+  - REFACTOR: none needed beyond sharing `formatInstant` from the audit feature.
+- Not done: browser check and restore rehearsal (listed under Checks); no work-unit review ran.
 
 ## Next step
-T2.
+Browser check on the running dev server, then the restore rehearsal on a copy following `docs/backup-restore.md`. Push and PR are the user's decision.

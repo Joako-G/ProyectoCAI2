@@ -1,7 +1,7 @@
 import type { AuthUser, Capability } from '../features/auth/types/auth';
 import { can } from '../features/auth/utils/can';
 
-export type Section = 'members' | 'disciplines' | 'payments' | 'notices' | 'cashcount' | 'reports' | 'users' | 'roster' | 'pricing' | 'audit';
+export type Section = 'members' | 'disciplines' | 'payments' | 'notices' | 'cashcount' | 'reports' | 'users' | 'roster' | 'pricing' | 'audit' | 'backup';
 
 /**
  * Navigation order; each section lives at its own URL and needs one capability to be reachable.
@@ -18,6 +18,7 @@ export const SECTIONS: ReadonlyArray<{ id: Section; label: string; subtitle: str
   { id: 'roster', label: 'Mis disciplinas', subtitle: 'Alumnos actuales y anteriores de sus disciplinas', path: '/mis-disciplinas', capability: 'roster:read' },
   { id: 'pricing', label: 'Precios', subtitle: 'Tarifas, recargos por pago tardío y prorrateo', path: '/precios', capability: 'config:read' },
   { id: 'audit', label: 'Auditoría', subtitle: 'Quién creó, modificó o anuló cada registro y cuándo', path: '/auditoria', capability: 'audit:read' },
+  { id: 'backup', label: 'Respaldo', subtitle: 'Copia diaria de los datos y cuándo fue la última', path: '/respaldo', capability: 'backup:run' },
 ];
 
 /**
