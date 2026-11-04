@@ -73,7 +73,23 @@ Work on `manu` (user preference). Forecast is about 700 authored lines in two wo
   - RED: `Failed to resolve import "./BackupView"`; `expected [ 'members', 'audit' ] to deeply equal [ 'members', 'audit', 'backup' ]`; `Unable to find role="heading" and name "Respaldo"` and `"Sin acceso"` for `/respaldo` in the routing tests.
   - GREEN: frontend 8 related files, 90 passed; full verification recorded in the final report (backend, frontend, typechecks, diff check).
   - REFACTOR: none needed beyond sharing `formatInstant` from the audit feature.
-- Not done: browser check and restore rehearsal (listed under Checks); no work-unit review ran.
+- Parent fix `fde6949`: the frontend audit entity type union now includes `backup`.
+- 2026-11-04: Gentle-AI review of `3e18ba0`..`fde6949` (lineage `review-a6bc3fddda86e814`, 39 files, 1,276 lines, high risk, consent granted): approved and acknowledged.
+  - Non-blocking warnings, later work:
+    - `R1-retention-flush` and `R4-manual-runs-shrink-window`: 30 manual copies in one day can push out every older daily copy.
+    - `R4-missing-drive-masked`: an absent external drive needs a clear status.
+    - `R2-unreadable-destination-looks-empty`: an unreadable destination shows as "no copies".
+    - `R3-invalid-folder-date`.
+    - `R3-audit-failure-misreports-copy` and `R4-audit-throw-misreports`.
+  - Suggestions: see the review record.
+- 2026-11-04: browser check at `/respaldo` as `demo@club.test`.
+  - Starting the backend made the first automatic copy.
+  - "Hacer un respaldo ahora" made a second copy, showed "Respaldo realizado." and the count, and added the audit entry "Respaldo del 04/11/2026".
+  - The screen warns that the default folder is not an external device.
+- 2026-11-04: restore rehearsal into a scratch folder, not `backend/data`.
+  - The latest copy holds every existing data file except the deliberately excluded `users.old.json`, and its manifest lists them.
+  - Every file is byte-identical to `backend/data` except `audit.json`, which gained the run's own entry after the copy, as expected.
+  - Not done: a real stop–copy–start restore on the live data folder, and an external drive.
 
 ## Next step
-Browser check on the running dev server, then the restore rehearsal on a copy following `docs/backup-restore.md`. Push and PR are the user's decision.
+The user decides on push. Retention and drive status fixes are the first follow-up.
