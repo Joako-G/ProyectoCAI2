@@ -23,14 +23,14 @@ describe('BackupView', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('Cargando el estado del respaldo');
     expect(await screen.findByText('04/11/2026 12:00')).toBeInTheDocument();
-    expect(screen.getByText(/12 copias guardadas/)).toHaveTextContent('se conservan las últimas 30');
+    expect(screen.getByText(/12 copias guardadas/)).toHaveTextContent('se conserva la última copia de cada uno de los últimos 30 días con copias y siempre las 5 más recientes');
     expect(screen.getByText(/carpeta configurada/)).toBeInTheDocument();
     expect(screen.queryByText(/no es un dispositivo externo/)).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith('/api/backups', expect.anything());
   });
 
   it('warns that the default folder is not an external device', async () => {
-    stubStatus(buildStatus({ destination: { isDefault: true } }));
+    stubStatus(buildStatus({ destination: { isDefault: true, state: 'ready' } }));
     render(<BackupView />);
 
     expect(await screen.findByText(/no es un dispositivo externo/)).toBeInTheDocument();
@@ -45,6 +45,26 @@ describe('BackupView', () => {
     stubStatus(buildStatus({ copies: 1 }));
     render(<BackupView />);
     expect(await screen.findByText(/1 copia guardada /)).toBeInTheDocument();
+  });
+
+  it('tells staff to connect the drive or check the folder when the destination is missing, instead of saying there is no copy', async () => {
+    stubStatus(buildStatus({ destination: { isDefault: false, state: 'missing' }, lastSuccessAt: null, copies: 0 }));
+    render(<BackupView />);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('No se encuentra la carpeta de respaldos');
+    expect(alert).toHaveTextContent('Conecte la unidad externa o revise la carpeta configurada');
+    expect(alert).not.toHaveTextContent(/[A-Z]:\\|\//);
+    expect(screen.queryByText('Todavía no hay ningún respaldo.')).not.toBeInTheDocument();
+    expect(screen.queryByText(/copias guardadas/)).not.toBeInTheDocument();
+  });
+
+  it('says the folder cannot be read, not that it is empty, when the destination is unreadable', async () => {
+    stubStatus(buildStatus({ destination: { isDefault: false, state: 'unreadable' }, lastSuccessAt: null, copies: 0 }));
+    render(<BackupView />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se puede leer la carpeta de respaldos');
+    expect(screen.queryByText('Todavía no hay ningún respaldo.')).not.toBeInTheDocument();
   });
 
   it('shows the last failed attempt as an alert with its time, without any server text', async () => {

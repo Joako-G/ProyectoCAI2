@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
@@ -249,6 +249,8 @@ async function startApp(failingAudit = false) {
   const cashCountService = createCashCountService({ repository: createJsonCashCountRepository(join(dir, 'cashcounts.json')), revenue: reportService, audit: auditService, now });
   // One real source file; the clock is fixed, so a second copy in the same second is refused.
   await writeFile(join(dir, 'sample.json'), '[]');
+  // A configured destination must exist before a copy.
+  await mkdir(join(dir, 'backups'));
   const backupService = createBackupService({
     sources: [{ name: 'sample.json', path: join(dir, 'sample.json') }],
     destination: join(dir, 'backups'),

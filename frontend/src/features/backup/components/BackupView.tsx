@@ -1,6 +1,6 @@
 import { formatInstant } from '../../audit/utils/audit-format';
 import { useBackups } from '../hooks/useBackups';
-import { copiesMessage, destinationMessage, lastFailureMessage } from '../utils/backup-format';
+import { copiesMessage, destinationMessage, destinationProblemMessage, lastFailureMessage } from '../utils/backup-format';
 
 /** Container of the daily backup (RNF-03): when the last copy ran, where copies go, and a copy on demand. */
 export function BackupView() {
@@ -22,8 +22,14 @@ export function BackupView() {
 
   const { status } = state;
   const running = run.phase === 'running' || status.running;
+  const { state: destinationState } = status.destination;
   return (
     <section className="card members-page" aria-label="Respaldo">
+      {destinationState !== 'ready' && (
+        <div className="members-page__notice members-page__notice--error" role="alert">
+          <p>{destinationProblemMessage(destinationState)}</p>
+        </div>
+      )}
       {status.lastFailure && (
         <div className="members-page__notice members-page__notice--error" role="alert">
           <p>{lastFailureMessage(status.lastFailure.at)}</p>
@@ -35,9 +41,9 @@ export function BackupView() {
       {status.lastSuccessAt ? (
         <p>Último respaldo correcto: <strong>{formatInstant(status.lastSuccessAt)}</strong></p>
       ) : (
-        <p className="members-page__notice">Todavía no hay ningún respaldo.</p>
+        destinationState === 'ready' && <p className="members-page__notice">Todavía no hay ningún respaldo.</p>
       )}
-      <p>{copiesMessage(status.copies, status.keep)}</p>
+      {destinationState === 'ready' && <p>{copiesMessage(status.copies, status.keep, status.keepRecent)}</p>}
       <p>{destinationMessage(status.destination.isDefault)}</p>
       {run.phase === 'error' && (
         <div className="members-page__notice members-page__notice--error" role="alert"><p>{run.message}</p></div>

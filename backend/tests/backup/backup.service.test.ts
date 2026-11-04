@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,6 +13,8 @@ let audited: AuditRecordInput[];
 
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), 'backup-'));
+  // A configured destination must already exist (the drive is plugged in); the tests about a missing one remove it.
+  await mkdir(join(root, 'copies'));
   clock = new Date('2026-11-04T15:00:00Z');
   audited = [];
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -31,7 +33,7 @@ async function writeData(name: string, content: string) {
   await writeFile(dataFile(name), content);
 }
 
-function createService(overrides: { keep?: number; isDefaultDestination?: boolean } = {}) {
+function createService(overrides: { keep?: number; keepRecent?: number; isDefaultDestination?: boolean } = {}) {
   return createBackupService({
     sources: [
       { name: 'members.json', path: dataFile('members.json') },
@@ -41,6 +43,7 @@ function createService(overrides: { keep?: number; isDefaultDestination?: boolea
     destination: destination(),
     isDefaultDestination: overrides.isDefaultDestination ?? false,
     keep: overrides.keep,
+    keepRecent: overrides.keepRecent,
     audit: { record: async (input) => { audited.push(input); } },
     now: () => clock,
   });
@@ -135,24 +138,93 @@ describe('backup service: a copy', () => {
   });
 });
 
+// Makes a copy at each given instant, oldest first.
+async function copyAt(service: ReturnType<typeof createService>, ...instants: string[]) {
+  for (const instant of instants) {
+    clock = new Date(instant);
+    expect((await service.run()).ok).toBe(true);
+  }
+}
+
 describe('backup service: retention', () => {
-  it('keeps only the most recent copies and never touches anything it did not create', async () => {
+  it('keeps the newest copy of each of the most recent days and never touches anything it did not create', async () => {
     await writeData('members.json', '[]');
     await mkdir(join(destination(), 'vacaciones'), { recursive: true });
     await writeFile(join(destination(), 'notas.txt'), 'not a copy');
-    const service = createService({ keep: 3 });
+    const service = createService({ keep: 3, keepRecent: 1 });
 
-    for (let day = 1; day <= 5; day += 1) {
-      clock = new Date(`2026-11-0${day}T15:00:00Z`);
-      await service.run();
-    }
+    await copyAt(service, '2026-11-01T15:00:00Z', '2026-11-02T15:00:00Z', '2026-11-03T15:00:00Z', '2026-11-04T15:00:00Z', '2026-11-05T15:00:00Z');
 
     expect(await copiesOf()).toEqual(['backup-20261103T150000Z', 'backup-20261104T150000Z', 'backup-20261105T150000Z', 'notas.txt', 'vacaciones']);
     expect((await service.status()).copies).toBe(3);
   });
 
-  it('keeps 30 copies unless told otherwise', async () => {
-    expect((await createService().status()).keep).toBe(30);
+  it('does not let many copies in one day push out the older days', async () => {
+    await writeData('members.json', '[]');
+    const service = createService({ keep: 3, keepRecent: 2 });
+
+    await copyAt(
+      service,
+      '2026-11-01T15:00:00Z',
+      '2026-11-02T15:00:00Z',
+      '2026-11-03T15:00:00Z',
+      '2026-11-04T15:00:00Z',
+      '2026-11-05T16:00:00Z',
+      '2026-11-05T17:00:00Z',
+      '2026-11-05T18:00:00Z',
+      '2026-11-05T19:00:00Z',
+      '2026-11-05T20:00:00Z',
+    );
+
+    // Days 5, 4 and 3 keep their newest copy; the two newest copies are kept whatever the day.
+    expect(await copiesOf()).toEqual(['backup-20261103T150000Z', 'backup-20261104T150000Z', 'backup-20261105T190000Z', 'backup-20261105T200000Z']);
+  });
+
+  it('always keeps the most recent copies, even when they share a day', async () => {
+    await writeData('members.json', '[]');
+    const service = createService({ keep: 1, keepRecent: 3 });
+
+    await copyAt(service, '2026-11-03T15:00:00Z', '2026-11-04T13:00:00Z', '2026-11-04T14:00:00Z', '2026-11-04T15:00:00Z');
+
+    expect(await copiesOf()).toEqual(['backup-20261104T130000Z', 'backup-20261104T140000Z', 'backup-20261104T150000Z']);
+  });
+
+  it('counts days in the club time zone, not in UTC', async () => {
+    await writeData('members.json', '[]');
+    const service = createService({ keep: 2, keepRecent: 1 });
+
+    // 01:00 UTC is still the evening of 3 November in Tucumán, so these are two club days although one UTC day.
+    await copyAt(service, '2026-11-04T01:00:00Z', '2026-11-04T10:00:00Z');
+
+    expect(await copiesOf()).toEqual(['backup-20261104T010000Z', 'backup-20261104T100000Z']);
+  });
+
+  it('never deletes the copy it just made, even when newer copies already exist', async () => {
+    await writeData('members.json', '[]');
+    await mkdir(join(destination(), 'backup-20261110T150000Z'));
+    const service = createService({ keep: 1, keepRecent: 1 });
+
+    await copyAt(service, '2026-11-04T15:00:00Z');
+
+    expect(await copiesOf()).toEqual(['backup-20261104T150000Z', 'backup-20261110T150000Z']);
+  });
+
+  it('leaves a folder with an impossible date alone: not counted, never deleted, and it breaks nothing', async () => {
+    await writeData('members.json', '[]');
+    // Month 13 and 31 February look like copies by name but are not real instants.
+    await mkdir(join(destination(), 'backup-20261340T150000Z'));
+    await mkdir(join(destination(), 'backup-20260231T150000Z'));
+    const service = createService({ keep: 1, keepRecent: 1 });
+
+    expect(await service.status()).toMatchObject({ copies: 0, lastSuccessAt: null });
+    await copyAt(service, '2026-11-04T15:00:00Z', '2026-11-05T15:00:00Z');
+
+    expect(await copiesOf()).toEqual(['backup-20260231T150000Z', 'backup-20261105T150000Z', 'backup-20261340T150000Z']);
+    expect(await service.status()).toMatchObject({ copies: 1, lastSuccessAt: '2026-11-05T15:00:00.000Z' });
+  });
+
+  it('keeps 30 days and the 5 most recent copies unless told otherwise', async () => {
+    expect(await createService().status()).toMatchObject({ keep: 30, keepRecent: 5 });
   });
 });
 
@@ -163,11 +235,25 @@ describe('backup service: status', () => {
 
     const afterRestart = await createService().status();
 
-    expect(afterRestart).toEqual({ destination: { isDefault: false }, keep: 30, copies: 1, lastSuccessAt: '2026-11-04T15:00:00.000Z', lastFailure: null, running: false });
+    expect(afterRestart).toEqual({
+      destination: { isDefault: false, state: 'ready' },
+      keep: 30,
+      keepRecent: 5,
+      copies: 1,
+      lastSuccessAt: '2026-11-04T15:00:00.000Z',
+      lastFailure: null,
+      running: false,
+    });
   });
 
   it('says whether the destination is the default folder and has nothing yet when it does not exist', async () => {
-    expect(await createService({ isDefaultDestination: true }).status()).toMatchObject({ destination: { isDefault: true }, copies: 0, lastSuccessAt: null });
+    await rm(destination(), { recursive: true });
+
+    expect(await createService({ isDefaultDestination: true }).status()).toMatchObject({
+      destination: { isDefault: true, state: 'ready' },
+      copies: 0,
+      lastSuccessAt: null,
+    });
   });
 
   it('never exposes a path, in a success or a failure', async () => {
@@ -181,5 +267,68 @@ describe('backup service: status', () => {
     const everything = JSON.stringify([await service.status(), failed]);
     expect(everything).not.toContain(root);
     expect(everything).not.toContain(destination());
+  });
+});
+
+describe('backup service: a destination that is not there', () => {
+  it('does not create a configured destination, fails with DESTINATION_MISSING and reports it as missing', async () => {
+    await writeData('members.json', '[]');
+    await rm(destination(), { recursive: true });
+    const service = createService();
+
+    const outcome = await service.run('user-head');
+
+    expect(outcome).toEqual({ ok: false, failure: { at: '2026-11-04T15:00:00.000Z', code: 'DESTINATION_MISSING' } });
+    await expect(stat(destination())).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(await service.status()).toMatchObject({
+      destination: { isDefault: false, state: 'missing' },
+      copies: 0,
+      lastSuccessAt: null,
+      lastFailure: { code: 'DESTINATION_MISSING' },
+    });
+    expect(audited).toEqual([]);
+    expect(JSON.stringify(await service.status())).not.toContain(root);
+  });
+
+  it('keeps the older copies when the drive goes missing and makes one again once it is back', async () => {
+    await writeData('members.json', '[]');
+    const service = createService();
+    await service.run();
+    const held = join(root, 'held');
+    await rename(destination(), held);
+
+    clock = new Date('2026-11-05T15:00:00Z');
+    expect((await service.run()).ok).toBe(false);
+    await rename(held, destination());
+    expect(await copiesOf()).toEqual(['backup-20261104T150000Z']);
+
+    clock = new Date('2026-11-06T15:00:00Z');
+    expect((await service.run()).ok).toBe(true);
+    expect(await copiesOf()).toEqual(['backup-20261104T150000Z', 'backup-20261106T150000Z']);
+    expect((await service.status()).lastFailure).toBeNull();
+  });
+
+  it('creates the default destination on the first copy', async () => {
+    await writeData('members.json', '[]');
+    await rm(destination(), { recursive: true });
+
+    const outcome = await createService({ isDefaultDestination: true }).run();
+
+    expect(outcome.ok).toBe(true);
+    expect(await copiesOf()).toEqual(['backup-20261104T150000Z']);
+  });
+
+  it('reports a destination that cannot be read as unreadable, not as having no copies, and does not touch it', async () => {
+    await writeData('members.json', '[]');
+    await rm(destination(), { recursive: true });
+    await writeFile(destination(), 'a file where the folder should be');
+    const service = createService();
+
+    expect(await service.status()).toMatchObject({ destination: { state: 'unreadable' }, copies: 0, lastSuccessAt: null });
+    const outcome = await service.run();
+
+    expect(outcome.ok).toBe(false);
+    expect(outcome).not.toMatchObject({ failure: { code: 'DESTINATION_MISSING' } });
+    expect(await readFile(destination(), 'utf8')).toBe('a file where the folder should be');
   });
 });

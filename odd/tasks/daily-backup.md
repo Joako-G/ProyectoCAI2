@@ -22,7 +22,9 @@ RNF-03: "Backup automático diario de la base de datos, con copia en un disposit
 ## Decisions
 Provisional, not confirmed by the club:
 - Destination: `BACKUP_DIR`, which can point to an external drive. It defaults to `backend/backups`, which is gitignored. When the destination is the default, the screen says that it is not an external device.
-- Retention: keep the 30 most recent copies.
+- Retention (changed by T3): keep the newest copy of each of the 30 most recent calendar days that have copies, with days in the club time zone, and always keep the 5 most recent copies whatever their day. Not confirmed by the club.
+- Configured destination (T3): when `BACKUP_DIR` is set, the folder must already exist; the backend never creates it, so an unplugged drive is reported instead of written to the wrong place. The default folder is still created by the backend.
+- Folder with an impossible date (T3): a module-named folder whose timestamp is not a real instant (month 13, 31 February) is not counted, not shown as the last copy and never deleted. Decision made by the writer; not confirmed by the club.
 - Only the head secretary can see the status or run a copy (`backup:run`), the role that already holds cash close and configuration.
 - Schedule: at startup and then every hour, the backend runs a copy if the last successful one is older than 24 hours.
 - Each file is copied whole. Files are written by temp file and rename, so each copied file is complete, but files copied a moment apart are not one atomic snapshot across files. This is acceptable for a one-day recovery point.
@@ -54,6 +56,13 @@ Work on `manu` (user preference). Forecast is about 700 authored lines in two wo
 - [x] T2 — Frontend "Respaldo" section. Route: same writer.
   - Shows the last successful copy, the last failure, the destination kind and the number of kept copies, with a "Hacer un respaldo ahora" button.
   - Loading, error with retry, and in-progress states. Visible only to the head secretary.
+- [x] T3 — Retention by day and a missing drive. Route: delegated direct writer (backend service, naming, types, frontend view and tests, docs: 2+ non-trivial files).
+  - Fixes the review findings `R1-retention-flush`, `R4-manual-runs-shrink-window`, `R4-missing-drive-masked`, `R2-unreadable-destination-looks-empty` and `R3-invalid-folder-date`.
+  - Acceptance:
+    - 30 copies in one day do not delete older days; the newest copy of each of the last 30 club days and the 5 newest copies stay.
+    - A configured `BACKUP_DIR` that does not exist is never created: the copy fails with `DESTINATION_MISSING` and older copies stay.
+    - Status tells `ready`, `missing` and `unreadable` apart, and the screen says in Spanish to connect the drive or check the folder, with no path.
+    - A folder with an impossible date is ignored by status and retention and never deleted.
 
 ## Checks
 - `pnpm --filter @club-socios/backend test`, `pnpm --filter @club-socios/backend typecheck`, `pnpm --filter @club-socios/frontend test`, `pnpm --filter @club-socios/frontend typecheck`.
@@ -91,5 +100,12 @@ Work on `manu` (user preference). Forecast is about 700 authored lines in two wo
   - Every file is byte-identical to `backend/data` except `audit.json`, which gained the run's own entry after the copy, as expected.
   - Not done: a real stop–copy–start restore on the live data folder, and an external drive.
 
+- 2026-11-04: T3 done (route: delegated direct writer). Service takes `keep` (days) and `keepRecent`; status gains `destination.state` and `keepRecent`. Retention reads the destination again after the copy and never deletes the copy just made. `isCopyFolder` now needs a real date, so an impossible-date folder is invisible to the module. Not done: `R3-audit-failure-misreports-copy` and `R4-audit-throw-misreports`.
+  - RED (backend): `AssertionError: expected [ 'backup-20261105T180000Z', …(2) ] to deeply equal [ 'backup-20261103T150000Z', …(3) ]` (30 copies in one day pushed out older days); `AssertionError: expected { ok: true, backup: { …(3) } } to deeply equal { ok: false, failure: { …(2) } }` (a missing configured folder was created); `expected { …(6) } to match object { …(3) }` (an unreadable destination looked empty). 10 of 21 service tests failed.
+  - RED (frontend): `TestingLibraryElementError: Unable to find role="alert"` for the missing and unreadable destination; the copies message test failed on the old "se conservan las últimas 30" text. 3 of 11 failed.
+  - GREEN: service suite 21 passed; backup frontend suite 11 passed. Full: backend 56 files, 956 passed; frontend 46 files, 498 passed; both typechecks clean.
+  - REFACTOR: none beyond `readDestination` replacing `listCopies`, shared by status and retention.
+  - Note: one full frontend run failed `App.navigation.test.tsx > role-based navigation > shows the head secretary the three sections, numbered 01 to 03, and opens Socios first` (cannot find the Socios heading under load); it passed alone and on the full rerun.
+
 ## Next step
-The user decides on push. Retention and drive status fixes are the first follow-up.
+The user decides on push. Open: the two audit-failure warnings from the review.

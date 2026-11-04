@@ -1,11 +1,13 @@
 import { copyFile, mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { toIsoDate } from '../../shared/date.js';
 import { ConflictError } from '../../shared/errors.js';
 import type { AuditRecorder } from '../audit/audit.service.js';
 import { copyFolderInstant, copyFolderName, isCopyFolder, isPartialFolder, partialFolderName } from './backup.naming.js';
-import type { BackupFailure, BackupRun, BackupSource, BackupStatus } from './backup.types.js';
+import type { BackupFailure, BackupRun, BackupSource, BackupStatus, DestinationState } from './backup.types.js';
 
 const DEFAULT_KEEP = 30;
+const DEFAULT_KEEP_RECENT = 5;
 const MANIFEST = 'manifest.json';
 
 export interface BackupServiceDeps {
@@ -13,8 +15,10 @@ export interface BackupServiceDeps {
   /** The folder that holds the dated copies; it can be on an external drive. */
   destination: string;
   isDefaultDestination: boolean;
-  /** How many copies to keep. */
+  /** How many calendar days (club time zone) keep their newest copy. */
   keep?: number;
+  /** How many of the newest copies are kept whatever their day. */
+  keepRecent?: number;
   audit: AuditRecorder;
   now?: () => Date;
 }
@@ -24,6 +28,10 @@ const errorCode = (error: unknown): string =>
 
 class NoFilesError extends Error {
   readonly code = 'NO_FILES';
+}
+
+class DestinationMissingError extends Error {
+  readonly code = 'DESTINATION_MISSING';
 }
 
 async function exists(path: string): Promise<boolean> {
@@ -36,18 +44,20 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
-export function createBackupService({ sources, destination, isDefaultDestination, keep = DEFAULT_KEEP, audit, now = () => new Date() }: BackupServiceDeps) {
+export function createBackupService({ sources, destination, isDefaultDestination, keep = DEFAULT_KEEP, keepRecent = DEFAULT_KEEP_RECENT, audit, now = () => new Date() }: BackupServiceDeps) {
   let running = false;
   // In memory: it resets on restart. The last good copy does not depend on it, because it is read from the folders.
   let lastFailure: BackupFailure | null = null;
 
-  // Only the module's own folders, oldest first. A destination that cannot be read has no copies to show.
-  async function listCopies(): Promise<string[]> {
+  // Only the module's own folders with a real date, oldest first. A destination that cannot be read is reported as such, never as empty.
+  async function readDestination(): Promise<{ state: DestinationState; copies: string[] }> {
     try {
       const entries = await readdir(destination, { withFileTypes: true });
-      return entries.filter((entry) => entry.isDirectory() && isCopyFolder(entry.name)).map((entry) => entry.name).sort();
-    } catch {
-      return [];
+      return { state: 'ready', copies: entries.filter((entry) => entry.isDirectory() && isCopyFolder(entry.name)).map((entry) => entry.name).sort() };
+    } catch (error) {
+      // The default folder is created by the first copy, so it is not a problem that it is not there yet.
+      if (errorCode(error) === 'ENOENT') return { state: isDefaultDestination ? 'ready' : 'missing', copies: [] };
+      return { state: 'unreadable', copies: [] };
     }
   }
 
@@ -58,10 +68,21 @@ export function createBackupService({ sources, destination, isDefaultDestination
     }
   }
 
-  async function applyRetention(): Promise<void> {
-    const copies = await listCopies();
-    for (const name of copies.slice(0, Math.max(0, copies.length - keep))) {
-      await rm(join(destination, name), { recursive: true, force: true });
+  // Keeps the newest copy of each of the `keep` most recent club days that have copies, and the `keepRecent` newest copies
+  // whatever their day. `justMade` is never deleted. A folder that is not a real copy is not listed, so it is never deleted.
+  async function applyRetention(justMade: string): Promise<void> {
+    const { state, copies } = await readDestination();
+    if (state !== 'ready') return;
+    const kept = new Set<string>([justMade, ...copies.slice(-keepRecent)]);
+    const days = new Set<string>();
+    for (const name of [...copies].reverse()) {
+      const day = toIsoDate(copyFolderInstant(name)!);
+      if (days.has(day) || days.size >= keep) continue;
+      days.add(day);
+      kept.add(name);
+    }
+    for (const name of copies) {
+      if (!kept.has(name)) await rm(join(destination, name), { recursive: true, force: true });
     }
   }
 
@@ -72,7 +93,9 @@ export function createBackupService({ sources, destination, isDefaultDestination
     const finalPath = join(destination, name);
     const partialPath = join(destination, partialFolderName(name));
     try {
-      await mkdir(destination, { recursive: true });
+      // A configured folder (an external drive) must already be there: creating it would write to the wrong place.
+      if (isDefaultDestination) await mkdir(destination, { recursive: true });
+      else if (!(await exists(destination))) throw new DestinationMissingError();
       if (await exists(finalPath)) throw new ConflictError('A backup was already made at this moment');
       await removeLeftovers();
       await mkdir(partialPath);
@@ -91,7 +114,7 @@ export function createBackupService({ sources, destination, isDefaultDestination
       await rename(partialPath, finalPath);
       lastFailure = null;
       try {
-        await applyRetention();
+        await applyRetention(name);
       } catch (error) {
         // The new copy is good; a copy that could not be deleted only waits for the next run.
         console.error(`Could not remove old backups (${errorCode(error)})`);
@@ -122,11 +145,12 @@ export function createBackupService({ sources, destination, isDefaultDestination
     },
 
     async status(): Promise<BackupStatus> {
-      const copies = await listCopies();
+      const { state, copies } = await readDestination();
       const newest = copies.at(-1);
       return {
-        destination: { isDefault: isDefaultDestination },
+        destination: { isDefault: isDefaultDestination, state },
         keep,
+        keepRecent,
         copies: copies.length,
         lastSuccessAt: newest ? (copyFolderInstant(newest)?.toISOString() ?? null) : null,
         lastFailure,

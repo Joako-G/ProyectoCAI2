@@ -13,7 +13,7 @@ export interface BackupResult {
   files: string[];
 }
 
-/** Why a copy failed, as a short code (a system error code such as `ENOSPC`, or `NO_FILES`): never a message or a path. */
+/** Why a copy failed, as a short code (a system error code such as `ENOSPC`, `NO_FILES`, or `DESTINATION_MISSING`): never a message or a path. */
 export interface BackupFailure {
   /** ISO instant of the attempt. */
   at: string;
@@ -22,12 +22,20 @@ export interface BackupFailure {
 
 export type BackupRun = { ok: true; backup: BackupResult } | { ok: false; failure: BackupFailure };
 
+/**
+ * What reading the destination found. `missing`: a configured folder that is not there (for example an unplugged drive).
+ * `unreadable`: it exists but cannot be listed. A default folder that is not created yet is `ready` with no copies.
+ */
+export type DestinationState = 'ready' | 'missing' | 'unreadable';
+
 export interface BackupStatus {
   /** Whether the copies go to the default folder inside the project, which is not an external device. */
-  destination: { isDefault: boolean };
-  /** How many copies are kept; older ones are deleted after a good copy. */
+  destination: { isDefault: boolean; state: DestinationState };
+  /** Days with copies whose newest copy is kept; older days are deleted after a good copy. */
   keep: number;
-  /** Copies present in the destination now. */
+  /** The newest copies kept whatever their day, so several copies in one day never push out older days. */
+  keepRecent: number;
+  /** Copies present in the destination now; 0 when the destination is missing or unreadable. */
   copies: number;
   /** ISO instant of the newest copy, read from the destination so it survives a restart; null while there is none. */
   lastSuccessAt: string | null;

@@ -9,8 +9,9 @@ import { ConflictError } from '../../src/shared/errors.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
 
 const STATUS: BackupStatus = {
-  destination: { isDefault: true },
+  destination: { isDefault: true, state: 'ready' },
   keep: 30,
+  keepRecent: 5,
   copies: 2,
   lastSuccessAt: '2026-11-04T15:00:00.000Z',
   lastFailure: null,
