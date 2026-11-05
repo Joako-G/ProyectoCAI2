@@ -88,6 +88,27 @@ describe('URL routing', () => {
     expect(fetch).not.toHaveBeenCalledWith('/api/notices/debt', expect.anything());
   });
 
+  it('opens Ingreso at /ingreso for a user who may check access and lists it in the sidebar', async () => {
+    const user = { id: '1', name: 'Demo', email: 'demo@example.com', role: 'secretary' };
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (input === '/auth/me') return json({ user, capabilities: ['members:read', 'access:check'] });
+      return json([]);
+    }));
+    renderApp('/ingreso');
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Ingreso' })).toBeInTheDocument();
+    expect(await screen.findByLabelText('DNI del socio')).toBeInTheDocument();
+    expect(within(screen.getByRole('navigation', { name: 'Navegación principal' })).getByRole('link', { name: /Ingreso/ })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('shows a forbidden page for /ingreso when access:check is missing', async () => {
+    stubSession('teacher', ['roster:read']);
+    renderApp('/ingreso');
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Sin acceso' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('DNI del socio')).not.toBeInTheDocument();
+  });
+
   it('opens Auditoría at /auditoria for a user who may read the audit log and lists it in the sidebar', async () => {
     const user = { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' };
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {

@@ -1292,3 +1292,86 @@ a:hover {
   flex-basis: 100%;
   margin: 0;
 }
+
+/* Entrance check: large answer the door staff can read from a distance. Text always names the verdict; color only reinforces it. */
+
+.access-view {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 720px;
+  padding: 24px;
+}
+
+.access-form__label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.access-form__input {
+  width: 100%;
+  height: 72px;
+  padding: 0 18px;
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: 600 36px var(--font-mono);
+  letter-spacing: 2px;
+}
+
+.access-form__input:focus {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.access-live {
+  min-height: 160px;
+}
+
+.access-live__loading {
+  margin: 0;
+  padding: 56px 0;
+  text-align: center;
+  font-size: 18px;
+  color: var(--color-text-muted);
+}
+
+.access-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 160px;
+  padding: 28px 20px;
+  border-radius: var(--radius-lg);
+  text-align: center;
+  color: #fff;
+}
+
+.access-result--green {
+  background: var(--color-success);
+}
+
+.access-result--yellow {
+  background: #f5c542;
+  color: var(--color-text);
+}
+
+.access-result--red {
+  background: var(--color-error);
+}
+
+.access-result__headline {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.access-result__member {
+  margin: 0;
+  font-size: 22px;
+}

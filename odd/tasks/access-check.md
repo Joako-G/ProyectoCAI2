@@ -47,7 +47,7 @@ Work on `manu` (user preference). Forecast is about 500 authored lines in two wo
     - Each of these cases is tested: up to date, 1 month owed, 3 months owed, deregistered, inactive, unknown DNI, and invalid input.
     - A teacher gets 403.
     - No DNI appears in responses for an unknown member or in logs.
-- [ ] T2 — Frontend "Ingreso" section. Route: same writer.
+- [x] T2 — Frontend "Ingreso" section. Route: same writer.
   - Acceptance:
     - Visible to secretary and head secretary.
     - The DNI field is focused, Enter checks, and the field clears and refocuses for the next person.
@@ -65,5 +65,7 @@ Work on `manu` (user preference). Forecast is about 500 authored lines in two wo
 - 2026-11-05: rule decided with the user; this document created.
 - 2026-11-05: T1 done. RED: `tests/access` failed (the access module did not exist; `POST /api/access/check` answered 404 instead of 400) and `permissions.test.ts` failed (`permissions[capability] is not iterable` for `access:check`). GREEN: `pnpm --filter @club-socios/backend test` 58 files, 978 tests passed; backend typecheck clean. REFACTOR: `earliestTariffPeriod` moved to `payments/pricing.ts` and reused by payments, notices and access. The member lookup scans `members.list()` once per check (no DNI index exists); acceptable at club size.
 
+- 2026-11-05: T2 done. RED: `AccessView.test.tsx` failed with `Failed to resolve import "./AccessView"`, `sections.test.ts` and two `App.routing.test.tsx` cases failed (no `access` section, heading "Ingreso" not found). GREEN: `pnpm --filter @club-socios/frontend test` 47 files, 514 tests passed; frontend typecheck clean. REFACTOR: none needed. One backend run hit 2 failures in `tests/audit/audit.api.test.ts` (`fetch failed: bad port`, a random listen port that fetch blocks); two reruns passed 978/978, unrelated to this feature.
+
 ## Next step
-T2.
+Browser check with synthetic members, then the owners' open items.
