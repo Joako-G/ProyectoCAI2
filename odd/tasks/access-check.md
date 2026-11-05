@@ -89,6 +89,10 @@ Work on `manu` (user preference). Forecast is about 500 authored lines in two wo
 
 - 2026-11-05: T3 done. RED: backend `access.service.test.ts` 6 failed (for example `expected { memberNumber: 'N-free', …(2) } to match object { paidThrough: '2027-11' }`, and the deregistered answer lacked `"debtSince": "2026-06"`); frontend `AccessView.test.tsx` 3 failed (`findByText('Debe desde septiembre 2026')` and `'Pagado hasta octubre 2026'` found nothing). GREEN: backend access 21/21 and frontend access 18/18. REFACTOR: the debt branch builds one summary shared by yellow and red; the month line is computed once in the view. A first GREEN attempt gave an inactive member `debtSince`; the test caught it and inactive now returns no dates. Known edge: a member with no active discipline owes nothing ever, so shows the 12-month bound as paid-through; decision gap for the owners.
 - 2026-11-05: parent follow-up to T3: a member with nothing due within the 12-month window showed "Pagado hasta" the window's last month, which misleads. That month is now omitted. RED: the new test expected no `paidThrough` and got `2027-11`. GREEN: access tests 21/21 and backend typecheck clean.
+- 2026-11-05: Gentle-AI review of `1d0e692`..`e5b1ffe` (lineage `review-cc718c58f9afe758`, 9 files, 146 lines, medium risk, consent granted): approved and acknowledged.
+  - Later work: `R3-paid-ahead-window-conflation`. A member paid 12 or more months ahead also shows no month, the same as one with nothing due.
+  - Suggestions: `R3-debtsince-ordering-assumption` and `R3-monthlabel-unvalidated`.
+  - Browser, as `secretary@club.test` (form submitted by script): `99000001` and `99000004` show "Debe desde enero 2026", and `99000007` (inactive) shows no month. "Pagado hasta" is covered by tests only, because no synthetic member is up to date.
 
 ## Next step
 The owners' open items. Push is the user's decision.
