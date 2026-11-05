@@ -56,7 +56,7 @@ Work on `manu` (user preference). Forecast is about 500 authored lines in two wo
     - Loading and error states.
 - [x] T3 — Paid-through or debt-since month. Route: delegated direct writer.
   - Acceptance:
-    - Up to date (green): "Pagado hasta <month> <year>", the latest month at or after the current one with nothing owed from the start through it. Found by extending the as-of month of the existing `owedConcepts` up to 12 months; at the bound, the bound month is shown.
+    - Up to date (green): "Pagado hasta <month> <year>", the latest month at or after the current one with nothing owed from the start through it. Found by extending the as-of month of the existing `owedConcepts` up to 12 months. When nothing falls due within those 12 months (for example, no active discipline), no month is shown.
     - Debtor (yellow) and deregistered (red): "Debe desde <month> <year>", the oldest unpaid period.
     - Inactive and unknown DNI: no dates.
     - API: `paidThrough?` and `debtSince?` (`YYYY-MM`) inside `member`; the frontend formats the month names.
@@ -88,6 +88,7 @@ Work on `manu` (user preference). Forecast is about 500 authored lines in two wo
   - The pane would not draw, so the checks were submitted through the form by script instead of keystrokes.
 
 - 2026-11-05: T3 done. RED: backend `access.service.test.ts` 6 failed (for example `expected { memberNumber: 'N-free', …(2) } to match object { paidThrough: '2027-11' }`, and the deregistered answer lacked `"debtSince": "2026-06"`); frontend `AccessView.test.tsx` 3 failed (`findByText('Debe desde septiembre 2026')` and `'Pagado hasta octubre 2026'` found nothing). GREEN: backend access 21/21 and frontend access 18/18. REFACTOR: the debt branch builds one summary shared by yellow and red; the month line is computed once in the view. A first GREEN attempt gave an inactive member `debtSince`; the test caught it and inactive now returns no dates. Known edge: a member with no active discipline owes nothing ever, so shows the 12-month bound as paid-through; decision gap for the owners.
+- 2026-11-05: parent follow-up to T3: a member with nothing due within the 12-month window showed "Pagado hasta" the window's last month, which misleads. That month is now omitted. RED: the new test expected no `paidThrough` and got `2027-11`. GREEN: access tests 21/21 and backend typecheck clean.
 
 ## Next step
 The owners' open items. Push is the user's decision.

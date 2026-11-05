@@ -90,9 +90,11 @@ describe('access check', () => {
     expect(answer.member).not.toHaveProperty('debtSince');
   });
 
-  it('stops looking ahead after a year when nothing ever falls due', async () => {
+  it('shows no paid-through month when nothing falls due within a year', async () => {
     const { service } = setup([member('free', '30111222')], []);
-    expect((await service.check('30111222')).member).toMatchObject({ paidThrough: '2027-11' });
+    const answer = await service.check('30111222');
+    expect(answer.result).toBe('green');
+    expect(answer.member).not.toHaveProperty('paidThrough');
   });
 
   it('gives no dates for an inactive member or an unknown DNI', async () => {

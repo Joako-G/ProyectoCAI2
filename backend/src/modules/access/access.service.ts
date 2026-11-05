@@ -53,10 +53,11 @@ export function createAccessService({ members, memberships, payments, pricing, n
       for (let ahead = 0; ahead < MAX_MONTHS_AHEAD; ahead += 1) {
         const candidate = nextPeriod(paidThrough);
         const owedThen = owedConcepts({ member, memberships: history, payments: paid, firstPeriod: earliestTariffPeriod(config), asOf: `${candidate}-01` });
-        if (owedThen.length > 0) break;
+        if (owedThen.length > 0) return { result: 'green', reason: 'up_to_date', member: { ...summary, paidThrough } };
         paidThrough = candidate;
       }
-      return { result: 'green', reason: 'up_to_date', member: { ...summary, paidThrough } };
+      // Nothing falls due within the window (for example, no active discipline), so any month shown would mislead.
+      return { result: 'green', reason: 'up_to_date', member: summary };
     },
   };
 }
