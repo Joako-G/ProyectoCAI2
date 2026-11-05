@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { ConflictError, NotFoundError, ValidationError } from '../../shared/errors.js';
 import { toIsoDate } from '../../shared/date.js';
+import { changedFields } from '../audit/audit.fields.js';
+import type { AuditRecorder } from '../audit/audit.service.js';
 import type { DisciplineHistory } from './discipline-history.js';
 import type { DisciplineLookup } from './discipline-lookup.js';
 import type { MemberRepository } from './member.repository.js';
@@ -12,6 +14,7 @@ export interface MemberServiceDeps {
   disciplineLookup: DisciplineLookup;
   // Optional: when absent, discipline changes are simply not recorded anywhere else.
   disciplineHistory?: DisciplineHistory;
+  audit: AuditRecorder;
   now?: () => Date;
 }
 
@@ -82,6 +85,9 @@ function sameSet(a: readonly string[], b: readonly string[]): boolean {
   return left.size === new Set(b).size && b.every((id) => left.has(id));
 }
 
+// System-set fields: they change with every save and say nothing about what the person edited.
+const AUDIT_IGNORED_MEMBER_FIELDS = ['updatedAt', 'disciplinesChangedOn'];
+
 function replaceAt(members: Member[], index: number, member: Member): Member[] {
   return members.map((current, i) => (i === index ? member : current));
 }
@@ -90,6 +96,7 @@ export function createMemberService({
   repository,
   disciplineLookup,
   disciplineHistory,
+  audit,
   now = () => new Date(),
 }: MemberServiceDeps) {
   const timestamp = () => now().toISOString();
@@ -124,7 +131,7 @@ export function createMemberService({
   }
 
   return {
-    async create(raw: MemberInput): Promise<Member> {
+    async create(raw: MemberInput, actorId: string): Promise<Member> {
       const input = validateMemberInput(raw, today());
       assertDisciplinesAssignable(input.disciplineIds, await disciplineLookup.findByIds(input.disciplineIds));
       const created = await repository.mutate((members) => {
@@ -142,14 +149,17 @@ export function createMemberService({
         return { members: [...members, member], result: member };
       });
       await recordDisciplines(created.id);
+      await audit.record({ actorId, action: 'create', entityType: 'member', entityId: created.id });
       return created;
     },
 
-    async update(id: string, raw: MemberInput): Promise<Member> {
+    async update(id: string, raw: MemberInput, actorId: string): Promise<Member> {
       const input = validateMemberInput(raw, today());
       const found = await disciplineLookup.findByIds(input.disciplineIds);
+      let before!: Member;
       const updated = await repository.mutate((members) => {
         const index = findIndex(members, id);
+        before = members[index]!;
         assertDisciplinesAssignable(input.disciplineIds, found, members[index]!.disciplineIds);
         assertDniAvailable(members, input.dni, id);
         const { email: _email, guardian: _guardian, ...current } = members[index]!;
@@ -162,13 +172,20 @@ export function createMemberService({
         return { members: replaceAt(members, index, member), result: member };
       });
       await recordDisciplines(updated.id);
+      await audit.record({
+        actorId,
+        action: 'update',
+        entityType: 'member',
+        entityId: updated.id,
+        changedFields: changedFields({ ...before }, { ...updated }, AUDIT_IGNORED_MEMBER_FIELDS),
+      });
       return updated;
     },
 
-    async deactivate(id: string, reason: string): Promise<Member> {
+    async deactivate(id: string, reason: string, actorId: string): Promise<Member> {
       const trimmed = typeof reason === 'string' ? reason.trim() : '';
       if (!trimmed) throw new ValidationError({ reason: 'Reason is required' });
-      return repository.mutate((members) => {
+      const deactivated = await repository.mutate((members) => {
         const index = findIndex(members, id);
         const current = members[index]!;
         if (current.status === 'inactive') throw new ConflictError('Member is already inactive');
@@ -180,16 +197,21 @@ export function createMemberService({
         };
         return { members: replaceAt(members, index, member), result: member };
       });
+      // The reason is free text and stays out of the log.
+      await audit.record({ actorId, action: 'deactivate', entityType: 'member', entityId: deactivated.id });
+      return deactivated;
     },
 
-    async reactivate(id: string): Promise<Member> {
-      return repository.mutate((members) => {
+    async reactivate(id: string, actorId: string): Promise<Member> {
+      const reactivated = await repository.mutate((members) => {
         const index = findIndex(members, id);
         const { deactivation: _deactivation, ...current } = members[index]!;
         if (current.status === 'active') throw new ConflictError('Member is already active');
         const member: Member = { ...current, status: 'active', updatedAt: timestamp() };
         return { members: replaceAt(members, index, member), result: member };
       });
+      await audit.record({ actorId, action: 'reactivate', entityType: 'member', entityId: reactivated.id });
+      return reactivated;
     },
 
     async getById(id: string): Promise<Member> {

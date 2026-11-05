@@ -1,0 +1,61 @@
+import { roleLabel } from '../../users/utils/user-format';
+import { useAuditLog } from '../hooks/useAuditLog';
+import { actionLabel, changedFieldsLabel, failedWritesMessage, formatInstant } from '../utils/audit-format';
+
+/** Container of the audit log (RF-27): who did what and when, newest first. Read-only. */
+export function AuditView() {
+  const { state, reload } = useAuditLog();
+
+  if (state.phase === 'loading') {
+    return <section className="card members-page" aria-label="Auditoría"><p className="members-page__notice" role="status">Cargando la auditoría…</p></section>;
+  }
+  if (state.phase === 'error') {
+    return (
+      <section className="card members-page" aria-label="Auditoría">
+        <div className="members-page__notice members-page__notice--error" role="alert">
+          <p><strong>No se pudo cargar la auditoría.</strong> {state.message}</p>
+          <button type="button" className="button button--secondary" onClick={reload}>Reintentar</button>
+        </div>
+      </section>
+    );
+  }
+
+  const { entries, failedWrites } = state;
+  return (
+    <section className="card members-page" aria-label="Auditoría">
+      {failedWrites.count > 0 && (
+        <div className="members-page__notice members-page__notice--error" role="alert">
+          <p>{failedWritesMessage(failedWrites)}</p>
+        </div>
+      )}
+      <p className="members-page__summary">
+        Registro de quién creó, modificó o anuló cada dato y cuándo. No se puede modificar y solo muestra los nombres de los campos cambiados, nunca sus valores.
+      </p>
+      {entries.length === 0 ? (
+        <p className="members-page__notice">Todavía no hay operaciones registradas.</p>
+      ) : (
+        <table className="members-table">
+          <caption className="visually-hidden">Registro de auditoría</caption>
+          <thead>
+            <tr className="table-head">
+              <th scope="col">Fecha</th><th scope="col">Usuario</th><th scope="col">Rol</th>
+              <th scope="col">Acción</th><th scope="col">Registro</th><th scope="col">Campos modificados</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((entry) => (
+              <tr key={entry.id}>
+                <td className="members-table__mono">{formatInstant(entry.at)}</td>
+                <td>{entry.actor.name}</td>
+                <td>{roleLabel(entry.actor.role)}</td>
+                <td>{actionLabel(entry.action)}</td>
+                <td>{entry.entityLabel}</td>
+                <td>{changedFieldsLabel(entry.changedFields)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </section>
+  );
+}

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { createJsonDisciplineRepository } from '../../src/modules/disciplines/json-discipline.repository.js';
 import { createDisciplineService } from '../../src/modules/disciplines/discipline.service.js';
 import type { DisciplineInput } from '../../src/modules/disciplines/discipline.types.js';
+import { noAudit } from '../audit/helpers.js';
 
 export const TODAY = new Date('2026-10-21T15:00:00Z');
 
@@ -22,6 +23,6 @@ export async function createTestContext(now: () => Date = () => TODAY) {
   const dir = await mkdtemp(join(tmpdir(), 'disciplines-'));
   const file = join(dir, 'disciplines.json');
   const repository = createJsonDisciplineRepository(file);
-  const service = createDisciplineService({ repository, now });
+  const service = createDisciplineService({ audit: noAudit, repository, now });
   return { service, repository, file, cleanup: () => rm(dir, { recursive: true, force: true }) };
 }

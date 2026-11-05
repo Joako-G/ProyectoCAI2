@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { toIsoDate } from '../../shared/date.js';
 import { ConflictError, ValidationError } from '../../shared/errors.js';
+import type { AuditRecorder } from '../audit/audit.service.js';
 import type { RevenueQuery, RevenueReport } from '../reports/report.types.js';
 import type { CashCountRepository } from './cashcount.repository.js';
 import type { CashCount, CashCountExpected, CashCountPreview, CloseDayInput } from './cashcount.types.js';
@@ -11,6 +12,7 @@ const MAX_NOTE_LENGTH = 500;
 export interface CashCountServiceDeps {
   repository: CashCountRepository;
   revenue: { revenue(query: RevenueQuery): Promise<RevenueReport> };
+  audit: AuditRecorder;
   now?: () => Date;
 }
 
@@ -39,7 +41,7 @@ function expectedFrom(report: RevenueReport): CashCountExpected {
   };
 }
 
-export function createCashCountService({ repository, revenue, now = () => new Date() }: CashCountServiceDeps) {
+export function createCashCountService({ repository, revenue, audit, now = () => new Date() }: CashCountServiceDeps) {
   const today = () => toIsoDate(now());
   const expectedFor = async (businessDate: string) => expectedFrom(await revenue.revenue({ granularity: 'daily', date: businessDate }));
 
@@ -61,7 +63,7 @@ export function createCashCountService({ repository, revenue, now = () => new Da
       if (typeof actorId !== 'string' || actorId.trim() === '') throw new ValidationError({ actorId: 'Required' });
       const businessDate = today();
       const expected = await expectedFor(businessDate);
-      return repository.mutate((closes) => {
+      const closed = await repository.mutate((closes) => {
         // One close per day, checked in the same write that stores it, so a retry or a race cannot add a second.
         if (closes.some((close) => close.businessDate === businessDate)) {
           throw new ConflictError(`The day ${businessDate} is already closed`);
@@ -78,6 +80,9 @@ export function createCashCountService({ repository, revenue, now = () => new Da
         };
         return { cashCounts: [...closes, close], result: close };
       });
+      // The variance note is free text and stays out of the log.
+      await audit.record({ actorId, action: 'close', entityType: 'cash_count', entityId: closed.id });
+      return closed;
     },
 
     // Every close, newest day first.

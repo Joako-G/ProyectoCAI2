@@ -1,0 +1,58 @@
+# Debt notices (RF-21, first slice)
+
+## Objective
+Give the secretaries one screen that lists every member with debt and a ready-made WhatsApp message, sent one by one through a `wa.me` link, replacing today's manual messages from a personal phone.
+
+## Problem and why
+RF-21 (Esencial) is the only essential requirement with nothing implemented: "Enviar por WhatsApp avisos de deuda y de próximo vencimiento, en forma automática y masiva." The survey report records debt notices as manual messages from a secretary's personal phone. The Business API needs Meta verification, approved templates, per-message cost and internet, so this slice stops short of it and keeps sending behind an interface.
+
+## Scope
+- In: `GET /api/notices/debt`, computed in bulk; WhatsApp number derivation for Argentina; message text; a "Avisos" section with one send link per member.
+- Out: "próximo vencimiento" notices (undefined, see open items), automatic or mass sending (future Business API adapter), RF-22 receipts, a log of sent notices.
+- RF-21 stays **partial** after this slice.
+
+## Decisions
+- User, 2026-11-01: send through `wa.me` links, with sending behind an interface so an API adapter can follow.
+- User, 2026-11-01: notify everyone with debt: active debtors and deregistered members, the latter identified in the list. Minors go to the guardian's contact. A number that cannot be derived is flagged for correction, not sent.
+- Provisional, not confirmed by the club: the stated total is priced as of today, so it changes with the surcharge tier; the message says so. Inactive members get no notice.
+
+## Constraints
+- Requirements: RF-21, RNF-01 (member and cash management keep working without internet; the list is computed locally and only the link needs internet), RNF-09 (consent is not implemented; no new personal data is stored here).
+- Conventions: `docs/AI-CODING-GUIDE.md`. UI copy in Spanish, identifiers and comments in English.
+- Synthetic data only. Do not change payment rules.
+- Reuse the pure `owedConcepts`, `accountStanding` and `calculateCharge`; read members, memberships, payments and pricing once per request, never per member.
+
+## TDD
+Mode: ON. Source: explicit user choice recorded in `odd/tasks/members-abm.md`. Runner: Vitest through `pnpm --filter <package> test`. Every behavior task records observed RED, GREEN, REFACTOR.
+
+## Delivery
+Strategy: `ask-on-risk`. Forecast about 700 authored lines, two work-unit commits on `feat/debt-notices`, branched from `origin/main` at `045b932`. Push and PR remain the user's decision.
+
+## Tasks
+- [x] T1 — Backend `notices` module. Route: delegated direct writer (2+ non-trivial files, 4+ files to read).
+  - Pure WhatsApp number derivation, message builder, `NoticeSender` port with a `wa.me` link implementation, bulk service, `GET /api/notices/debt`, capability `notices:read` (secretary, head secretary), route-matrix row, and `tests/notices` added to the backend test script.
+  - Evidence (route: delegated direct writer; triggers: 2+ non-trivial files, 4+ files read). RED: `npx vitest run tests/notices tests/authorization/route-matrix.test.ts` failed with "Cannot find module '../../src/modules/notices/notice.number.js'" (and the message/sender/service suites), and 4 API/route-matrix tests failed because `/api/notices/debt` was not mounted. GREEN: the same run passes; `pnpm --filter @club-socios/backend test` 46 files / 839 tests passed, `typecheck` clean. REFACTOR: none needed.
+  - Minor rule: `isMinor(birthDate, asOf)` from the members validation (under 18) with a stored guardian sends to the guardian contact; an adult with a stored guardian, or a minor without one, goes to the member's own number. An unusable guardian contact is flagged, never replaced by the member's number.
+  - Acceptance: up-to-date and inactive members excluded; debtor and deregistered members included with standing, unpaid months and today's total; a minor uses the guardian contact; an unusable number returns no link and a flag; files are read once per request.
+- [x] T2 — Frontend "Avisos" section. Route: same delegated writer.
+  - `Capability` union, `sections.ts`, `App.tsx`, feature under `frontend/src/features/notices`.
+  - Evidence (route: same delegated writer). RED: `npx vitest run src/features/notices src/layouts/sections.test.ts src/App.routing.test.tsx` failed with 'Failed to resolve import "./NoticesView"', the sections test (no `notices` section) and 2 App routing tests (heading "Avisos" not found). GREEN: same files pass (84 tests across layouts/App/notices); `pnpm --filter @club-socios/frontend test` 468 passed, both typechecks clean. REFACTOR: none needed. Browser check with synthetic members not run by the writer.
+  - Acceptance: section visible to secretary and head secretary, not to teacher; loading, error with retry, and empty states; deregistered members identified; each usable row opens the link in a new tab; an unusable number shows a correction notice and no link.
+
+## Checks
+- `pnpm --filter @club-socios/backend test`, `pnpm --filter @club-socios/backend typecheck`, `pnpm --filter @club-socios/frontend test`, `pnpm --filter @club-socios/frontend typecheck`.
+- Browser check of the Avisos screen with synthetic members.
+
+## Open items
+- Owners: what "próximo vencimiento" means (day 10 is the last day without surcharge, but no source calls it a due date) and who receives it.
+- Owners: confirm the provisional decisions above, and whether deregistered members should be told they must re-register.
+
+## Progress
+- 2026-11-01: requirements and code mapped; branch and this document created.
+- 2026-11-01: T2 done (frontend Avisos section).
+- 2026-11-01: T1 done (backend notices module, capability `notices:read`, route-matrix row).
+- 2026-11-01: Gentle-AI review (lineage `review-d2e980a6b2f06b7b`, base `045b932`, `2f29780`..`4e644eb`, 30 files, 938 lines, high risk, consent granted): approved and acknowledged; 11 non-blocking findings left as later work (R2-001 to R2-004, R3-001 to R3-006, `R4-no-tariffs-retry-copy`).
+- 2026-11-01: browser check with synthetic data at `/avisos` as `demo@club.test`, on day 1 (no surcharge): 7 members listed, inactive member 0007 excluded, all "Dado de baja" with 11 months; totals $440,000 and $660,000 match 11 months at $40,000 and $60,000; minors show their guardian; `wa.me` links use `549` plus 10 digits with the message and open in a new tab. The check found the send link wrapped and clipped in the table; fixed with `.notice-send` and re-checked; notices view tests 9/9. Not checked: the secretary and teacher views in a browser (covered by tests), and an actual WhatsApp send.
+
+## Next step
+The user decides on push and PR. RF-21 stays partial.

@@ -2,12 +2,15 @@ import { randomUUID } from 'node:crypto';
 import { toIsoDate } from '../../shared/date.js';
 import { ConflictError, NotFoundError } from '../../shared/errors.js';
 import { foldText as fold } from '../../shared/text.js';
+import { changedFields } from '../audit/audit.fields.js';
+import type { AuditRecorder } from '../audit/audit.service.js';
 import type { DisciplineRepository } from './discipline.repository.js';
 import type { Discipline, DisciplineInput, DisciplineListQuery } from './discipline.types.js';
 import { validateDisciplineInput } from './discipline.validation.js';
 
 export interface DisciplineServiceDeps {
   repository: DisciplineRepository;
+  audit: AuditRecorder;
   now?: () => Date;
 }
 
@@ -33,11 +36,11 @@ function replaceAt(disciplines: Discipline[], index: number, discipline: Discipl
   return disciplines.map((current, i) => (i === index ? discipline : current));
 }
 
-export function createDisciplineService({ repository, now = () => new Date() }: DisciplineServiceDeps) {
+export function createDisciplineService({ repository, audit, now = () => new Date() }: DisciplineServiceDeps) {
   return {
-    async create(raw: DisciplineInput): Promise<Discipline> {
+    async create(raw: DisciplineInput, actorId: string): Promise<Discipline> {
       const input = validateDisciplineInput(raw);
-      return repository.mutate((disciplines) => {
+      const created = await repository.mutate((disciplines) => {
         assertNameAvailable(disciplines, input.name);
         const discipline: Discipline = {
           ...input,
@@ -47,36 +50,52 @@ export function createDisciplineService({ repository, now = () => new Date() }: 
         };
         return { disciplines: [...disciplines, discipline], result: discipline };
       });
+      await audit.record({ actorId, action: 'create', entityType: 'discipline', entityId: created.id });
+      return created;
     },
 
-    async update(id: string, raw: DisciplineInput): Promise<Discipline> {
+    async update(id: string, raw: DisciplineInput, actorId: string): Promise<Discipline> {
       const input = validateDisciplineInput(raw);
-      return repository.mutate((disciplines) => {
+      let before!: Discipline;
+      const updated = await repository.mutate((disciplines) => {
         const index = findIndex(disciplines, id);
+        before = disciplines[index]!;
         assertNameAvailable(disciplines, input.name, id);
         const discipline: Discipline = { ...disciplines[index]!, ...input };
         return { disciplines: replaceAt(disciplines, index, discipline), result: discipline };
       });
+      await audit.record({
+        actorId,
+        action: 'update',
+        entityType: 'discipline',
+        entityId: updated.id,
+        changedFields: changedFields({ ...before }, { ...updated }),
+      });
+      return updated;
     },
 
-    async deactivate(id: string): Promise<Discipline> {
-      return repository.mutate((disciplines) => {
+    async deactivate(id: string, actorId: string): Promise<Discipline> {
+      const deactivated = await repository.mutate((disciplines) => {
         const index = findIndex(disciplines, id);
         const current = disciplines[index]!;
         if (current.status === 'inactive') throw new ConflictError('Discipline is already inactive');
         const discipline: Discipline = { ...current, status: 'inactive', deactivatedAt: toIsoDate(now()) };
         return { disciplines: replaceAt(disciplines, index, discipline), result: discipline };
       });
+      await audit.record({ actorId, action: 'deactivate', entityType: 'discipline', entityId: deactivated.id });
+      return deactivated;
     },
 
-    async reactivate(id: string): Promise<Discipline> {
-      return repository.mutate((disciplines) => {
+    async reactivate(id: string, actorId: string): Promise<Discipline> {
+      const reactivated = await repository.mutate((disciplines) => {
         const index = findIndex(disciplines, id);
         const { deactivatedAt: _deactivatedAt, ...current } = disciplines[index]!;
         if (current.status === 'active') throw new ConflictError('Discipline is already active');
         const discipline: Discipline = { ...current, status: 'active' };
         return { disciplines: replaceAt(disciplines, index, discipline), result: discipline };
       });
+      await audit.record({ actorId, action: 'reactivate', entityType: 'discipline', entityId: reactivated.id });
+      return reactivated;
     },
 
     async getById(id: string): Promise<Discipline> {

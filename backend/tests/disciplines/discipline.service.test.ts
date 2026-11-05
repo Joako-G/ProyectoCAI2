@@ -27,7 +27,7 @@ describe('discipline service', () => {
   describe('create', () => {
     it('creates an active discipline with id and timestamp', async () => {
       const { service } = await setup();
-      const discipline = await service.create(basketball);
+      const discipline = await service.create(basketball, 'user-test');
       expect(discipline).toMatchObject({ ...basketball, status: 'active', createdAt: TODAY.toISOString() });
       expect(discipline.id).toBeTruthy();
       expect(discipline.deactivatedAt).toBeUndefined();
@@ -39,7 +39,7 @@ describe('discipline service', () => {
         name: '  Patín artístico ',
         teachers: [' Lía Soria  ', ' Ana Gil'],
         leadTeacher: '  Ana Gil ',
-      });
+      }, 'user-test');
       expect(discipline).toMatchObject({
         name: 'Patín artístico',
         teachers: ['Lía Soria', 'Ana Gil'],
@@ -49,21 +49,21 @@ describe('discipline service', () => {
 
     it('requires name, teachers and lead teacher', async () => {
       const { service } = await setup();
-      const errors = await fieldErrorsOf(service.create({ name: '  ', teachers: [], leadTeacher: '' }));
+      const errors = await fieldErrorsOf(service.create({ name: '  ', teachers: [], leadTeacher: '' }, 'user-test'));
       expect(Object.keys(errors).sort()).toEqual(['leadTeacher', 'name', 'teachers']);
     });
 
     it('rejects non-string and missing values', async () => {
       const { service } = await setup();
-      const errors = await fieldErrorsOf(service.create({ name: 5, teachers: 'Ana', leadTeacher: null } as never));
+      const errors = await fieldErrorsOf(service.create({ name: 5, teachers: 'Ana', leadTeacher: null } as never, 'user-test'));
       expect(Object.keys(errors).sort()).toEqual(['leadTeacher', 'name', 'teachers']);
-      await fieldErrorsOf(service.create(undefined as never));
+      await fieldErrorsOf(service.create(undefined as never, 'user-test'));
     });
 
     it('rejects values over the maximum length', async () => {
       const { service } = await setup();
       const errors = await fieldErrorsOf(
-        service.create({ name: 'x'.repeat(81), teachers: ['y'.repeat(101)], leadTeacher: 'y'.repeat(101) }),
+        service.create({ name: 'x'.repeat(81), teachers: ['y'.repeat(101)], leadTeacher: 'y'.repeat(101) }, 'user-test'),
       );
       expect(Object.keys(errors).sort()).toEqual(['name', 'teachers']);
     });
@@ -71,7 +71,7 @@ describe('discipline service', () => {
     it('requires at least one teacher and rejects blank entries', async () => {
       const { service } = await setup();
       for (const teachers of [[], ['  '], ['Ana Gil', ''], [5]]) {
-        const errors = await fieldErrorsOf(service.create({ ...basketball, teachers, leadTeacher: 'Ana Gil' } as never));
+        const errors = await fieldErrorsOf(service.create({ ...basketball, teachers, leadTeacher: 'Ana Gil' } as never, 'user-test'));
         expect(errors.teachers).toBeTruthy();
       }
     });
@@ -79,7 +79,7 @@ describe('discipline service', () => {
     it('rejects repeated teachers ignoring case and accents', async () => {
       const { service } = await setup();
       const errors = await fieldErrorsOf(
-        service.create({ ...basketball, teachers: ['Lía Soria', ' LIA soria '], leadTeacher: 'Lía Soria' }),
+        service.create({ ...basketball, teachers: ['Lía Soria', ' LIA soria '], leadTeacher: 'Lía Soria' }, 'user-test'),
       );
       expect(errors.teachers).toBeTruthy();
       expect(errors.leadTeacher).toBeUndefined();
@@ -88,7 +88,7 @@ describe('discipline service', () => {
     it('requires the lead teacher to be one of the teachers, comparing trimmed values', async () => {
       const { service } = await setup();
       const errors = await fieldErrorsOf(
-        service.create({ ...basketball, teachers: ['Ana Gil', 'Lía Soria'], leadTeacher: 'Otra Persona' }),
+        service.create({ ...basketball, teachers: ['Ana Gil', 'Lía Soria'], leadTeacher: 'Otra Persona' }, 'user-test'),
       );
       expect(Object.keys(errors)).toEqual(['leadTeacher']);
 
@@ -96,14 +96,14 @@ describe('discipline service', () => {
         ...basketball,
         teachers: ['Ana Gil', 'Lía Soria'],
         leadTeacher: '  Lía Soria ',
-      });
+      }, 'user-test');
       expect(stored.leadTeacher).toBe('Lía Soria');
     });
 
     it('rejects a duplicate name ignoring case and surrounding spaces', async () => {
       const { service } = await setup();
-      await service.create(basketball);
-      await expect(service.create({ ...volleyball, name: ' BÁSQUET ' })).rejects.toBeInstanceOf(
+      await service.create(basketball, 'user-test');
+      await expect(service.create({ ...volleyball, name: ' BÁSQUET ' }, 'user-test')).rejects.toBeInstanceOf(
         ConflictError,
       );
       expect(await service.list()).toHaveLength(1);
@@ -111,33 +111,33 @@ describe('discipline service', () => {
 
     it('folds accents like the search does when checking uniqueness', async () => {
       const { service } = await setup();
-      await service.create({ name: 'Fútbol', teachers: ['Darío Paz'], leadTeacher: 'Darío Paz' });
-      await expect(service.create({ ...volleyball, name: 'Futbol' })).rejects.toBeInstanceOf(
+      await service.create({ name: 'Fútbol', teachers: ['Darío Paz'], leadTeacher: 'Darío Paz' }, 'user-test');
+      await expect(service.create({ ...volleyball, name: 'Futbol' }, 'user-test')).rejects.toBeInstanceOf(
         ConflictError,
       );
-      const other = await service.create({ name: 'Tenis', teachers: ['Ana Gil'], leadTeacher: 'Ana Gil' });
-      await expect(service.update(other.id, { ...volleyball, name: 'FUTBOL' })).rejects.toBeInstanceOf(
+      const other = await service.create({ name: 'Tenis', teachers: ['Ana Gil'], leadTeacher: 'Ana Gil' }, 'user-test');
+      await expect(service.update(other.id, { ...volleyball, name: 'FUTBOL' }, 'user-test')).rejects.toBeInstanceOf(
         ConflictError,
       );
     });
 
     it('rejects a name that belongs to an inactive discipline', async () => {
       const { service } = await setup();
-      const created = await service.create(basketball);
-      await service.deactivate(created.id);
-      await expect(service.create(basketball)).rejects.toBeInstanceOf(ConflictError);
+      const created = await service.create(basketball, 'user-test');
+      await service.deactivate(created.id, 'user-test');
+      await expect(service.create(basketball, 'user-test')).rejects.toBeInstanceOf(ConflictError);
     });
   });
 
   describe('update', () => {
     it('replaces name and teachers and keeps identity and status', async () => {
       const { service } = await setup();
-      const created = await service.create(basketball);
+      const created = await service.create(basketball, 'user-test');
       const updated = await service.update(created.id, {
         name: 'Básquet mayor',
         teachers: ['Nuevo Docente', 'Marcos Ledesma'],
         leadTeacher: 'Nuevo Docente',
-      });
+      }, 'user-test');
       expect(updated).toMatchObject({
         id: created.id,
         name: 'Básquet mayor',
@@ -151,62 +151,62 @@ describe('discipline service', () => {
 
     it('allows keeping the own name with different casing', async () => {
       const { service } = await setup();
-      const created = await service.create(basketball);
-      const updated = await service.update(created.id, { ...basketball, name: 'básquet' });
+      const created = await service.create(basketball, 'user-test');
+      const updated = await service.update(created.id, { ...basketball, name: 'básquet' }, 'user-test');
       expect(updated.name).toBe('básquet');
     });
 
     it('rejects another discipline name', async () => {
       const { service } = await setup();
-      await service.create(basketball);
-      const other = await service.create(volleyball);
-      await expect(service.update(other.id, { ...volleyball, name: 'básquet' })).rejects.toBeInstanceOf(
+      await service.create(basketball, 'user-test');
+      const other = await service.create(volleyball, 'user-test');
+      await expect(service.update(other.id, { ...volleyball, name: 'básquet' }, 'user-test')).rejects.toBeInstanceOf(
         ConflictError,
       );
     });
 
     it('validates input and reports unknown ids', async () => {
       const { service } = await setup();
-      const created = await service.create(basketball);
-      await fieldErrorsOf(service.update(created.id, { ...basketball, name: '' }));
-      await expect(service.update('missing', volleyball)).rejects.toBeInstanceOf(NotFoundError);
+      const created = await service.create(basketball, 'user-test');
+      await fieldErrorsOf(service.update(created.id, { ...basketball, name: '' }, 'user-test'));
+      await expect(service.update('missing', volleyball, 'user-test')).rejects.toBeInstanceOf(NotFoundError);
     });
   });
 
   describe('deactivate and reactivate', () => {
     it('deactivates with the club date and reactivates clearing it', async () => {
       const { service } = await setup();
-      const created = await service.create(basketball);
+      const created = await service.create(basketball, 'user-test');
 
-      const inactive = await service.deactivate(created.id);
+      const inactive = await service.deactivate(created.id, 'user-test');
       expect(inactive).toMatchObject({ status: 'inactive', deactivatedAt: '2026-10-21' });
 
-      const active = await service.reactivate(created.id);
+      const active = await service.reactivate(created.id, 'user-test');
       expect(active.status).toBe('active');
       expect(active.deactivatedAt).toBeUndefined();
     });
 
     it('rejects repeating a transition', async () => {
       const { service } = await setup();
-      const created = await service.create(basketball);
-      await expect(service.reactivate(created.id)).rejects.toBeInstanceOf(ConflictError);
-      await service.deactivate(created.id);
-      await expect(service.deactivate(created.id)).rejects.toBeInstanceOf(ConflictError);
+      const created = await service.create(basketball, 'user-test');
+      await expect(service.reactivate(created.id, 'user-test')).rejects.toBeInstanceOf(ConflictError);
+      await service.deactivate(created.id, 'user-test');
+      await expect(service.deactivate(created.id, 'user-test')).rejects.toBeInstanceOf(ConflictError);
     });
 
     it('reports unknown ids', async () => {
       const { service } = await setup();
-      await expect(service.deactivate('missing')).rejects.toBeInstanceOf(NotFoundError);
-      await expect(service.reactivate('missing')).rejects.toBeInstanceOf(NotFoundError);
+      await expect(service.deactivate('missing', 'user-test')).rejects.toBeInstanceOf(NotFoundError);
+      await expect(service.reactivate('missing', 'user-test')).rejects.toBeInstanceOf(NotFoundError);
     });
   });
 
   describe('read', () => {
     it('lists by name, filtered by status and accent-insensitive search', async () => {
       const { service } = await setup();
-      await service.create(volleyball);
-      const basket = await service.create(basketball);
-      await service.deactivate(basket.id);
+      await service.create(volleyball, 'user-test');
+      const basket = await service.create(basketball, 'user-test');
+      await service.deactivate(basket.id, 'user-test');
 
       expect((await service.list()).map((d) => d.name)).toEqual(['Básquet', 'Vóley']);
       expect((await service.list({ status: 'inactive' })).map((d) => d.name)).toEqual(['Básquet']);
@@ -217,15 +217,15 @@ describe('discipline service', () => {
 
     it('gets by id and reports unknown ids', async () => {
       const { service } = await setup();
-      const created = await service.create(basketball);
+      const created = await service.create(basketball, 'user-test');
       expect(await service.getById(created.id)).toEqual(created);
       await expect(service.getById('missing')).rejects.toBeInstanceOf(NotFoundError);
     });
 
     it('finds many by id, skipping unknown ones', async () => {
       const { service } = await setup();
-      const a = await service.create(basketball);
-      const b = await service.create(volleyball);
+      const a = await service.create(basketball, 'user-test');
+      const b = await service.create(volleyball, 'user-test');
       const found = await service.findByIds([b.id, 'missing', a.id]);
       expect(found.map((d) => d.id).sort()).toEqual([a.id, b.id].sort());
       expect(await service.findByIds([])).toEqual([]);

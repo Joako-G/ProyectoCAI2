@@ -5,6 +5,7 @@ import { createCashCountService } from '../../src/modules/cashcount/cashcount.se
 import { createJsonCashCountRepository } from '../../src/modules/cashcount/json-cashcount.repository.js';
 import { createReportService } from '../../src/modules/reports/report.service.js';
 import type { IncomeEntry } from '../../src/modules/reports/report.types.js';
+import { noAudit } from '../audit/helpers.js';
 
 /** 2026-10-05 in the club time zone. */
 export const TODAY = new Date('2026-10-05T15:00:00Z');
@@ -35,6 +36,6 @@ export async function createTestContext(entries: IncomeEntry[] = [incomeEntry()]
     members: { list: async () => MEMBERS },
     disciplines: { findByIds: async (ids) => DISCIPLINES.filter((discipline) => ids.includes(discipline.id)) },
   });
-  const cashCount = createCashCountService({ repository, revenue: reports, now: () => TODAY });
+  const cashCount = createCashCountService({ audit: noAudit, repository, revenue: reports, now: () => TODAY });
   return { reports, cashCount, repository, cleanup: () => rm(dir, { recursive: true, force: true }) };
 }

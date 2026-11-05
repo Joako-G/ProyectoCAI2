@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { ValidationError } from '../../shared/errors.js';
+import type { Authenticator } from '../auth/auth.session.js';
 import type { DisciplineService } from './discipline.service.js';
 import type { DisciplineListQuery, DisciplineStatus } from './discipline.types.js';
 
@@ -15,7 +16,8 @@ function parseListQuery(query: Record<string, unknown>): DisciplineListQuery {
   };
 }
 
-export function createDisciplinesRouter(service: DisciplineService): Router {
+// The actor of every change is the signed-in user, never a value from the request body.
+export function createDisciplinesRouter(service: DisciplineService, authenticate: Authenticator): Router {
   const router = Router();
 
   router.get('/', async (request, response) => {
@@ -27,19 +29,19 @@ export function createDisciplinesRouter(service: DisciplineService): Router {
   });
 
   router.post('/', async (request, response) => {
-    response.status(201).json(await service.create(request.body));
+    response.status(201).json(await service.create(request.body, authenticate(request)!.id));
   });
 
   router.put('/:id', async (request, response) => {
-    response.json(await service.update(request.params.id, request.body));
+    response.json(await service.update(request.params.id, request.body, authenticate(request)!.id));
   });
 
   router.post('/:id/deactivate', async (request, response) => {
-    response.json(await service.deactivate(request.params.id));
+    response.json(await service.deactivate(request.params.id, authenticate(request)!.id));
   });
 
   router.post('/:id/reactivate', async (request, response) => {
-    response.json(await service.reactivate(request.params.id));
+    response.json(await service.reactivate(request.params.id, authenticate(request)!.id));
   });
 
   return router;

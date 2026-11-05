@@ -36,6 +36,31 @@ describe('sectionsFor', () => {
     expect(sectionsFor(userWith(['roster:read']))).not.toContain('payments');
   });
 
+  it('gives the notices section to notices:read holders, after payments, and never to a teacher', () => {
+    expect(sectionsFor(userWith(['members:read', 'notices:read']))).toEqual(['members', 'notices']);
+    expect(sectionsFor(userWith(['payments:read', 'notices:read', 'members:read']))).toEqual(['members', 'payments', 'notices']);
+    expect(sectionsFor(userWith(['roster:read']))).not.toContain('notices');
+  });
+
+  it('gives the entrance check to access:check holders, after notices, and never to a teacher', () => {
+    expect(sectionsFor(userWith(['members:read', 'access:check']))).toEqual(['members', 'access']);
+    expect(sectionsFor(userWith(['notices:read', 'access:check', 'members:read']))).toEqual(['members', 'notices', 'access']);
+    expect(sectionsFor(userWith(['roster:read']))).not.toContain('access');
+  });
+
+  it('gives the audit section to audit:read holders only, last in the navigation', () => {
+    expect(sectionsFor(userWith(['members:read', 'audit:read']))).toEqual(['members', 'audit']);
+    expect(sectionsFor(userWith(['users:manage', 'config:read', 'audit:read']))).toEqual(['users', 'pricing', 'audit']);
+    expect(sectionsFor(userWith(['members:read', 'users:manage']))).not.toContain('audit');
+    expect(sectionsFor(userWith(['roster:read']))).not.toContain('audit');
+  });
+
+  it('gives the backup section to backup:run holders only, after the audit', () => {
+    expect(sectionsFor(userWith(['members:read', 'audit:read', 'backup:run']))).toEqual(['members', 'audit', 'backup']);
+    expect(sectionsFor(userWith(['members:read', 'users:manage']))).not.toContain('backup');
+    expect(sectionsFor(userWith(['roster:read']))).not.toContain('backup');
+  });
+
   it('is empty for a user without capabilities', () => {
     expect(sectionsFor(userWith([]))).toEqual([]);
   });

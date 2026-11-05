@@ -10,52 +10,9 @@ import { createTestContext as createPricing } from '../payments/pricing-config.h
 import { createTestContext as createPayments } from '../payments/payment.helpers.js';
 import { createRosterService } from '../../src/modules/roster/roster.service.js';
 import { roles, type Role as RoleName } from '../../src/modules/users/user.types.js';
+import { createTestContext as createAudit } from '../audit/helpers.js';
 import { createUsersFile, signIn } from './helpers.js';
-
-const both: readonly RoleName[] = ['head_secretary', 'secretary'];
-const headOnly: readonly RoleName[] = ['head_secretary'];
-const teacherOnly: readonly RoleName[] = ['teacher'];
-
-// [method, path, roles allowed past the authorization layer]
-const routes: Array<[string, string, readonly RoleName[]]> = [
-  ['GET', '/users', headOnly],
-  ['POST', '/users', headOnly],
-  ['PATCH', '/users/missing', headOnly],
-  ['DELETE', '/users/missing', headOnly],
-  ['GET', '/api/members', both],
-  ['GET', '/api/members/missing', both],
-  ['POST', '/api/members', both],
-  ['PUT', '/api/members/missing', both],
-  ['POST', '/api/members/missing/deactivate', both],
-  ['POST', '/api/members/missing/reactivate', both],
-  ['GET', '/api/disciplines', both],
-  ['GET', '/api/disciplines/missing', both],
-  ['POST', '/api/disciplines', headOnly],
-  ['PUT', '/api/disciplines/missing', headOnly],
-  ['POST', '/api/disciplines/missing/deactivate', headOnly],
-  ['POST', '/api/disciplines/missing/reactivate', headOnly],
-  ['GET', '/api/memberships', both],
-  ['GET', '/api/memberships/missing', both],
-  ['GET', '/api/roster', teacherOnly],
-  ['GET', '/api/pricing', both],
-  ['POST', '/api/pricing/tariffs', headOnly],
-  ['PUT', '/api/pricing/tariffs/2030-01', headOnly],
-  ['DELETE', '/api/pricing/tariffs/2030-01', headOnly],
-  ['PUT', '/api/pricing/surcharge-tiers', headOnly],
-  ['PUT', '/api/pricing/proration-rule', headOnly],
-  ['GET', '/api/payments/members/missing/account', both],
-  ['GET', '/api/payments/members/missing', both],
-  ['GET', '/api/payments/receipts/1', both],
-  ['POST', '/api/payments/preview', both],
-  ['POST', '/api/payments/enrollment-preview', both],
-  ['POST', '/api/payments', both],
-  ['POST', '/api/payments/missing/annul', headOnly],
-  ['GET', '/api/reports/revenue', both],
-  ['GET', '/api/reports/discipline-settlement', both],
-  ['GET', '/api/cashcount/today', headOnly],
-  ['GET', '/api/cashcount', headOnly],
-  ['POST', '/api/cashcount', headOnly],
-];
+import { routes } from './routes.js';
 
 let baseUrl: string;
 let server: Server;
@@ -70,7 +27,8 @@ beforeAll(async () => {
   const pricing = await createPricing();
   const payments = await createPayments();
   const cashCount = await createCashCount();
-  cleanups.push(users.cleanup, members.cleanup, disciplines.cleanup, memberships.cleanup, pricing.cleanup, payments.cleanup, cashCount.cleanup);
+  const audit = await createAudit();
+  cleanups.push(audit.cleanup, users.cleanup, members.cleanup, disciplines.cleanup, memberships.cleanup, pricing.cleanup, payments.cleanup, cashCount.cleanup);
   server = createApp({
     storePath: users.storePath,
     memberService: members.service,
@@ -80,6 +38,10 @@ beforeAll(async () => {
     paymentService: payments.service,
     reportService: cashCount.reports,
     cashCountService: cashCount.cashCount,
+    auditService: audit.service,
+    backupService: { status: async () => ({ destination: { isDefault: true, state: 'ready' }, keep: 30, keepRecent: 5, copies: 0, lastSuccessAt: null, lastFailure: null, running: false }), run: async () => ({ ok: true, backup: { name: 'backup-20261101T150000Z', at: '2026-11-01T15:00:00.000Z', files: [] } }) },
+    noticeService: { debtNotices: async () => ({ asOf: '2026-11-01', rows: [] }) },
+    accessService: { check: async () => ({ result: 'red', reason: 'not_found' }) },
     rosterService: createRosterService({ memberships: memberships.service, members: members.service, disciplines: disciplines.service }),
   }).listen(0);
   await new Promise<void>((resolve) => server.once('listening', resolve));

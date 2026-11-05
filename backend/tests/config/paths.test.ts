@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { cashCountsFilePath, disciplinesFilePath, membersFilePath, paymentsFilePath, pricingConfigFilePath } from '../../src/config/paths.js';
+import { auditFilePath, cashCountsFilePath, disciplinesFilePath, membersFilePath, paymentsFilePath, pricingConfigFilePath } from '../../src/config/paths.js';
 
 describe('membersFilePath', () => {
   it('defaults to backend/data/members.json when MEMBERS_FILE is unset', () => {
@@ -65,5 +65,17 @@ describe('cashCountsFilePath', () => {
     const absolute = resolve('/var/club/cashcounts.json');
     expect(cashCountsFilePath({ CASHCOUNTS_FILE: absolute })).toBe(absolute);
     expect(cashCountsFilePath({ CASHCOUNTS_FILE: 'tmp/cc.json' })).toBe(resolve(process.cwd(), 'tmp/cc.json'));
+  });
+});
+
+describe('auditFilePath', () => {
+  it('defaults to backend/data/audit.json when AUDIT_FILE is unset', () => {
+    expect(auditFilePath({})).toBe(resolve(__dirname, '../../data/audit.json'));
+  });
+
+  it('passes an absolute AUDIT_FILE through and resolves a relative one against the cwd', () => {
+    const absolute = resolve('/var/club/audit.json');
+    expect(auditFilePath({ AUDIT_FILE: absolute })).toBe(absolute);
+    expect(auditFilePath({ AUDIT_FILE: 'tmp/a.json' })).toBe(resolve(process.cwd(), 'tmp/a.json'));
   });
 });

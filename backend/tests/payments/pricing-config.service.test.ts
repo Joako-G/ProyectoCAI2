@@ -36,7 +36,7 @@ describe('pricing configuration: defaults', () => {
 
   it('keeps the defaults and adds the change on the first write', async () => {
     const { service, file } = await setup();
-    await service.addTariff(tariffFrom('2026-12', { activityFee: 25_000 }));
+    await service.addTariff(tariffFrom('2026-12', { activityFee: 25_000 }), 'user-test');
     const stored = JSON.parse(await readFile(file, 'utf8'));
     expect(stored.tariffs.map((tariff: { effectiveFrom: string }) => tariff.effectiveFrom)).toEqual(['2026-01', '2026-12']);
     expect(stored.surchargeTiers).toEqual(DEFAULT_SURCHARGE_TIERS);
@@ -47,21 +47,21 @@ describe('pricing configuration: defaults', () => {
 describe('pricing configuration: adding tariffs', () => {
   it('adds a future tariff and lists tariffs by effective date', async () => {
     const { service } = await setup();
-    await service.addTariff(tariffFrom('2027-02'));
-    await service.addTariff(tariffFrom('2026-12', { socialFee: 30_000 }));
+    await service.addTariff(tariffFrom('2027-02'), 'user-test');
+    await service.addTariff(tariffFrom('2026-12', { socialFee: 30_000 }), 'user-test');
     const { tariffs } = await service.get();
     expect(tariffs.map((tariff) => tariff.effectiveFrom)).toEqual(['2026-01', '2026-12', '2027-02']);
   });
 
   it('allows a tariff starting in the current club month', async () => {
     const { service } = await setup();
-    await service.addTariff(tariffFrom('2026-10', { activityFee: 22_000 }));
+    await service.addTariff(tariffFrom('2026-10', { activityFee: 22_000 }), 'user-test');
     expect((await service.resolveForPeriod('2026-10')).tariff.activityFee).toBe(22_000);
   });
 
   it('rejects a tariff that starts in a past month and writes nothing', async () => {
     const { service, file } = await setup();
-    const error = await service.addTariff(tariffFrom('2026-09')).catch((e: unknown) => e);
+    const error = await service.addTariff(tariffFrom('2026-09'), 'user-test').catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ValidationError);
     expect((error as ValidationError).fieldErrors).toHaveProperty('effectiveFrom');
     expect(existsSync(file)).toBe(false);
@@ -69,8 +69,8 @@ describe('pricing configuration: adding tariffs', () => {
 
   it('rejects a second tariff with the same effective date', async () => {
     const { service } = await setup();
-    await service.addTariff(tariffFrom('2026-12'));
-    await expect(service.addTariff(tariffFrom('2026-12', { activityFee: 1 }))).rejects.toBeInstanceOf(ConflictError);
+    await service.addTariff(tariffFrom('2026-12'), 'user-test');
+    await expect(service.addTariff(tariffFrom('2026-12', { activityFee: 1 }), 'user-test')).rejects.toBeInstanceOf(ConflictError);
     expect((await service.get()).tariffs).toHaveLength(2);
   });
 
@@ -81,7 +81,7 @@ describe('pricing configuration: adding tariffs', () => {
     ['malformed period', { effectiveFrom: '2026-13' }],
   ])('rejects a tariff with a %s', async (_label, overrides) => {
     const { service, file } = await setup();
-    await expect(service.addTariff(tariffFrom('2026-12', overrides))).rejects.toBeInstanceOf(ValidationError);
+    await expect(service.addTariff(tariffFrom('2026-12', overrides), 'user-test')).rejects.toBeInstanceOf(ValidationError);
     expect(existsSync(file)).toBe(false);
   });
 });
@@ -89,41 +89,41 @@ describe('pricing configuration: adding tariffs', () => {
 describe('pricing configuration: replacing tariffs', () => {
   it('replaces the amounts of a future tariff', async () => {
     const { service } = await setup();
-    await service.addTariff(tariffFrom('2026-12'));
-    const replaced = await service.replaceTariff('2026-12', tariffFrom('2026-12', { activityFee: 30_000 }));
+    await service.addTariff(tariffFrom('2026-12'), 'user-test');
+    const replaced = await service.replaceTariff('2026-12', tariffFrom('2026-12', { activityFee: 30_000 }), 'user-test');
     expect(replaced.activityFee).toBe(30_000);
     expect((await service.resolveForPeriod('2026-12')).tariff.activityFee).toBe(30_000);
   });
 
   it('allows editing the tariff of the current month', async () => {
     const { service } = await setup();
-    await service.addTariff(tariffFrom('2026-10'));
-    await service.replaceTariff('2026-10', tariffFrom('2026-10', { carnetReplacement: 4_000 }));
+    await service.addTariff(tariffFrom('2026-10'), 'user-test');
+    await service.replaceTariff('2026-10', tariffFrom('2026-10', { carnetReplacement: 4_000 }), 'user-test');
     expect((await service.resolveForPeriod('2026-10')).tariff.carnetReplacement).toBe(4_000);
   });
 
   it('refuses to replace a tariff of a past month', async () => {
     const { service } = await setup();
-    await expect(service.replaceTariff('2026-01', tariffFrom('2026-01', { activityFee: 1 }))).rejects.toBeInstanceOf(ConflictError);
+    await expect(service.replaceTariff('2026-01', tariffFrom('2026-01', { activityFee: 1 }), 'user-test')).rejects.toBeInstanceOf(ConflictError);
     expect((await service.get()).tariffs).toEqual([DEFAULT_TARIFF]);
   });
 
   it('rejects a body whose effective date differs from the target', async () => {
     const { service } = await setup();
-    await service.addTariff(tariffFrom('2026-12'));
-    await expect(service.replaceTariff('2026-12', tariffFrom('2027-01'))).rejects.toBeInstanceOf(ValidationError);
+    await service.addTariff(tariffFrom('2026-12'), 'user-test');
+    await expect(service.replaceTariff('2026-12', tariffFrom('2027-01'), 'user-test')).rejects.toBeInstanceOf(ValidationError);
   });
 
   it('answers not found for a tariff that does not exist and validates the period', async () => {
     const { service } = await setup();
-    await expect(service.replaceTariff('2027-05', tariffFrom('2027-05'))).rejects.toBeInstanceOf(NotFoundError);
-    await expect(service.replaceTariff('soon', tariffFrom('2027-05'))).rejects.toBeInstanceOf(ValidationError);
+    await expect(service.replaceTariff('2027-05', tariffFrom('2027-05'), 'user-test')).rejects.toBeInstanceOf(NotFoundError);
+    await expect(service.replaceTariff('soon', tariffFrom('2027-05'), 'user-test')).rejects.toBeInstanceOf(ValidationError);
   });
 
   it('rejects invalid amounts on replace and leaves the tariff as it was', async () => {
     const { service } = await setup();
-    await service.addTariff(tariffFrom('2026-12'));
-    await expect(service.replaceTariff('2026-12', tariffFrom('2026-12', { socialFee: -5 }))).rejects.toBeInstanceOf(ValidationError);
+    await service.addTariff(tariffFrom('2026-12'), 'user-test');
+    await expect(service.replaceTariff('2026-12', tariffFrom('2026-12', { socialFee: -5 }), 'user-test')).rejects.toBeInstanceOf(ValidationError);
     expect((await service.resolveForPeriod('2026-12')).tariff.socialFee).toBe(DEFAULT_TARIFF.socialFee);
   });
 });
@@ -131,21 +131,21 @@ describe('pricing configuration: replacing tariffs', () => {
 describe('pricing configuration: deleting tariffs', () => {
   it('deletes a future tariff', async () => {
     const { service } = await setup();
-    await service.addTariff(tariffFrom('2026-12'));
-    await service.deleteTariff('2026-12');
+    await service.addTariff(tariffFrom('2026-12'), 'user-test');
+    await service.deleteTariff('2026-12', 'user-test');
     expect((await service.get()).tariffs).toEqual([DEFAULT_TARIFF]);
   });
 
   it('refuses to delete a tariff of a past month', async () => {
     const { service } = await setup();
-    await expect(service.deleteTariff('2026-01')).rejects.toBeInstanceOf(ConflictError);
+    await expect(service.deleteTariff('2026-01', 'user-test')).rejects.toBeInstanceOf(ConflictError);
     expect((await service.get()).tariffs).toEqual([DEFAULT_TARIFF]);
   });
 
   it('deletes the current-month tariff when an earlier one still covers the month', async () => {
     const { service } = await setup();
-    await service.addTariff(tariffFrom('2026-10', { activityFee: 22_000 }));
-    await service.deleteTariff('2026-10');
+    await service.addTariff(tariffFrom('2026-10', { activityFee: 22_000 }), 'user-test');
+    await service.deleteTariff('2026-10', 'user-test');
     expect((await service.resolveForPeriod('2026-10')).tariff).toEqual(DEFAULT_TARIFF);
   });
 
@@ -153,14 +153,14 @@ describe('pricing configuration: deleting tariffs', () => {
     const { service, file } = await setup();
     const only = { ...DEFAULT_CONFIG, tariffs: [tariffFrom('2026-10')] };
     await writeFile(file, JSON.stringify(only));
-    await service.addTariff(tariffFrom('2026-12'));
-    await expect(service.deleteTariff('2026-10')).rejects.toBeInstanceOf(ConflictError);
+    await service.addTariff(tariffFrom('2026-12'), 'user-test');
+    await expect(service.deleteTariff('2026-10', 'user-test')).rejects.toBeInstanceOf(ConflictError);
     expect((await service.get()).tariffs.map((tariff) => tariff.effectiveFrom)).toEqual(['2026-10', '2026-12']);
   });
 
   it('answers not found for an unknown tariff', async () => {
     const { service } = await setup();
-    await expect(service.deleteTariff('2027-05')).rejects.toBeInstanceOf(NotFoundError);
+    await expect(service.deleteTariff('2027-05', 'user-test')).rejects.toBeInstanceOf(NotFoundError);
   });
 });
 
@@ -168,7 +168,7 @@ describe('pricing configuration: surcharge tiers and proration rule', () => {
   it('replaces the surcharge tiers', async () => {
     const { service } = await setup();
     const tiers = [{ fromDay: 1, amount: 0 }, { fromDay: 8, amount: 4_000 }];
-    expect(await service.replaceSurchargeTiers(tiers)).toEqual(tiers);
+    expect(await service.replaceSurchargeTiers(tiers, 'user-test')).toEqual(tiers);
     expect((await service.get()).surchargeTiers).toEqual(tiers);
   });
 
@@ -180,14 +180,14 @@ describe('pricing configuration: surcharge tiers and proration rule', () => {
     ['beyond the month', [{ fromDay: 1, amount: 0 }, { fromDay: 32, amount: 1 }]],
   ])('rejects tiers that are %s and writes nothing', async (_label, tiers) => {
     const { service, file } = await setup();
-    await expect(service.replaceSurchargeTiers(tiers)).rejects.toBeInstanceOf(ValidationError);
+    await expect(service.replaceSurchargeTiers(tiers, 'user-test')).rejects.toBeInstanceOf(ValidationError);
     expect(existsSync(file)).toBe(false);
   });
 
   it('replaces the proration rule', async () => {
     const { service } = await setup();
     const rule = { afterDay: 20, activityPercent: 60 };
-    expect(await service.replaceProrationRule(rule)).toEqual(rule);
+    expect(await service.replaceProrationRule(rule, 'user-test')).toEqual(rule);
     expect((await service.get()).prorationRule).toEqual(rule);
   });
 
@@ -198,15 +198,15 @@ describe('pricing configuration: surcharge tiers and proration rule', () => {
     { afterDay: 15, activityPercent: -1 },
   ])('rejects the proration rule %j', async (rule) => {
     const { service, file } = await setup();
-    await expect(service.replaceProrationRule(rule)).rejects.toBeInstanceOf(ValidationError);
+    await expect(service.replaceProrationRule(rule, 'user-test')).rejects.toBeInstanceOf(ValidationError);
     expect(existsSync(file)).toBe(false);
   });
 
   it('keeps tariffs untouched when tiers or the rule change', async () => {
     const { service } = await setup();
-    await service.addTariff(tariffFrom('2026-12'));
-    await service.replaceSurchargeTiers([{ fromDay: 1, amount: 0 }]);
-    await service.replaceProrationRule({ afterDay: 10, activityPercent: 70 });
+    await service.addTariff(tariffFrom('2026-12'), 'user-test');
+    await service.replaceSurchargeTiers([{ fromDay: 1, amount: 0 }], 'user-test');
+    await service.replaceProrationRule({ afterDay: 10, activityPercent: 70 }, 'user-test');
     expect((await service.get()).tariffs).toHaveLength(2);
   });
 });
@@ -214,7 +214,7 @@ describe('pricing configuration: surcharge tiers and proration rule', () => {
 describe('pricing configuration: resolveForPeriod', () => {
   it('picks the tariff in force on each side of a price change, with tiers and rule', async () => {
     const { service } = await setup();
-    await service.addTariff(tariffFrom('2026-12', { activityFee: 25_000 }));
+    await service.addTariff(tariffFrom('2026-12', { activityFee: 25_000 }), 'user-test');
     const before = await service.resolveForPeriod('2026-11');
     const after = await service.resolveForPeriod('2026-12');
     expect(before.tariff.activityFee).toBe(DEFAULT_TARIFF.activityFee);
@@ -225,7 +225,7 @@ describe('pricing configuration: resolveForPeriod', () => {
 
   it('keeps answering past months with the tariff they were charged at', async () => {
     const { service } = await setup();
-    await service.addTariff(tariffFrom('2026-12', { activityFee: 25_000 }));
+    await service.addTariff(tariffFrom('2026-12', { activityFee: 25_000 }), 'user-test');
     expect((await service.resolveForPeriod('2026-03')).tariff).toEqual(DEFAULT_TARIFF);
   });
 
@@ -249,8 +249,8 @@ describe('pricing configuration: file integrity', () => {
     const { service, file } = await setup();
     await writeFile(file, content);
     await expect(service.get()).rejects.toThrow();
-    await expect(service.addTariff(tariffFrom('2026-12'))).rejects.toThrow();
-    await expect(service.replaceProrationRule({ afterDay: 10, activityPercent: 10 })).rejects.toThrow();
+    await expect(service.addTariff(tariffFrom('2026-12'), 'user-test')).rejects.toThrow();
+    await expect(service.replaceProrationRule({ afterDay: 10, activityPercent: 10 }, 'user-test')).rejects.toThrow();
     expect(await readFile(file, 'utf8')).toBe(content);
   });
 
@@ -258,9 +258,9 @@ describe('pricing configuration: file integrity', () => {
     const { service, file } = await setup();
     const periods = ['2026-11', '2026-12', '2027-01', '2027-02', '2027-03', '2027-04'];
     await Promise.all([
-      ...periods.map((period) => service.addTariff(tariffFrom(period))),
-      service.replaceSurchargeTiers([{ fromDay: 1, amount: 0 }, { fromDay: 5, amount: 1_000 }]),
-      service.replaceProrationRule({ afterDay: 12, activityPercent: 40 }),
+      ...periods.map((period) => service.addTariff(tariffFrom(period), 'user-test')),
+      service.replaceSurchargeTiers([{ fromDay: 1, amount: 0 }, { fromDay: 5, amount: 1_000 }], 'user-test'),
+      service.replaceProrationRule({ afterDay: 12, activityPercent: 40 }, 'user-test'),
     ]);
     const stored = JSON.parse(await readFile(file, 'utf8'));
     expect(stored.tariffs).toHaveLength(periods.length + 1);

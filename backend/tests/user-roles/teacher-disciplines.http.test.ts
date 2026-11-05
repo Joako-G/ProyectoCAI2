@@ -15,7 +15,7 @@ beforeAll(async () => {
   const users = await createUsersFile();
   const disciplines = await createDisciplines();
   cleanups.push(users.cleanup, disciplines.cleanup);
-  disciplineId = (await disciplines.service.create({ name: 'Básquet', teachers: ['T'], leadTeacher: 'T' })).id;
+  disciplineId = (await disciplines.service.create({ name: 'Básquet', teachers: ['T'], leadTeacher: 'T' }, 'user-test')).id;
   server = createApp({ storePath: users.storePath, disciplineService: disciplines.service }).listen(0);
   await new Promise<void>((resolve) => server.once('listening', resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;

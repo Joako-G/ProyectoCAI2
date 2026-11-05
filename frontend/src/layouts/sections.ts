@@ -1,7 +1,7 @@
 import type { AuthUser, Capability } from '../features/auth/types/auth';
 import { can } from '../features/auth/utils/can';
 
-export type Section = 'members' | 'disciplines' | 'payments' | 'cashcount' | 'reports' | 'users' | 'roster' | 'pricing';
+export type Section = 'members' | 'disciplines' | 'payments' | 'notices' | 'access' | 'cashcount' | 'reports' | 'users' | 'roster' | 'pricing' | 'audit' | 'backup';
 
 /**
  * Navigation order; each section lives at its own URL and needs one capability to be reachable.
@@ -11,11 +11,15 @@ export const SECTIONS: ReadonlyArray<{ id: Section; label: string; subtitle: str
   { id: 'members', label: 'Socios', subtitle: 'Búsqueda por N° de socio, DNI o nombre', path: '/socios', capability: 'members:read' },
   { id: 'disciplines', label: 'Disciplinas', subtitle: 'Catálogo de disciplinas y sus profesores', path: '/disciplinas', capability: 'disciplines:read' },
   { id: 'payments', label: 'Cobros', subtitle: 'Cobro de cuotas por DNI, comprobantes y anulaciones', path: '/cobros', capability: 'payments:read' },
+  { id: 'notices', label: 'Avisos', subtitle: 'Avisos de deuda por WhatsApp, uno por socio', path: '/avisos', capability: 'notices:read' },
+  { id: 'access', label: 'Ingreso', subtitle: 'Control de ingreso por DNI: verde, amarillo o rojo', path: '/ingreso', capability: 'access:check' },
   { id: 'cashcount', label: 'Arqueo', subtitle: 'Cierre diario de caja: efectivo contado y diferencia', path: '/caja/arqueo', capability: 'cashcount:run' },
   { id: 'reports', label: 'Reportes', subtitle: 'Recaudación por período y liquidación por disciplina', path: '/reportes', capability: 'reports:read' },
   { id: 'users', label: 'Usuarios', subtitle: 'Administración de cuentas de demostración', path: '/usuarios', capability: 'users:manage' },
   { id: 'roster', label: 'Mis disciplinas', subtitle: 'Alumnos actuales y anteriores de sus disciplinas', path: '/mis-disciplinas', capability: 'roster:read' },
   { id: 'pricing', label: 'Precios', subtitle: 'Tarifas, recargos por pago tardío y prorrateo', path: '/precios', capability: 'config:read' },
+  { id: 'audit', label: 'Auditoría', subtitle: 'Quién creó, modificó o anuló cada registro y cuándo', path: '/auditoria', capability: 'audit:read' },
+  { id: 'backup', label: 'Respaldo', subtitle: 'Copia diaria de los datos y cuándo fue la última', path: '/respaldo', capability: 'backup:run' },
 ];
 
 /**

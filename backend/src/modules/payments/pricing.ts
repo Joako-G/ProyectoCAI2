@@ -1,4 +1,5 @@
-import { NotFoundError, ValidationError } from '../../shared/errors.js';
+import { ConflictError, NotFoundError, ValidationError } from '../../shared/errors.js';
+import type { PricingConfig } from './pricing-config.types.js';
 import type { Money, Period, ProrationContext, ProrationRule, SurchargeTier, Tariff } from './pricing.types.js';
 
 // Defaults mirror the owner-confirmed rules in docs/team-handoff.md. They are what the pricing
@@ -76,6 +77,15 @@ export function resolveTariff(tariffs: readonly Tariff[], period: Period): Tarif
   return inForce;
 }
 
+/**
+ * The first month that can be owed: the earliest tariff `effectiveFrom`. A technical floor, because a month
+ * without a tariff cannot be priced; it is not a business rule.
+ */
+export function earliestTariffPeriod(config: PricingConfig): Period {
+  if (config.tariffs.length === 0) throw new ConflictError('No tariffs are configured');
+  return config.tariffs.reduce((earliest, tariff) => (tariff.effectiveFrom < earliest ? tariff.effectiveFrom : earliest), config.tariffs[0]!.effectiveFrom);
+}
+
 /** Tiers must start at day 1, ascend strictly, stay within the month and carry valid amounts. */
 /** The month after a `YYYY-MM` period. */
 export function nextPeriod(period: Period): Period {
@@ -112,6 +122,22 @@ export function surchargeForDay(tiers: readonly SurchargeTier[], paymentDay: num
     if (tier.fromDay <= paymentDay) amount = tier.amount;
   }
   return amount;
+}
+
+/**
+ * The last day of `period` that can be paid without a surcharge, as `YYYY-MM-DD`: the day before the first
+ * tier that charges something starts, clamped to the month length. The tiers carry no effective date, so
+ * the ones configured now are the ones in force for any month. When no tier ever charges, the whole month
+ * is free of surcharge and the answer is its last day. A tier charging from day 1 leaves no free day; the
+ * answer is then the 1st.
+ */
+export function lastDayWithoutSurcharge(tiers: readonly SurchargeTier[], period: Period): string {
+  assertSurchargeTiers(tiers);
+  assertPeriod(period, 'period');
+  const monthLength = new Date(Date.UTC(Number(period.slice(0, 4)), Number(period.slice(5, 7)), 0)).getUTCDate();
+  const charging = tiers.find((tier) => tier.amount > 0);
+  const day = charging ? Math.min(Math.max(charging.fromDay - 1, 1), monthLength) : monthLength;
+  return `${period}-${String(day).padStart(2, '0')}`;
 }
 
 export function assertProrationRule(rule: ProrationRule): void {

@@ -19,10 +19,10 @@ beforeAll(async () => {
   const disciplines = await createDisciplines();
   const memberships = await createMemberships();
   cleanups.push(users.cleanup, members.cleanup, disciplines.cleanup, memberships.cleanup);
-  const mine = await disciplines.service.create({ name: 'Básquet', teachers: ['T'], leadTeacher: 'T' });
-  const theirs = await disciplines.service.create({ name: 'Vóley', teachers: ['U'], leadTeacher: 'U' });
+  const mine = await disciplines.service.create({ name: 'Básquet', teachers: ['T'], leadTeacher: 'T' }, 'user-test');
+  const theirs = await disciplines.service.create({ name: 'Vóley', teachers: ['U'], leadTeacher: 'U' }, 'user-test');
   // The members fake knows other discipline ids; the memberships history is what the roster reads.
-  const member = await members.service.create(adultInput);
+  const member = await members.service.create(adultInput, 'user-test');
   await memberships.service.syncMember(member.id, [mine.id], '2026-02-01');
   await memberships.service.syncMember(member.id, [theirs.id], '2026-03-01');
   // The teacher account is assigned only the first discipline (and one that no longer exists).

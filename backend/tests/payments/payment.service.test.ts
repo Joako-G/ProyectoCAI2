@@ -5,6 +5,7 @@ import { createJsonPaymentRepository } from '../../src/modules/payments/json-pay
 import { createPaymentService } from '../../src/modules/payments/payment.service.js';
 import { ConflictError, NotFoundError, ValidationError } from '../../src/shared/errors.js';
 import { ACTOR, MEMBER_ID, membership, trackContexts } from './payment.helpers.js';
+import { noAudit } from '../audit/helpers.js';
 
 const contexts = trackContexts();
 afterEach(() => contexts.cleanup());
@@ -61,9 +62,9 @@ describe('register', () => {
   it('keeps the stored amounts when a tariff changes later', async () => {
     const { service, pricing } = await contexts.create();
     const tariff = { effectiveFrom: '2026-10', enrollment: 1, socialFee: 25_000, activityFee: 1, carnetReplacement: 1 };
-    await pricing.addTariff(tariff);
+    await pricing.addTariff(tariff, 'user-test');
     const payment = await service.register(MEMBER_ID, { concepts: [social('2026-10')], method: 'cash' }, ACTOR);
-    await pricing.replaceTariff('2026-10', { ...tariff, socialFee: 99_000 });
+    await pricing.replaceTariff('2026-10', { ...tariff, socialFee: 99_000 }, 'user-test');
     expect(payment.total).toBe(25_000);
     expect((await service.history(MEMBER_ID))[0]!.total).toBe(25_000);
     expect((await service.getReceipt(1)).lines[0]!.amount).toBe(25_000);
@@ -321,6 +322,7 @@ describe('account without tariffs', () => {
   it('throws a typed conflict instead of a TypeError', async () => {
     const { repository, members, memberships } = await contexts.create();
     const service = createPaymentService({
+      audit: noAudit,
       repository,
       members: { getById: async () => members[0]! },
       memberships: { list: async () => memberships },
@@ -344,6 +346,7 @@ describe('stored lines round trip', () => {
     expect(late.lines.map((line) => line.kind)).toContain('activitySurcharge');
 
     const reopened = createPaymentService({
+      audit: noAudit,
       repository: createJsonPaymentRepository(context.file),
       now: () => new Date('2026-10-21T15:00:00Z'),
       pricing: context.pricing,

@@ -1,0 +1,20 @@
+/** Mirrors `DebtNotice` in backend/src/modules/notices/notice.types.ts. */
+export interface DebtNotice {
+  memberId: string;
+  memberNumber: string;
+  name: string;
+  standing: 'debtor' | 'deregistered';
+  unpaidPeriodCount: number;
+  /** Pesos owed as of the list date; it changes with the surcharge tier of the payment date. */
+  total: number;
+  recipient: 'member' | 'guardian';
+  recipientName: string;
+  /** Null when the server could not derive a usable WhatsApp number. */
+  link: string | null;
+  numberIssue: boolean;
+}
+
+export interface DebtNoticeList {
+  asOf: string;
+  rows: DebtNotice[];
+}

@@ -7,6 +7,7 @@ import { createJsonCashCountRepository } from '../../src/modules/cashcount/json-
 import { createReportService } from '../../src/modules/reports/report.service.js';
 import type { IncomeEntry } from '../../src/modules/reports/report.types.js';
 import { ConflictError, ValidationError } from '../../src/shared/errors.js';
+import { noAudit } from '../audit/helpers.js';
 
 /** 2026-10-05 in the club time zone. */
 const TODAY = new Date('2026-10-05T15:00:00Z');
@@ -41,7 +42,7 @@ async function setup(entries: IncomeEntry[] = [entry({ amount: 1000 }), entry({ 
     members: { list: async () => [] },
     disciplines: { findByIds: async () => [] },
   });
-  return { service: createCashCountService({ repository, revenue: reports, now }), repository, file };
+  return { service: createCashCountService({ audit: noAudit, repository, revenue: reports, now }), repository, file };
 }
 
 describe('closing the day', () => {

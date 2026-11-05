@@ -7,6 +7,7 @@ import { createMemberService } from '../../src/modules/members/member.service.js
 import { bootstrap } from '../../src/startup.js';
 import { adultInput, BASKET, fakeDisciplineLookup, VOLLEY } from '../members/helpers.js';
 import { trackContexts } from './helpers.js';
+import { noAudit } from '../audit/helpers.js';
 
 const contexts = trackContexts();
 const dirs: string[] = [];
@@ -25,6 +26,7 @@ describe('history repair after a failed sync', () => {
     let instant = new Date('2026-10-01T15:00:00Z');
     let failing = false;
     const members = createMemberService({
+      audit: noAudit,
       repository: createJsonMemberRepository(join(dir, 'members.json')),
       disciplineLookup: fakeDisciplineLookup(),
       now: () => instant,
@@ -37,10 +39,10 @@ describe('history repair after a failed sync', () => {
     });
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    const member = await members.create({ ...adultInput, disciplineIds: [BASKET] });
+    const member = await members.create({ ...adultInput, disciplineIds: [BASKET] }, 'user-test');
     instant = new Date('2026-10-05T15:00:00Z');
     failing = true;
-    await members.update(member.id, { ...adultInput, disciplineIds: [VOLLEY] });
+    await members.update(member.id, { ...adultInput, disciplineIds: [VOLLEY] }, 'user-test');
 
     // "Restart" on a later date.
     await memberships.reconcile(await members.list(), '2026-11-20');

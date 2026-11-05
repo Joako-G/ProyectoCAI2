@@ -10,10 +10,14 @@ export type Capability =
   | 'payments:read'
   | 'payments:collect'
   | 'payments:annul'
+  | 'notices:read'
+  | 'access:check'
   | 'cashcount:run'
   | 'reports:read'
   | 'config:read'
-  | 'config:manage';
+  | 'config:manage'
+  | 'audit:read'
+  | 'backup:run';
 
 /** The signed-in account as returned by `POST /auth/login`, with the capabilities of its role. */
 export interface AuthUser {

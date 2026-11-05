@@ -6,6 +6,7 @@ import type { MemberRepository } from '../../src/modules/members/member.reposito
 import { createMemberService } from '../../src/modules/members/member.service.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
 import { basketball, createTestContext, volleyball } from './helpers.js';
+import { noAudit } from '../audit/helpers.js';
 
 const cleanups: Array<() => Promise<void> | void> = [];
 
@@ -24,7 +25,7 @@ async function startApi() {
   cleanups.push(users.cleanup);
   const app = createApp({
     storePath: users.storePath,
-    memberService: createMemberService({ repository: memberRepository, disciplineLookup: context.service }),
+    memberService: createMemberService({ audit: noAudit, repository: memberRepository, disciplineLookup: context.service }),
     disciplineService: context.service,
   });
   const server: Server = app.listen(0);

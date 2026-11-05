@@ -82,7 +82,7 @@ describe('advance payment of the next month', () => {
 
   it('refuses it when next month has a different tariff', async () => {
     const { service, pricing } = await contexts.create(joinedThisMonth);
-    await pricing.addTariff({ effectiveFrom: '2026-11', enrollment: 20_000, socialFee: 25_000, activityFee: 20_000, carnetReplacement: 3_000 });
+    await pricing.addTariff({ effectiveFrom: '2026-11', enrollment: 20_000, socialFee: 25_000, activityFee: 20_000, carnetReplacement: 3_000 }, 'user-test');
     await payOctober(service);
     await expect(
       service.register(MEMBER_ID, { concepts: [social('2026-11')], method: 'cash' }, ACTOR),
@@ -169,7 +169,7 @@ describe('what the account tells the Cobros screen', () => {
 
   it('offers no advance month when the next month costs more', async () => {
     const { service, pricing } = await contexts.create(joinedThisMonth);
-    await pricing.addTariff({ effectiveFrom: '2026-11', enrollment: 20_000, socialFee: 25_000, activityFee: 20_000, carnetReplacement: 3_000 });
+    await pricing.addTariff({ effectiveFrom: '2026-11', enrollment: 20_000, socialFee: 25_000, activityFee: 20_000, carnetReplacement: 3_000 }, 'user-test');
     await payOctober(service);
     expect((await service.account(MEMBER_ID)).advance).toBeUndefined();
   });
