@@ -2,6 +2,8 @@ import cors from 'cors';
 import express from 'express';
 import { apiNotFound, errorHandler } from './middlewares/error-handler.js';
 import { requireCapability, requireCapabilityByMethod } from './middlewares/require-role.js';
+import { createAccessRouter } from './modules/access/access.routes.js';
+import type { AccessService } from './modules/access/access.service.js';
 import { createAuditRouter } from './modules/audit/audit.routes.js';
 import { discardAudit, type AuditService } from './modules/audit/audit.service.js';
 import { createAuthRouter } from './modules/auth/auth.routes.js';
@@ -43,6 +45,7 @@ export interface AppDependencies {
   cashCountService?: CashCountService;
   rosterService?: RosterService;
   noticeService?: Pick<NoticeService, 'debtNotices'>;
+  accessService?: Pick<AccessService, 'check'>;
   auditService?: AuditService;
   backupService?: Pick<BackupService, 'status' | 'run'>;
   // Lets the process share one users repository with the audit log, which reads actor names from it.
@@ -107,6 +110,10 @@ if (options.rosterService) {
 if (options.noticeService) {
   // Read-only: notices:read for every request, and the router has no write route.
   app.use('/api/notices', requireCapability(authenticate, 'notices:read'), createNoticeRouter(options.noticeService));
+}
+if (options.accessService) {
+  // One POST that reads and writes nothing, so a single capability guards it.
+  app.use('/api/access', requireCapability(authenticate, 'access:check'), createAccessRouter(options.accessService));
 }
 if (options.auditService) {
   // Read-only: audit:read for every request, and the router has no write route.

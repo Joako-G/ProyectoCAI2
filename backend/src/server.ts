@@ -9,6 +9,7 @@ import {
   paymentsFilePath,
   pricingConfigFilePath,
 } from './config/paths.js';
+import { createAccessService } from './modules/access/access.service.js';
 import type { AuditLabelSources } from './modules/audit/audit.labels.js';
 import { createAuditService } from './modules/audit/audit.service.js';
 import { startBackupScheduler } from './modules/backup/backup.scheduler.js';
@@ -106,6 +107,13 @@ const noticeService = createNoticeService({
   pricing: pricingConfigService,
   sender: createWaMeSender(),
 });
+// The entrance check reads the same four sources once per request and answers green, yellow or red.
+const accessService = createAccessService({
+  members: memberService,
+  memberships: membershipService,
+  payments: paymentRepository,
+  pricing: pricingConfigService,
+});
 // The daily backup copies the data files to BACKUP_DIR (an external drive, or backend/backups); see docs/backup-restore.md.
 const backup = backupDirectory();
 const backupService = createBackupService({
@@ -114,7 +122,7 @@ const backupService = createBackupService({
   isDefaultDestination: backup.isDefault,
   audit: auditService,
 });
-const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, auditService, backupService, userRepository });
+const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, accessService, auditService, backupService, userRepository });
 
 bootstrap({
   memberService,

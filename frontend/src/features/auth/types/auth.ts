@@ -11,6 +11,7 @@ export type Capability =
   | 'payments:collect'
   | 'payments:annul'
   | 'notices:read'
+  | 'access:check'
   | 'cashcount:run'
   | 'reports:read'
   | 'config:read'

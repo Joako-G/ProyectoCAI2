@@ -1,4 +1,5 @@
-import { NotFoundError, ValidationError } from '../../shared/errors.js';
+import { ConflictError, NotFoundError, ValidationError } from '../../shared/errors.js';
+import type { PricingConfig } from './pricing-config.types.js';
 import type { Money, Period, ProrationContext, ProrationRule, SurchargeTier, Tariff } from './pricing.types.js';
 
 // Defaults mirror the owner-confirmed rules in docs/team-handoff.md. They are what the pricing
@@ -74,6 +75,15 @@ export function resolveTariff(tariffs: readonly Tariff[], period: Period): Tarif
   }
   if (!inForce) throw new NotFoundError(`No tariff in force for ${period}`);
   return inForce;
+}
+
+/**
+ * The first month that can be owed: the earliest tariff `effectiveFrom`. A technical floor, because a month
+ * without a tariff cannot be priced; it is not a business rule.
+ */
+export function earliestTariffPeriod(config: PricingConfig): Period {
+  if (config.tariffs.length === 0) throw new ConflictError('No tariffs are configured');
+  return config.tariffs.reduce((earliest, tariff) => (tariff.effectiveFrom < earliest ? tariff.effectiveFrom : earliest), config.tariffs[0]!.effectiveFrom);
 }
 
 /** Tiers must start at day 1, ascend strictly, stay within the month and carry valid amounts. */

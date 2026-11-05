@@ -20,6 +20,8 @@ export const permissions = {
   'cashcount:run': ['head_secretary'],
   'reports:read': ['secretary', 'head_secretary'],
   'notices:read': ['secretary', 'head_secretary'],
+  // The entrance check (RF-08): a DNI tells staff whether the member may enter. Provisional: there is no doorkeeper role yet.
+  'access:check': ['secretary', 'head_secretary'],
   'config:read': ['secretary', 'head_secretary'],
   'config:manage': ['head_secretary'],
   // The audit log (RF-27) is the head secretary's alone.

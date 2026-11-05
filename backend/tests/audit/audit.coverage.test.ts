@@ -30,8 +30,8 @@ import { routes } from '../authorization/routes.js';
 
 const TODAY = new Date('2026-10-05T15:00:00Z');
 
-// Routes that are not reads but write nothing: they only compute a preview.
-const WRITES_NOTHING = ['POST /api/payments/preview', 'POST /api/payments/enrollment-preview'];
+// Routes that are not reads but write nothing: they only compute a preview or answer a check.
+const WRITES_NOTHING = ['POST /api/payments/preview', 'POST /api/payments/enrollment-preview', 'POST /api/access/check'];
 
 // Free text and personal data the scenarios send. None of it may reach the audit file.
 const FORBIDDEN = ['Se mudó de ciudad', 'Cobro duplicado', 'Faltó vuelto', 'Nora Díaz', 'nora@club.test', 'Passw0rd-Long-1', 'Another-Pass-2', 'passwordHash', '3000000'];

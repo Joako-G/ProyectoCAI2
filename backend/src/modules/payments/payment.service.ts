@@ -4,7 +4,7 @@ import { ConflictError, NotFoundError, ValidationError } from '../../shared/erro
 import type { AuditRecorder } from '../audit/audit.service.js';
 import type { Membership } from '../memberships/membership.types.js';
 import { accountStanding, conceptKey, owedConcepts, settledKeys, type AccountMember } from './account.js';
-import { nextPeriod, sameMonthlyFees } from './pricing.js';
+import { earliestTariffPeriod, nextPeriod, sameMonthlyFees } from './pricing.js';
 import { calculateCharge } from './charge.js';
 import type { Charge, ChargeConcept, FirstTimeRegistration } from './charge.types.js';
 import type { PaymentRepository } from './payment.repository.js';
@@ -91,11 +91,6 @@ function lineKey(line: Payment['lines'][number]): string {
   if (line.kind === 'socialFee') return conceptKey({ kind: 'socialFee', period: line.period });
   if (line.kind === 'activityFee') return conceptKey({ kind: 'activityFee', period: line.period, disciplineId: line.disciplineId ?? '' });
   return line.kind;
-}
-
-function earliestTariffPeriod(config: PricingConfig): string {
-  if (config.tariffs.length === 0) throw new ConflictError('No tariffs are configured');
-  return config.tariffs.reduce((earliest, tariff) => (tariff.effectiveFrom < earliest ? tariff.effectiveFrom : earliest), config.tariffs[0]!.effectiveFrom);
 }
 
 // The unpaid fees of the month after `asOf`, offered to an up-to-date member only while that month costs the same.

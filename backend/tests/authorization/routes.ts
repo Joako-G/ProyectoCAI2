@@ -41,6 +41,7 @@ export const routes: Array<[string, string, readonly RoleName[]]> = [
   ['GET', '/api/reports/revenue', both],
   ['GET', '/api/reports/discipline-settlement', both],
   ['GET', '/api/notices/debt', both],
+  ['POST', '/api/access/check', both],
   ['GET', '/api/cashcount/today', headOnly],
   ['GET', '/api/cashcount', headOnly],
   ['POST', '/api/cashcount', headOnly],

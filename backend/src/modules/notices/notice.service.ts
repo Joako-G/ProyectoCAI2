@@ -1,9 +1,9 @@
 import { toIsoDate } from '../../shared/date.js';
-import { ConflictError } from '../../shared/errors.js';
 import { isMinor } from '../members/member.validation.js';
 import type { Membership } from '../memberships/membership.types.js';
 import { accountStanding, owedConcepts } from '../payments/account.js';
 import { calculateCharge } from '../payments/charge.js';
+import { earliestTariffPeriod } from '../payments/pricing.js';
 import type { Payment } from '../payments/payment.types.js';
 import type { PricingConfig } from '../payments/pricing-config.types.js';
 import { buildDebtMessage } from './notice.message.js';
@@ -44,9 +44,7 @@ export function createNoticeService({ members, memberships, payments, pricing, s
     async debtNotices(): Promise<DebtNoticeList> {
       const asOf = toIsoDate(now());
       const [allMembers, history, paid, config] = await Promise.all([members.list(), memberships.list(), payments.list(), pricing.get()]);
-      if (config.tariffs.length === 0) throw new ConflictError('No tariffs are configured');
-      // The earliest tariff month is a technical floor: a month without a tariff cannot be priced.
-      const firstPeriod = config.tariffs.reduce((earliest, tariff) => (tariff.effectiveFrom < earliest ? tariff.effectiveFrom : earliest), config.tariffs[0]!.effectiveFrom);
+      const firstPeriod = earliestTariffPeriod(config);
 
       const entries: Array<{ row: DebtNotice; order: string; number: string }> = [];
       for (const member of allMembers) {
