@@ -14,7 +14,8 @@ export function AccessView() {
     if (typed === '') return;
     const answered = await check(typed);
     // Ready for the next person; after a failure the typed DNI stays so it can be corrected.
-    if (answered) setDni('');
+    // A DNI typed while the check was pending belongs to the next person, so it stays too.
+    if (answered) setDni((current) => (current.trim() === typed ? '' : current));
     field.current?.focus();
   }
 

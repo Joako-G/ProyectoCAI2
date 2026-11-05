@@ -54,6 +54,20 @@ describe('AccessView', () => {
     expect(input()).toHaveFocus();
   });
 
+  it('keeps a DNI typed while the previous check was still pending', async () => {
+    let answer: (response: Response) => void = () => {};
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => { answer = resolve; })));
+    const user = userEvent.setup();
+    render(<AccessView />);
+
+    await user.type(input(), '30111222{Enter}');
+    await user.type(input(), '{Backspace>8}40222333');
+    answer(jsonResponse(buildAccessCheck()));
+    await screen.findByText('Puede ingresar');
+
+    expect(input()).toHaveValue('40222333');
+  });
+
   it('lets a member in with the months owed, in singular and plural (yellow)', async () => {
     const fetchMock = stubCheck(buildAccessCheck({ result: 'yellow', reason: 'debtor', member: { memberNumber: '101', name: 'Lucía Prueba', unpaidPeriodCount: 1 } }));
     const user = userEvent.setup();

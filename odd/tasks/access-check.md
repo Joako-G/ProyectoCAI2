@@ -67,5 +67,18 @@ Work on `manu` (user preference). Forecast is about 500 authored lines in two wo
 
 - 2026-11-05: T2 done. RED: `AccessView.test.tsx` failed with `Failed to resolve import "./AccessView"`, `sections.test.ts` and two `App.routing.test.tsx` cases failed (no `access` section, heading "Ingreso" not found). GREEN: `pnpm --filter @club-socios/frontend test` 47 files, 514 tests passed; frontend typecheck clean. REFACTOR: none needed. One backend run hit 2 failures in `tests/audit/audit.api.test.ts` (`fetch failed: bad port`, a random listen port that fetch blocks); two reruns passed 978/978, unrelated to this feature.
 
+- 2026-11-05: Gentle-AI review of `a12bd7c`..`bf731bd` (lineage `review-81d368c910ce106d`, 31 files, 850 lines, high risk, consent granted): approved and acknowledged.
+  - Fixed after the review: `R3-input-cleared-after-pending-check`. A DNI typed while a check is pending is no longer cleared by that check's answer. RED: the new test expected `40222333` but the field was empty. GREEN: the access view 14/14 and frontend typecheck clean.
+  - Suggestions left for later: `R2-cross-feature-network-message`, `R2-hardcoded-yellow`, `R2-yellow-threshold-comment`, `R3-generic-error-branch-untested`, `R3-standing-boundaries-untested`.
+- 2026-11-05: browser check at `/ingreso` as `secretary@club.test`.
+  - The DNI field is focused on arrival.
+  - `99000001` shows "No puede ingresar — dado de baja" with name and number.
+  - `99000007` shows "No puede ingresar — inactivo".
+  - `99999999` shows "No puede ingresar — DNI no registrado" with no member data.
+  - After each answer the field is cleared and focused.
+  - `12` shows the 7–8 digit message and keeps the input.
+  - Green and yellow were not seen in the browser: every synthetic member owes 11 months. They are covered by tests.
+  - The pane would not draw, so the checks were submitted through the form by script instead of keystrokes.
+
 ## Next step
-Browser check with synthetic members, then the owners' open items.
+The owners' open items. Push is the user's decision.
