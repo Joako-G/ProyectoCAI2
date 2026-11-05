@@ -101,6 +101,10 @@ Work on `manu` (user preference). Forecast is about 500 authored lines in two wo
   - Suggestions: `R3-debtsince-ordering-assumption` and `R3-monthlabel-unvalidated`.
   - Browser, as `secretary@club.test` (form submitted by script): `99000001` and `99000004` show "Debe desde enero 2026", and `99000007` (inactive) shows no month. "Pagado hasta" is covered by tests only, because no synthetic member is up to date.
 - 2026-11-05: T4 done. RED: backend 4 failed (`expected { memberNumber: 'N-ok', …(3) } to match object { paidThrough: '2026-12', …(1) }` and the three sibling cases); frontend `AccessView.test.tsx` 1 failed (`Unable to find an element with the text: Vence el 10/01/2027`). GREEN: backend access 27/27 (the existing green case now expects `dueDate: '2026-12-10'`) and frontend access 20/20. REFACTOR: the nested block in the service was flattened. Tiers carry no effective date, so "in force for that month" means the configured tiers. Decision gap: a tier charging from day 1 leaves no free day; the date is then the 1st.
+- 2026-11-05: Gentle-AI review of `a281636`..`0f3e45d` (lineage `review-41a080c6a09552df`, 9 files, 113 lines, high risk, consent granted): approved and acknowledged.
+  - Warnings, later work: `R2-last-day-without-surcharge-misnamed-edge` and `R3-due-date-day1-tier-surcharged`. If a tier charges from day 1, the date shown is the 1st, although that day is already surcharged. The default tiers do not hit this.
+  - Suggestions: see the review record.
+  - Browser, as `secretary@club.test` (form submitted by script): `99000005`, paid through December 2026, shows "Pagado hasta diciembre 2026" and "Vence el 10/01/2027".
 
 ## Next step
 The owners' open items. Push is the user's decision.
