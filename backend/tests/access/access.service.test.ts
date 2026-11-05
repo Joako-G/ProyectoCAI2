@@ -30,22 +30,24 @@ function membership(memberId: string, startDate: string, endDate?: string): Memb
   };
 }
 
-function paidNovember(memberId: string): Payment {
+function paidMonths(memberId: string, ...periods: string[]): Payment {
   return {
     id: `pay-${memberId}`,
     receiptNumber: 1,
     memberId,
     method: 'cash',
     paymentDate: '2026-11-01',
-    lines: [
-      { kind: 'socialFee', period: '2026-11', amount: 20000 },
-      { kind: 'activityFee', period: '2026-11', disciplineId: 'basket', amount: 20000 },
-    ],
-    total: 40000,
+    lines: periods.flatMap((period) => [
+      { kind: 'socialFee' as const, period, amount: 20000 },
+      { kind: 'activityFee' as const, period, disciplineId: 'basket', amount: 20000 },
+    ]),
+    total: 40000 * periods.length,
     createdBy: 'user',
     createdAt: '2026-11-01T15:00:00.000Z',
   };
 }
+
+const paidNovember = (memberId: string) => paidMonths(memberId, '2026-11');
 
 function setup(members: AccessMember[], memberships: Membership[], payments: Payment[] = []) {
   const ports = {
@@ -63,7 +65,7 @@ describe('access check', () => {
     expect(await service.check('30111222')).toEqual({
       result: 'green',
       reason: 'up_to_date',
-      member: { memberNumber: 'N-ok', name: 'ok Prueba', unpaidPeriodCount: 0 },
+      member: { memberNumber: 'N-ok', name: 'ok Prueba', unpaidPeriodCount: 0, paidThrough: '2026-11' },
     });
   });
 
@@ -72,13 +74,34 @@ describe('access check', () => {
     expect(await service.check('30111222')).toEqual({
       result: 'yellow',
       reason: 'debtor',
-      member: { memberNumber: 'N-one', name: 'one Prueba', unpaidPeriodCount: 1 },
+      member: { memberNumber: 'N-one', name: 'one Prueba', unpaidPeriodCount: 1, debtSince: '2026-11' },
     });
   });
 
   it('still lets a member owing three months in (yellow)', async () => {
     const { service } = setup([member('three', '30111222')], [membership('three', '2026-09-01')]);
-    expect(await service.check('30111222')).toMatchObject({ result: 'yellow', reason: 'debtor', member: { unpaidPeriodCount: 3 } });
+    expect(await service.check('30111222')).toMatchObject({ result: 'yellow', reason: 'debtor', member: { unpaidPeriodCount: 3, debtSince: '2026-09' } });
+  });
+
+  it('reports paid through the next month for a member who paid two months ahead', async () => {
+    const { service } = setup([member('ahead', '30111222')], [membership('ahead', '2026-11-01')], [paidMonths('ahead', '2026-11', '2026-12', '2027-01')]);
+    const answer = await service.check('30111222');
+    expect(answer.member).toMatchObject({ unpaidPeriodCount: 0, paidThrough: '2027-01' });
+    expect(answer.member).not.toHaveProperty('debtSince');
+  });
+
+  it('stops looking ahead after a year when nothing ever falls due', async () => {
+    const { service } = setup([member('free', '30111222')], []);
+    expect((await service.check('30111222')).member).toMatchObject({ paidThrough: '2027-11' });
+  });
+
+  it('gives no dates for an inactive member or an unknown DNI', async () => {
+    const out = member('out', '30111222', { status: 'inactive', deactivation: { date: '2026-05-10' } });
+    const { service } = setup([out], [membership('out', '2026-01-01', '2026-05-31')]);
+    const inactive = await service.check('30111222');
+    expect(inactive.member).not.toHaveProperty('paidThrough');
+    expect(inactive.member).not.toHaveProperty('debtSince');
+    expect(await service.check('29999999')).toEqual({ result: 'red', reason: 'not_found' });
   });
 
   it('keeps a deregistered member out (red)', async () => {
@@ -86,7 +109,7 @@ describe('access check', () => {
     expect(await service.check('30111222')).toEqual({
       result: 'red',
       reason: 'deregistered',
-      member: { memberNumber: 'N-gone', name: 'gone Prueba', unpaidPeriodCount: 6 },
+      member: { memberNumber: 'N-gone', name: 'gone Prueba', unpaidPeriodCount: 6, debtSince: '2026-06' },
     });
   });
 

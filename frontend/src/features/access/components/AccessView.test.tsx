@@ -98,6 +98,37 @@ describe('AccessView', () => {
     expect(panel()).toHaveTextContent('N° 202');
   });
 
+  it('shows the month a member is paid through when up to date', async () => {
+    stubCheck(buildAccessCheck({ member: { memberNumber: '101', name: 'Lucía Prueba', unpaidPeriodCount: 0, paidThrough: '2026-10' } }));
+    const user = userEvent.setup();
+    render(<AccessView />);
+
+    await user.type(input(), '30111222{Enter}');
+
+    expect(await screen.findByText('Pagado hasta octubre 2026')).toBeInTheDocument();
+  });
+
+  it.each(['yellow', 'red'] as const)('shows since when a %s member owes', async (result) => {
+    stubCheck(buildAccessCheck({ result, reason: result === 'yellow' ? 'debtor' : 'deregistered', member: { memberNumber: '101', name: 'Lucía Prueba', unpaidPeriodCount: 2, debtSince: '2026-09' } }));
+    const user = userEvent.setup();
+    render(<AccessView />);
+
+    await user.type(input(), '30111222{Enter}');
+
+    expect(await screen.findByText('Debe desde septiembre 2026')).toBeInTheDocument();
+  });
+
+  it('shows no date for an inactive member', async () => {
+    stubCheck(buildAccessCheck({ result: 'red', reason: 'inactive', member: { memberNumber: '202', name: 'Tomás Prueba', unpaidPeriodCount: 6 } }));
+    const user = userEvent.setup();
+    render(<AccessView />);
+
+    await user.type(input(), '30111222{Enter}');
+    await screen.findByText('No puede ingresar — inactivo');
+
+    expect(panel()).not.toHaveTextContent(/Pagado hasta|Debe desde/);
+  });
+
   it('says the DNI is not registered, with no member and without repeating the DNI', async () => {
     stubCheck({ result: 'red', reason: 'not_found' });
     const user = userEvent.setup();

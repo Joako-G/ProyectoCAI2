@@ -25,3 +25,18 @@ export function accessHeadline({ reason, member }: AccessCheck): string {
   }
   return `No puede ingresar — ${REFUSAL_REASON[reason]}`;
 }
+
+const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+/** `2026-10` as "octubre 2026". */
+function monthLabel(period: string): string {
+  const [year, month] = period.split('-');
+  return `${MONTHS[Number(month) - 1]} ${year}`;
+}
+
+/** The month line under the member: paid-through or debt-since, never a due day. Empty when the answer has no date. */
+export function accessMonthLine({ member }: AccessCheck): string | null {
+  if (member?.paidThrough) return `Pagado hasta ${monthLabel(member.paidThrough)}`;
+  if (member?.debtSince) return `Debe desde ${monthLabel(member.debtSince)}`;
+  return null;
+}

@@ -1371,7 +1371,8 @@ a:hover {
   line-height: 1.2;
 }
 
-.access-result__member {
+.access-result__member,
+.access-result__month {
   margin: 0;
   font-size: 22px;
 }

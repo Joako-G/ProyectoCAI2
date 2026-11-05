@@ -1,6 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { useAccessCheck } from '../hooks/useAccessCheck';
-import { accessHeadline } from '../utils/access-format';
+import { accessHeadline, accessMonthLine } from '../utils/access-format';
 
 /** Container of the entrance check: type a DNI, press Enter, read a large green, yellow or red answer. */
 export function AccessView() {
@@ -18,6 +18,8 @@ export function AccessView() {
     if (answered) setDni((current) => (current.trim() === typed ? '' : current));
     field.current?.focus();
   }
+
+  const monthLine = state.phase === 'done' ? accessMonthLine(state.check) : null;
 
   return (
     <section className="card access-view" aria-label="Ingreso">
@@ -45,6 +47,7 @@ export function AccessView() {
             {state.check.member ? (
               <p className="access-result__member">{state.check.member.name} · N° {state.check.member.memberNumber}</p>
             ) : null}
+            {monthLine ? <p className="access-result__month">{monthLine}</p> : null}
           </div>
         ) : null}
       </div>

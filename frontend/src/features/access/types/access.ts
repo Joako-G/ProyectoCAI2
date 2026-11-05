@@ -6,5 +6,13 @@ export interface AccessCheck {
   result: AccessResult;
   reason: AccessReason;
   /** Absent when the DNI is not registered. */
-  member?: { memberNumber: string; name: string; unpaidPeriodCount: number };
+  member?: {
+    memberNumber: string;
+    name: string;
+    unpaidPeriodCount: number;
+    /** YYYY-MM; up to date members only. */
+    paidThrough?: string;
+    /** YYYY-MM; debtor and deregistered members only. */
+    debtSince?: string;
+  };
 }

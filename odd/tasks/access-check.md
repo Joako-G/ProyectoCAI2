@@ -22,6 +22,7 @@ RF-08 (Deseable): "Verificar por DNI si un socio está habilitado (al día) para
   - Green: the member is up to date and enters.
   - Yellow: the member owes 1 to 3 months, enters, and staff see the debt.
   - Red: the member is deregistered, inactive, or the DNI is unknown, and does not enter.
+- User, 2026-11-05: the entrance check shows paid-through or debt-since months, never a due day, because the club has not defined when a fee falls due (pending question 8).
 - Provisional, not confirmed by the club:
   - Only secretaries and the head secretary use it, because there is no doorkeeper role.
   - A check stores nothing, so it is not audited.
@@ -53,6 +54,12 @@ Work on `manu` (user preference). Forecast is about 500 authored lines in two wo
     - The DNI field is focused, Enter checks, and the field clears and refocuses for the next person.
     - Large green, yellow or red result that carries text as well as color.
     - Loading and error states.
+- [x] T3 — Paid-through or debt-since month. Route: delegated direct writer.
+  - Acceptance:
+    - Up to date (green): "Pagado hasta <month> <year>", the latest month at or after the current one with nothing owed from the start through it. Found by extending the as-of month of the existing `owedConcepts` up to 12 months; at the bound, the bound month is shown.
+    - Debtor (yellow) and deregistered (red): "Debe desde <month> <year>", the oldest unpaid period.
+    - Inactive and unknown DNI: no dates.
+    - API: `paidThrough?` and `debtSince?` (`YYYY-MM`) inside `member`; the frontend formats the month names.
 
 ## Checks
 - `pnpm --filter @club-socios/backend test`, `pnpm --filter @club-socios/backend typecheck`, `pnpm --filter @club-socios/frontend test`, `pnpm --filter @club-socios/frontend typecheck`.
@@ -79,6 +86,8 @@ Work on `manu` (user preference). Forecast is about 500 authored lines in two wo
   - `12` shows the 7–8 digit message and keeps the input.
   - Green and yellow were not seen in the browser: every synthetic member owes 11 months. They are covered by tests.
   - The pane would not draw, so the checks were submitted through the form by script instead of keystrokes.
+
+- 2026-11-05: T3 done. RED: backend `access.service.test.ts` 6 failed (for example `expected { memberNumber: 'N-free', …(2) } to match object { paidThrough: '2027-11' }`, and the deregistered answer lacked `"debtSince": "2026-06"`); frontend `AccessView.test.tsx` 3 failed (`findByText('Debe desde septiembre 2026')` and `'Pagado hasta octubre 2026'` found nothing). GREEN: backend access 21/21 and frontend access 18/18. REFACTOR: the debt branch builds one summary shared by yellow and red; the month line is computed once in the view. A first GREEN attempt gave an inactive member `debtSince`; the test caught it and inactive now returns no dates. Known edge: a member with no active discipline owes nothing ever, so shows the 12-month bound as paid-through; decision gap for the owners.
 
 ## Next step
 The owners' open items. Push is the user's decision.
