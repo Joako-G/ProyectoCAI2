@@ -34,9 +34,16 @@ function monthLabel(period: string): string {
   return `${MONTHS[Number(month) - 1]} ${year}`;
 }
 
-/** The month line under the member: paid-through or debt-since, never a due day. Empty when the answer has no date. */
+/** The month line under the member: paid-through or debt-since. Empty when the answer has no date. */
 export function accessMonthLine({ member }: AccessCheck): string | null {
   if (member?.paidThrough) return `Pagado hasta ${monthLabel(member.paidThrough)}`;
   if (member?.debtSince) return `Debe desde ${monthLabel(member.debtSince)}`;
   return null;
+}
+
+/** The due line under the paid-through month: `2027-01-10` as "Vence el 10/01/2027". Empty when there is no due date. */
+export function accessDueLine({ member }: AccessCheck): string | null {
+  if (!member?.dueDate) return null;
+  const [year, month, day] = member.dueDate.split('-');
+  return `Vence el ${day}/${month}/${year}`;
 }

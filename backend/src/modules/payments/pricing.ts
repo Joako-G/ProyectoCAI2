@@ -124,6 +124,22 @@ export function surchargeForDay(tiers: readonly SurchargeTier[], paymentDay: num
   return amount;
 }
 
+/**
+ * The last day of `period` that can be paid without a surcharge, as `YYYY-MM-DD`: the day before the first
+ * tier that charges something starts, clamped to the month length. The tiers carry no effective date, so
+ * the ones configured now are the ones in force for any month. When no tier ever charges, the whole month
+ * is free of surcharge and the answer is its last day. A tier charging from day 1 leaves no free day; the
+ * answer is then the 1st.
+ */
+export function lastDayWithoutSurcharge(tiers: readonly SurchargeTier[], period: Period): string {
+  assertSurchargeTiers(tiers);
+  assertPeriod(period, 'period');
+  const monthLength = new Date(Date.UTC(Number(period.slice(0, 4)), Number(period.slice(5, 7)), 0)).getUTCDate();
+  const charging = tiers.find((tier) => tier.amount > 0);
+  const day = charging ? Math.min(Math.max(charging.fromDay - 1, 1), monthLength) : monthLength;
+  return `${period}-${String(day).padStart(2, '0')}`;
+}
+
 export function assertProrationRule(rule: ProrationRule): void {
   assertDay(rule.afterDay, 'afterDay');
   if (!Number.isInteger(rule.activityPercent) || rule.activityPercent < 0 || rule.activityPercent > 100) {

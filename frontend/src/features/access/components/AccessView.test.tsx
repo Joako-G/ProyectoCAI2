@@ -108,6 +108,27 @@ describe('AccessView', () => {
     expect(await screen.findByText('Pagado hasta octubre 2026')).toBeInTheDocument();
   });
 
+  it('shows the exact due date under the paid-through month', async () => {
+    stubCheck(buildAccessCheck({ member: { memberNumber: '101', name: 'Lucía Prueba', unpaidPeriodCount: 0, paidThrough: '2026-12', dueDate: '2027-01-10' } }));
+    const user = userEvent.setup();
+    render(<AccessView />);
+
+    await user.type(input(), '30111222{Enter}');
+
+    expect(await screen.findByText('Vence el 10/01/2027')).toBeInTheDocument();
+  });
+
+  it('shows no due line when the answer has no due date', async () => {
+    stubCheck(buildAccessCheck({ member: { memberNumber: '101', name: 'Lucía Prueba', unpaidPeriodCount: 0, paidThrough: '2026-10' } }));
+    const user = userEvent.setup();
+    render(<AccessView />);
+
+    await user.type(input(), '30111222{Enter}');
+
+    await screen.findByText('Pagado hasta octubre 2026');
+    expect(screen.queryByText(/Vence el/)).not.toBeInTheDocument();
+  });
+
   it.each(['yellow', 'red'] as const)('shows since when a %s member owes', async (result) => {
     stubCheck(buildAccessCheck({ result, reason: result === 'yellow' ? 'debtor' : 'deregistered', member: { memberNumber: '101', name: 'Lucía Prueba', unpaidPeriodCount: 2, debtSince: '2026-09' } }));
     const user = userEvent.setup();

@@ -12,6 +12,8 @@ export interface AccessCheck {
     unpaidPeriodCount: number;
     /** YYYY-MM; up to date members only. */
     paidThrough?: string;
+    /** YYYY-MM-DD; only with paidThrough: last day to pay the next month without surcharge. */
+    dueDate?: string;
     /** YYYY-MM; debtor and deregistered members only. */
     debtSince?: string;
   };

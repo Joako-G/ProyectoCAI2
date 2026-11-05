@@ -22,7 +22,8 @@ RF-08 (Deseable): "Verificar por DNI si un socio está habilitado (al día) para
   - Green: the member is up to date and enters.
   - Yellow: the member owes 1 to 3 months, enters, and staff see the debt.
   - Red: the member is deregistered, inactive, or the DNI is unknown, and does not enter.
-- User, 2026-11-05: the entrance check shows paid-through or debt-since months, never a due day, because the club has not defined when a fee falls due (pending question 8).
+- ~~User, 2026-11-05: the entrance check shows paid-through or debt-since months, never a due day, because the club has not defined when a fee falls due (pending question 8).~~ Superseded by the next line.
+- User, 2026-11-05: an up-to-date member sees the exact due date: the last day without surcharge of the first unpaid month, taken from the surcharge tiers in force for that month. Provisional until the club answers pending question 8.
 - Provisional, not confirmed by the club:
   - Only secretaries and the head secretary use it, because there is no doorkeeper role.
   - A check stores nothing, so it is not audited.
@@ -60,6 +61,12 @@ Work on `manu` (user preference). Forecast is about 500 authored lines in two wo
     - Debtor (yellow) and deregistered (red): "Debe desde <month> <year>", the oldest unpaid period.
     - Inactive and unknown DNI: no dates.
     - API: `paidThrough?` and `debtSince?` (`YYYY-MM`) inside `member`; the frontend formats the month names.
+- [x] T4 — Exact due date for up-to-date members. Route: delegated direct writer.
+  - Acceptance:
+    - Green with `paidThrough` P: `dueDate` is the day before the first surcharge tier with an amount above zero starts, in month P+1, clamped to the month length. With no charging tier it is the last day of P+1. Defaults and P = 2026-12 give 2027-01-10.
+    - The pure helper `lastDayWithoutSurcharge` lives in `payments/pricing.ts`; no pricing rule is duplicated.
+    - Green without `paidThrough`, yellow and red: no `dueDate`.
+    - API: `dueDate?` (`YYYY-MM-DD`) inside `member`. UI: "Vence el dd/mm/aaaa" under "Pagado hasta …".
 
 ## Checks
 - `pnpm --filter @club-socios/backend test`, `pnpm --filter @club-socios/backend typecheck`, `pnpm --filter @club-socios/frontend test`, `pnpm --filter @club-socios/frontend typecheck`.
@@ -93,6 +100,7 @@ Work on `manu` (user preference). Forecast is about 500 authored lines in two wo
   - Later work: `R3-paid-ahead-window-conflation`. A member paid 12 or more months ahead also shows no month, the same as one with nothing due.
   - Suggestions: `R3-debtsince-ordering-assumption` and `R3-monthlabel-unvalidated`.
   - Browser, as `secretary@club.test` (form submitted by script): `99000001` and `99000004` show "Debe desde enero 2026", and `99000007` (inactive) shows no month. "Pagado hasta" is covered by tests only, because no synthetic member is up to date.
+- 2026-11-05: T4 done. RED: backend 4 failed (`expected { memberNumber: 'N-ok', …(3) } to match object { paidThrough: '2026-12', …(1) }` and the three sibling cases); frontend `AccessView.test.tsx` 1 failed (`Unable to find an element with the text: Vence el 10/01/2027`). GREEN: backend access 27/27 (the existing green case now expects `dueDate: '2026-12-10'`) and frontend access 20/20. REFACTOR: the nested block in the service was flattened. Tiers carry no effective date, so "in force for that month" means the configured tiers. Decision gap: a tier charging from day 1 leaves no free day; the date is then the 1st.
 
 ## Next step
 The owners' open items. Push is the user's decision.

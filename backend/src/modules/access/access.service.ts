@@ -3,7 +3,7 @@ import type { Membership } from '../memberships/membership.types.js';
 import { accountStanding, owedConcepts } from '../payments/account.js';
 import type { Payment } from '../payments/payment.types.js';
 import type { PricingConfig } from '../payments/pricing-config.types.js';
-import { earliestTariffPeriod, nextPeriod } from '../payments/pricing.js';
+import { earliestTariffPeriod, lastDayWithoutSurcharge, nextPeriod } from '../payments/pricing.js';
 import type { AccessCheck } from './access.types.js';
 
 /** The slice of a member the check needs; the members service satisfies it as it is. */
@@ -53,7 +53,11 @@ export function createAccessService({ members, memberships, payments, pricing, n
       for (let ahead = 0; ahead < MAX_MONTHS_AHEAD; ahead += 1) {
         const candidate = nextPeriod(paidThrough);
         const owedThen = owedConcepts({ member, memberships: history, payments: paid, firstPeriod: earliestTariffPeriod(config), asOf: `${candidate}-01` });
-        if (owedThen.length > 0) return { result: 'green', reason: 'up_to_date', member: { ...summary, paidThrough } };
+        if (owedThen.length > 0) {
+          // The first unpaid month is the one after paidThrough; it falls due on its last day without surcharge.
+          const dueDate = lastDayWithoutSurcharge(config.surchargeTiers, candidate);
+          return { result: 'green', reason: 'up_to_date', member: { ...summary, paidThrough, dueDate } };
+        }
         paidThrough = candidate;
       }
       // Nothing falls due within the window (for example, no active discipline), so any month shown would mislead.

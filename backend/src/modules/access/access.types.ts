@@ -8,6 +8,8 @@ export interface AccessMemberSummary {
   unpaidPeriodCount: number;
   /** Up to date members only: the last month, as YYYY-MM, with nothing owed from the start through it. */
   paidThrough?: string;
+  /** Up to date members with a paidThrough month only: the last day, as YYYY-MM-DD, to pay the next month without surcharge. */
+  dueDate?: string;
   /** Debtor and deregistered members only: the oldest unpaid month, as YYYY-MM. */
   debtSince?: string;
 }

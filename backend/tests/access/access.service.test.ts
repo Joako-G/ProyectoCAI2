@@ -7,7 +7,7 @@ import type { PricingConfig } from '../../src/modules/payments/pricing-config.ty
 
 /** 2026-11-01 in the club time zone: November is the current month. */
 const TODAY = new Date('2026-11-01T15:00:00Z');
-const config: PricingConfig = {
+const defaultConfig: PricingConfig = {
   tariffs: [DEFAULT_TARIFF],
   surchargeTiers: [...DEFAULT_SURCHARGE_TIERS],
   prorationRule: DEFAULT_PRORATION_RULE,
@@ -49,7 +49,7 @@ function paidMonths(memberId: string, ...periods: string[]): Payment {
 
 const paidNovember = (memberId: string) => paidMonths(memberId, '2026-11');
 
-function setup(members: AccessMember[], memberships: Membership[], payments: Payment[] = []) {
+function setup(members: AccessMember[], memberships: Membership[], payments: Payment[] = [], config: PricingConfig = defaultConfig) {
   const ports = {
     members: { list: vi.fn(async () => members) },
     memberships: { list: vi.fn(async () => memberships) },
@@ -59,13 +59,48 @@ function setup(members: AccessMember[], memberships: Membership[], payments: Pay
   return { service: createAccessService({ ...ports, now: () => TODAY }), ports };
 }
 
+describe('access check due date', () => {
+  const upToDate = (config: PricingConfig, ...periods: string[]) =>
+    setup([member('ok', '30111222')], [membership('ok', '2026-11-01')], [paidMonths('ok', ...periods)], config).service.check('30111222');
+
+  it('gives the last day without surcharge of the first unpaid month, with the default tiers', async () => {
+    const answer = await upToDate(defaultConfig, '2026-11', '2026-12');
+    expect(answer.member).toMatchObject({ paidThrough: '2026-12', dueDate: '2027-01-10' });
+  });
+
+  it('follows a tier change that starts on another day', async () => {
+    const later = { ...defaultConfig, surchargeTiers: [{ fromDay: 1, amount: 0 }, { fromDay: 16, amount: 4000 }] };
+    expect((await upToDate(later, '2026-11')).member).toMatchObject({ paidThrough: '2026-11', dueDate: '2026-12-15' });
+  });
+
+  it('clamps to the length of a short month', async () => {
+    const late = { ...defaultConfig, surchargeTiers: [{ fromDay: 1, amount: 0 }, { fromDay: 31, amount: 4000 }] };
+    expect((await upToDate(late, '2026-11', '2026-12', '2027-01')).member).toMatchObject({ paidThrough: '2027-01', dueDate: '2027-02-28' });
+  });
+
+  it('uses the last day of the month when no tier ever charges a surcharge', async () => {
+    const free = { ...defaultConfig, surchargeTiers: [{ fromDay: 1, amount: 0 }, { fromDay: 11, amount: 0 }] };
+    expect((await upToDate(free, '2026-11')).member).toMatchObject({ paidThrough: '2026-11', dueDate: '2026-12-31' });
+  });
+
+  it('gives no due date when nothing falls due', async () => {
+    const { service } = setup([member('free', '30111222')], []);
+    expect((await service.check('30111222')).member).not.toHaveProperty('dueDate');
+  });
+
+  it('gives no due date to a debtor', async () => {
+    const { service } = setup([member('one', '30111222')], [membership('one', '2026-11-01')]);
+    expect((await service.check('30111222')).member).not.toHaveProperty('dueDate');
+  });
+});
+
 describe('access check', () => {
   it('lets an up-to-date member in (green)', async () => {
     const { service } = setup([member('ok', '30111222')], [membership('ok', '2026-11-01')], [paidNovember('ok')]);
     expect(await service.check('30111222')).toEqual({
       result: 'green',
       reason: 'up_to_date',
-      member: { memberNumber: 'N-ok', name: 'ok Prueba', unpaidPeriodCount: 0, paidThrough: '2026-11' },
+      member: { memberNumber: 'N-ok', name: 'ok Prueba', unpaidPeriodCount: 0, paidThrough: '2026-11', dueDate: '2026-12-10' },
     });
   });
 
