@@ -67,7 +67,7 @@ Work on `manu` (user preference), with four work-unit commits. Push and PR remai
 
 - [x] T5 — Capture guidance. Route: delegated direct writer (trigger: 2+ non-trivial files).
   - A pure `assessCapture(frame)` returns `ready` or the one most important hint (no face, several faces, Acercate, Alejate un poco, Centrá la cara with direction, Mirá de frente a la cámara, Falta luz, Hay demasiada luz detrás, Quedate quieto). An oval, a large hint and a visual state over the video in the member record and in Ingreso, announced with `aria-live="polite"` only when the hint changes. A capture happens only after `ready` holds for the stability window.
-- [ ] T6 — Better enrollment. Route: same writer.
+- [x] T6 — Better enrollment. Route: same writer.
   - Three captures, each only when `ready`, with a "Captura 2 de 3" indicator; an inconsistent capture is retaken; one descriptor is sent, the element-wise mean.
 
 ## Checks
@@ -120,5 +120,11 @@ Work on `manu` (user preference), with four work-unit commits. Push and PR remai
   - RED: `Failed to resolve import "./capture-assessment"`, `"./head-pose"`, `"./brightness"`, `"./useCaptureGuide"` (4 files failed to load); 14 component tests failed (`Unable to find an element with the text: Acercate`, the capture button never unlocked).
   - GREEN: faces and access tests 81 passed. Not tested: the real camera, the real models, the thresholds on real faces.
 
+- 2026-11-07, T6 done (`feat(faces)`): no backend or schema change (the endpoint already takes one descriptor).
+  - "Capturar y guardar" now starts a sequence of 3 captures, each taken only when `ready` holds for the stability window, 1.2 s apart, with "Captura 2 de 3". A capture farther than 0.4 (Euclidean) from any earlier one is rejected and retaken ("Esa captura no coincide con las anteriores. Probemos de nuevo."); 3 rejections in a row restart the enrollment so a bad first capture cannot trap it. The third good capture sends one descriptor, the element-wise mean. If the server refuses, the person can press the button again. A capture whose descriptor cannot be computed is skipped silently and the guide keeps looking (the old "no face" alert is gone).
+  - Normalization decision: the mean is NOT rescaled to unit length. face-api compares descriptors by Euclidean distance on raw values (`euclideanDistance` in the package), the recognition net ends in a plain fully connected layer with no normalization (checked in `FaceRecognitionNet.ts`), and the server compares with pgvector `<->` (Euclidean) against a limit of 0.5 chosen for that scale. Rescaling only the stored template would change every distance to it, and a fresh descriptor is never rescaled. Normalizing both sides would need a backend change, a recalibrated limit and re-enrollment of existing faces, for no gain. Averaging alone keeps the template in the same space and nearer the person's center.
+  - RED: `Failed to resolve import "./enrollment-captures"`; 6 component tests failed (`Unable to find an element with the text: Captura 3 de 3`, `Esa captura no coincide con las anteriores...`, `Las capturas no fueron consistentes...`, the button never unlocked).
+  - GREEN: faces and access tests 92 passed. Not tested: the real camera and the real distances between a person's captures (0.4 is provisional).
+
 ## Next step
-Browser check with the team's faces (see Checks).
+Browser check with the team's faces (see Checks), now also tuning the capture thresholds in `capture-assessment.ts` and the 0.4 consistency limit in `enrollment-captures.ts` on the club's camera.

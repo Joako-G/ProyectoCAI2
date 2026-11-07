@@ -14,6 +14,8 @@ vi.mock('../services/face-tools', () => ({
   },
 }));
 
+// Fast timing so the tests wait milliseconds, not seconds.
+const TIMING = { scanIntervalMs: 5, stableScans: 2, pauseMs: 10 };
 const CONSENT = 'El socio (o su tutor, si es menor) autorizó el uso de su imagen para reconocimiento facial';
 const UNAVAILABLE = 'El reconocimiento facial no está disponible en este momento.';
 
@@ -53,6 +55,15 @@ afterEach(() => vi.unstubAllGlobals());
 
 const writes = () => fetchMock.mock.calls.filter(([, init]) => init?.method === 'PUT' || init?.method === 'DELETE');
 
+/** A promise the test releases by hand, to hold a capture still while it looks at the screen. */
+function hold() {
+  let release!: () => void;
+  const released = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { released, release };
+}
+
 async function openAndTick(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('button', { name: 'Registrar cara' }));
   await user.click(await screen.findByLabelText(CONSENT));
@@ -62,7 +73,7 @@ async function openAndTick(user: ReturnType<typeof userEvent.setup>) {
 describe('FaceEnrollment', () => {
   it('says there is no face yet and does not touch the camera until asked', async () => {
     stubApi();
-    render(<FaceEnrollment memberId="m1" />);
+    render(<FaceEnrollment memberId="m1" timing={TIMING} />);
     expect(await screen.findByText('Sin cara registrada')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Reconocimiento facial' })).toBeInTheDocument();
     expect(tools.current.openCamera).not.toHaveBeenCalled();
@@ -71,7 +82,7 @@ describe('FaceEnrollment', () => {
 
   it('says a face is registered and offers to delete it', async () => {
     stubApi({ enrolled: true });
-    render(<FaceEnrollment memberId="m1" />);
+    render(<FaceEnrollment memberId="m1" timing={TIMING} />);
     expect(await screen.findByText('Cara registrada')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Borrar cara' })).toBeInTheDocument();
   });
@@ -79,7 +90,7 @@ describe('FaceEnrollment', () => {
   it('opens the camera, needs the consent ticked, and then enrolls only the descriptor with the consent', async () => {
     stubApi();
     const user = userEvent.setup();
-    render(<FaceEnrollment memberId="m1" />);
+    render(<FaceEnrollment memberId="m1" timing={TIMING} />);
     await user.click(await screen.findByRole('button', { name: 'Registrar cara' }));
 
     const capture = await screen.findByRole('button', { name: 'Capturar y guardar' });
@@ -101,30 +112,109 @@ describe('FaceEnrollment', () => {
     [NO_FACE_FACTS, 'No veo ninguna cara'],
     [TWO_FACES_FACTS, 'Debe haber una sola persona frente a la cámara'],
     [FAR_FACTS, 'Acercate'],
-  ])('guides the person and keeps the capture locked while the frame is not good (%j)', async (facts, hint) => {
+  ])('guides the person and captures nothing while the frame is not good (%j)', async (facts, hint) => {
     stubApi();
     tools.current.detector.look.mockResolvedValue(facts);
     const user = userEvent.setup();
-    render(<FaceEnrollment memberId="m1" />);
-    await user.click(await screen.findByRole('button', { name: 'Registrar cara' }));
-    await user.click(await screen.findByLabelText(CONSENT));
+    render(<FaceEnrollment memberId="m1" timing={TIMING} />);
+    await openAndTick(user);
+    await user.click(screen.getByRole('button', { name: 'Capturar y guardar' }));
 
     expect(await screen.findByText(hint)).toHaveAttribute('aria-live', 'polite');
-    expect(screen.getByRole('button', { name: 'Capturar y guardar' })).toBeDisabled();
+    await new Promise((resolve) => setTimeout(resolve, 60));
     expect(tools.current.detector.describe).not.toHaveBeenCalled();
     expect(writes()).toHaveLength(0);
   });
 
-  it('says so when the descriptor cannot be computed at the moment of the capture', async () => {
+  it('takes three captures with a progress indicator and sends one descriptor: the mean of the three', async () => {
     stubApi();
-    tools.current.detector.describe.mockResolvedValue(undefined);
+    const second = DESCRIPTOR.map((value) => value + 0.01);
+    const third = DESCRIPTOR.map((value) => value + 0.02);
+    const gate = hold();
+    tools.current.detector.describe
+      .mockResolvedValueOnce(DESCRIPTOR)
+      .mockResolvedValueOnce(second)
+      .mockImplementationOnce(async () => {
+        await gate.released;
+        return third;
+      });
     const user = userEvent.setup();
-    render(<FaceEnrollment memberId="m1" />);
+    render(<FaceEnrollment memberId="m1" timing={TIMING} />);
     await openAndTick(user);
     await user.click(screen.getByRole('button', { name: 'Capturar y guardar' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('No se detectó ninguna cara. Mire a la cámara e intente de nuevo.');
+    expect(await screen.findByText('Captura 3 de 3')).toBeInTheDocument();
     expect(writes()).toHaveLength(0);
+    gate.release();
+
+    expect(await screen.findByText('Cara registrada')).toBeInTheDocument();
+    expect(writes()).toHaveLength(1);
+    const body = JSON.parse(String(writes()[0]![1].body)) as { descriptor: number[]; consent: boolean };
+    expect(body.consent).toBe(true);
+    expect(body.descriptor).toHaveLength(128);
+    expect(body.descriptor[0]).toBeCloseTo(0.26);
+    expect(tools.current.cam.stop).toHaveBeenCalled();
+  });
+
+  it('retakes a capture that does not match the others, and never sends it', async () => {
+    stubApi();
+    const stranger = DESCRIPTOR.map((value) => value + 0.1);
+    const gate = hold();
+    tools.current.detector.describe
+      .mockResolvedValueOnce(DESCRIPTOR)
+      .mockResolvedValueOnce(stranger)
+      .mockResolvedValueOnce(DESCRIPTOR)
+      .mockImplementationOnce(async () => {
+        await gate.released;
+        return DESCRIPTOR;
+      });
+    const user = userEvent.setup();
+    render(<FaceEnrollment memberId="m1" timing={TIMING} />);
+    await openAndTick(user);
+    await user.click(screen.getByRole('button', { name: 'Capturar y guardar' }));
+
+    expect(await screen.findByText('Esa captura no coincide con las anteriores. Probemos de nuevo.')).toBeInTheDocument();
+    expect(await screen.findByText('Captura 3 de 3')).toBeInTheDocument();
+    gate.release();
+
+    expect(await screen.findByText('Cara registrada')).toBeInTheDocument();
+    expect(JSON.parse(String(writes()[0]![1].body)).descriptor).toEqual(DESCRIPTOR);
+    expect(tools.current.detector.describe).toHaveBeenCalledTimes(4);
+  });
+
+  it('starts over when the captures keep disagreeing', async () => {
+    stubApi();
+    const stranger = DESCRIPTOR.map((value) => value + 0.1);
+    const gate = hold();
+    tools.current.detector.describe
+      .mockResolvedValueOnce(DESCRIPTOR)
+      .mockResolvedValueOnce(stranger)
+      .mockResolvedValueOnce(stranger)
+      .mockResolvedValueOnce(stranger)
+      .mockImplementation(async () => {
+        await gate.released;
+        return DESCRIPTOR;
+      });
+    const user = userEvent.setup();
+    render(<FaceEnrollment memberId="m1" timing={TIMING} />);
+    await openAndTick(user);
+    await user.click(screen.getByRole('button', { name: 'Capturar y guardar' }));
+
+    expect(await screen.findByText('Las capturas no fueron consistentes. Empezamos de nuevo.')).toBeInTheDocument();
+    expect(await screen.findByText('Captura 1 de 3')).toBeInTheDocument();
+    expect(writes()).toHaveLength(0);
+    gate.release();
+  });
+
+  it('lets the person try again after the server refuses the descriptor', async () => {
+    stubApi({ put: () => jsonResponse({ error: 'faces_unavailable', message: 'x' }, 503) });
+    const user = userEvent.setup();
+    render(<FaceEnrollment memberId="m1" timing={TIMING} />);
+    await openAndTick(user);
+    await user.click(screen.getByRole('button', { name: 'Capturar y guardar' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(UNAVAILABLE);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Capturar y guardar' })).toBeEnabled());
   });
 
   it.each([
@@ -135,7 +225,7 @@ describe('FaceEnrollment', () => {
     stubApi();
     tools.current.openCamera.mockRejectedValue(new CameraError(code));
     const user = userEvent.setup();
-    render(<FaceEnrollment memberId="m1" />);
+    render(<FaceEnrollment memberId="m1" timing={TIMING} />);
     await user.click(await screen.findByRole('button', { name: 'Registrar cara' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(message);
   });
@@ -143,7 +233,7 @@ describe('FaceEnrollment', () => {
   it('shows the Spanish unavailable message when the server answers 503 faces_unavailable on save', async () => {
     stubApi({ put: () => jsonResponse({ error: 'faces_unavailable', message: 'x' }, 503) });
     const user = userEvent.setup();
-    render(<FaceEnrollment memberId="m1" />);
+    render(<FaceEnrollment memberId="m1" timing={TIMING} />);
     await openAndTick(user);
     await user.click(screen.getByRole('button', { name: 'Capturar y guardar' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(UNAVAILABLE);
@@ -151,7 +241,7 @@ describe('FaceEnrollment', () => {
 
   it('shows the unavailable message when the status cannot be read', async () => {
     stubApi({ get: () => jsonResponse({ error: 'faces_unavailable', message: 'x' }, 503) });
-    render(<FaceEnrollment memberId="m1" />);
+    render(<FaceEnrollment memberId="m1" timing={TIMING} />);
     expect(await screen.findByRole('alert')).toHaveTextContent(UNAVAILABLE);
     expect(screen.queryByRole('button', { name: 'Registrar cara' })).not.toBeInTheDocument();
   });
@@ -159,7 +249,7 @@ describe('FaceEnrollment', () => {
   it('asks before deleting the face, and deletes it on confirmation', async () => {
     stubApi({ enrolled: true });
     const user = userEvent.setup();
-    render(<FaceEnrollment memberId="m1" />);
+    render(<FaceEnrollment memberId="m1" timing={TIMING} />);
     await user.click(await screen.findByRole('button', { name: 'Borrar cara' }));
     expect(writes()).toHaveLength(0);
     await user.click(screen.getByRole('button', { name: 'Sí, borrar' }));
@@ -170,7 +260,7 @@ describe('FaceEnrollment', () => {
   it('keeps the face when the deletion is cancelled', async () => {
     stubApi({ enrolled: true });
     const user = userEvent.setup();
-    render(<FaceEnrollment memberId="m1" />);
+    render(<FaceEnrollment memberId="m1" timing={TIMING} />);
     await user.click(await screen.findByRole('button', { name: 'Borrar cara' }));
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
     expect(writes()).toHaveLength(0);
@@ -180,7 +270,7 @@ describe('FaceEnrollment', () => {
   it('stops the camera stream when the panel is closed and when the screen unmounts', async () => {
     stubApi();
     const user = userEvent.setup();
-    const { unmount } = render(<FaceEnrollment memberId="m1" />);
+    const { unmount } = render(<FaceEnrollment memberId="m1" timing={TIMING} />);
     await user.click(await screen.findByRole('button', { name: 'Registrar cara' }));
     await screen.findByRole('button', { name: 'Capturar y guardar' });
     await user.click(screen.getByRole('button', { name: 'Cerrar cámara' }));

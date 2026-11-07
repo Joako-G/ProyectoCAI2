@@ -1399,6 +1399,12 @@ a:hover {
   gap: 0.75rem;
 }
 
+.face-enrollment__progress,
+.face-enrollment__notice {
+  margin: 0;
+  font-weight: 600;
+}
+
 .face-enrollment__consent {
   display: flex;
   gap: 0.5rem;

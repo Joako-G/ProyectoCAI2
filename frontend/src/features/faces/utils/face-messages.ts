@@ -24,6 +24,3 @@ export function describeFaceApiError(error: unknown): string {
   if (error.status === 404) return 'No hay una cara registrada para este socio.';
   return 'No se pudo completar la operación. Intente de nuevo.';
 }
-
-/** Shown when the final capture finds no single face even though the guide said ready (the person moved away). */
-export const NO_FACE_MESSAGE = 'No se detectó ninguna cara. Mire a la cámara e intente de nuevo.';

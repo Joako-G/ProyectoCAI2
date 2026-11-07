@@ -1,21 +1,36 @@
-import { useCallback, useEffect, useId, useState } from 'react';
-import { useCaptureGuide, DEFAULT_CAPTURE_TIMING } from '../hooks/useCaptureGuide';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { DEFAULT_CAPTURE_TIMING, useCaptureGuide, type CaptureOutcome, type CaptureTiming } from '../hooks/useCaptureGuide';
 import { useFaceCamera } from '../hooks/useFaceCamera';
 import { enrollFace, getFaceStatus, removeFace } from '../services/faces-api';
 import type { FaceStatus } from '../types/face';
-import { describeFaceApiError, NO_FACE_MESSAGE } from '../utils/face-messages';
+import { addCapture, EMPTY_PROGRESS, ENROLLMENT_CAPTURES, type EnrollmentProgress } from '../utils/enrollment-captures';
+import { describeFaceApiError } from '../utils/face-messages';
 import { CaptureGuide } from './CaptureGuide';
 
 const CONSENT_LABEL = 'El socio (o su tutor, si es menor) autorizó el uso de su imagen para reconocimiento facial';
+
+/** A short rest between captures, so the person can settle before the next one. */
+const DEFAULT_ENROLLMENT_TIMING: CaptureTiming = { ...DEFAULT_CAPTURE_TIMING, pauseMs: 1200 };
+
+const INCONSISTENT_MESSAGE = 'Esa captura no coincide con las anteriores. Probemos de nuevo.';
+const RESTART_MESSAGE = 'Las capturas no fueron consistentes. Empezamos de nuevo.';
 
 type Status = { phase: 'loading' } | { phase: 'error'; message: string } | { phase: 'ready'; status: FaceStatus };
 
 /**
  * The "Reconocimiento facial" block of a member's record: whether a face is enrolled, and enrolling or deleting it.
- * The camera and the models load only when "Registrar cara" is pressed. Only the 128-number descriptor is sent.
+ * The camera and the models load only when "Registrar cara" is pressed. Enrolling takes three captures, each only
+ * when the frame is ready and consistent with the others; one descriptor, their mean, is sent. Never an image.
  * The caller shows it only to staff who hold `faces:manage`.
  */
-export function FaceEnrollment({ memberId }: { memberId: string }) {
+export function FaceEnrollment({
+  memberId,
+  timing = DEFAULT_ENROLLMENT_TIMING,
+}: {
+  memberId: string;
+  /** Overrides the capture timing; used by tests. */
+  timing?: CaptureTiming;
+}) {
   const [status, setStatus] = useState<Status>({ phase: 'loading' });
   const [capturing, setCapturing] = useState(false);
   const [consent, setConsent] = useState(false);
@@ -23,7 +38,17 @@ export function FaceEnrollment({ memberId }: { memberId: string }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [message, setMessage] = useState<string>();
   const camera = useFaceCamera();
-  const guide = useCaptureGuide({ camera, active: camera.state.phase === 'ready', timing: DEFAULT_CAPTURE_TIMING });
+  const [progress, setProgress] = useState<EnrollmentProgress>();
+  const [notice, setNotice] = useState<string>();
+  // The handler reads the progress from here, so it never acts on a stale render.
+  const progressRef = useRef<EnrollmentProgress>(EMPTY_PROGRESS);
+  const running = progress !== undefined;
+  const guide = useCaptureGuide({
+    camera,
+    active: camera.state.phase === 'ready',
+    timing,
+    onStable: running ? takeCapture : undefined,
+  });
   const consentId = useId();
 
   const load = useCallback(
@@ -47,8 +72,15 @@ export function FaceEnrollment({ memberId }: { memberId: string }) {
     return () => controller.abort();
   }, [load]);
 
+  function updateProgress(next: EnrollmentProgress | undefined) {
+    progressRef.current = next ?? EMPTY_PROGRESS;
+    setProgress(next);
+  }
+
   function closeCamera() {
     camera.stop();
+    updateProgress(undefined);
+    setNotice(undefined);
     setCapturing(false);
     setConsent(false);
   }
@@ -59,22 +91,35 @@ export function FaceEnrollment({ memberId }: { memberId: string }) {
     void camera.start();
   }
 
-  async function captureAndSave() {
+  function startCapturing() {
     setMessage(undefined);
+    setNotice(undefined);
+    updateProgress(EMPTY_PROGRESS);
+  }
+
+  /** One stable, ready capture: keep it, retake it, start over, or (the third) save the mean. */
+  async function takeCapture(descriptor: number[]): Promise<CaptureOutcome> {
+    const result = addCapture(progressRef.current, descriptor);
+    if (result.kind === 'accepted' || result.kind === 'rejected' || result.kind === 'restarted') {
+      updateProgress(result.progress);
+      setNotice(result.kind === 'rejected' ? INCONSISTENT_MESSAGE : result.kind === 'restarted' ? RESTART_MESSAGE : undefined);
+      return 'continue';
+    }
     setBusy(true);
     try {
-      const descriptor = await camera.describe();
-      if (!descriptor) return setMessage(NO_FACE_MESSAGE);
-      await enrollFace(memberId, descriptor);
+      await enrollFace(memberId, result.descriptor);
       closeCamera();
       setStatus({ phase: 'ready', status: { enrolled: true } });
       // Reads the enrollment date the server recorded.
       void getFaceStatus(memberId).then((current) => setStatus({ phase: 'ready', status: current }), () => undefined);
     } catch (error) {
+      // Back to guiding only, so the person can press the button and try again.
+      updateProgress(undefined);
       setMessage(describeFaceApiError(error));
     } finally {
       setBusy(false);
     }
+    return 'continue';
   }
 
   async function deleteFace() {
@@ -151,6 +196,12 @@ export function FaceEnrollment({ memberId }: { memberId: string }) {
               {camera.state.message}
             </p>
           ) : null}
+          {progress ? (
+            <p className="face-enrollment__progress" role="status">
+              Captura {progress.captures.length + 1} de {ENROLLMENT_CAPTURES}
+            </p>
+          ) : null}
+          {notice ? <p className="face-enrollment__notice">{notice}</p> : null}
           <label htmlFor={consentId} className="face-enrollment__consent">
             <input id={consentId} type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
             <span>{CONSENT_LABEL}</span>
@@ -159,8 +210,8 @@ export function FaceEnrollment({ memberId }: { memberId: string }) {
             <button
               type="button"
               className="button button--primary"
-              disabled={cameraPhase !== 'ready' || !consent || busy || !guide.stable}
-              onClick={() => void captureAndSave()}
+              disabled={cameraPhase !== 'ready' || !consent || busy || running}
+              onClick={startCapturing}
             >
               Capturar y guardar
             </button>
