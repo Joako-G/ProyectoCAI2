@@ -1,0 +1,25 @@
+# Development database only. The credentials below are public development defaults, never use them anywhere real.
+# Override them with POSTGRES_USER, POSTGRES_PASSWORD and POSTGRES_DB, or the host port with POSTGRES_PORT.
+services:
+  db:
+    image: pgvector/pgvector:0.8.1-pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-club}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-club_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-club_socios}
+    ports:
+      # Bound to the loopback interface only, so nothing else on the network can reach it.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - club_db_data:/var/lib/postgresql/data
+      # Runs once, when the volume is created: adds the separate database the tests use.
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  club_db_data:

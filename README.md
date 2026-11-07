@@ -19,6 +19,10 @@ In another terminal, run `pnpm --filter @club-socios/backend start` after buildi
 
 While the backend runs it copies every data file once a day to `backend/backups`, or to the folder in `BACKUP_DIR` (for example an external drive), and keeps the newest copy of each of the last 30 days plus the 5 most recent copies. A configured folder must already exist: with the drive unplugged the copy fails and the screen says so. The head secretary sees the last copy in the Respaldo section. To restore a copy, follow `docs/backup-restore.md`.
 
+## Database (optional)
+
+Face recognition uses PostgreSQL with pgvector through Docker Compose. Without `DATABASE_URL` the app runs as before and the face features are off. Start it with `docker compose up -d`; setup, environment variables, migrations and tests are in `docs/database.md`.
+
 ## Members API (demo)
 
 Members are stored in a JSON file (`backend/data/members.json`, or the path in `MEMBERS_FILE`). This is demo-only persistence: no real data, no concurrent use. Removal is logical, so there is no delete endpoint.

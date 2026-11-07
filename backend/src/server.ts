@@ -9,6 +9,9 @@ import {
   paymentsFilePath,
   pricingConfigFilePath,
 } from './config/paths.js';
+import { databaseUrl } from './config/database.js';
+import { runMigrations } from './database/migrate.js';
+import { createPool } from './database/pool.js';
 import { createAccessService } from './modules/access/access.service.js';
 import type { AuditLabelSources } from './modules/audit/audit.labels.js';
 import { createAuditService } from './modules/audit/audit.service.js';
@@ -38,6 +41,9 @@ import { bootstrap } from './startup.js';
 import { toIsoDate } from './shared/date.js';
 
 const port = Number(process.env.PORT ?? 3001);
+// PostgreSQL is optional: without DATABASE_URL the database features stay off and everything else runs on the JSON files.
+const connectionString = databaseUrl();
+const pool = connectionString ? createPool(connectionString) : undefined;
 // The audit log snapshots each actor's name and role from the users repository, which the app shares.
 const userRepository = new UserRepository(defaultUsersFilePath);
 // Display labels are read when the log is read, from the services built below; the thunks run later, never here.
@@ -124,7 +130,12 @@ const backupService = createBackupService({
 });
 const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, accessService, auditService, backupService, userRepository });
 
-bootstrap({
+// Pending migrations run before the server listens; a failing one is fatal, so a half-migrated database never serves.
+const migrated = pool
+  ? runMigrations(pool).then((applied) => { if (applied.length > 0) console.log(`Applied ${applied.length} database migration(s)`); })
+  : Promise.resolve();
+
+migrated.then(() => bootstrap({
   memberService,
   membershipService,
   today: () => toIsoDate(new Date()),
@@ -136,7 +147,7 @@ bootstrap({
     });
   },
   log: (message, error) => console.error(message, error),
-}).catch((error: unknown) => {
+})).catch((error: unknown) => {
   // Anything bootstrap does not degrade on (an unreadable members file, a throwing listen) is fatal.
   console.error('Server failed to start', error);
   process.exit(1);
