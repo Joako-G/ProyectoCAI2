@@ -53,7 +53,7 @@ Work on `manu` (user preference), with four work-unit commits. Push and PR remai
 ## Tasks
 - [x] T1 — Database foundation. Route: delegated direct writer.
   - `docker-compose.yml` with a pinned pgvector PostgreSQL image, `pg` in the backend, `DATABASE_URL`, a migration runner applying numbered SQL files once, a test database setup, and `docs/database.md`.
-- [ ] T2 — Face profiles backend. Route: same writer.
+- [x] T2 — Face profiles backend. Route: same writer.
   - Table with one descriptor per member and consent fields.
   - Enroll, remove and recognize endpoints, with recognition reusing the access check.
   - Capability, wiring, route matrix and audit coverage.
@@ -78,6 +78,12 @@ Work on `manu` (user preference), with four work-unit commits. Push and PR remai
   - RED: `Cannot find module '../../src/config/database.js'` and `'../../src/database/migrate.js'` (both test files failed to load).
   - GREEN: 10 tests passed with `TEST_DATABASE_URL`; without it 2 pass and 5 skip with a message. `pnpm --filter @club-socios/backend migrate` applied `001_enable_pgvector.sql`, then "Database is up to date."
   - `backend/.env.example` is unreadable to the writer, so the variables are documented in `docs/database.md` only.
+
+- 2026-11-07, T2 done (`feat(faces)`): migration `002_create_face_profiles.sql` (`face_profiles`, `vector(128)`, consent fields, no image/name/DNI); module `backend/src/modules/faces` (port, Postgres repository with parameterized queries and an error guard that drops row text, validation, service, routes); capability `faces:manage` (secretary, head secretary; mirrored in the frontend union); audit entity `face_profile` ("Perfil facial del socio N"); `AccessService.checkMember(memberId)`; `AccessReason` gains `not_recognized`.
+  - Routes: `PUT/DELETE/GET /api/faces/:memberId`, `POST /api/faces/recognize` (read-only in the audit table). Without `DATABASE_URL` every route answers 503 `faces_unavailable` (after the 401/403 checks). Threshold `RECOGNITION_MAX_DISTANCE = 0.5`, provisional.
+  - RED: `Cannot find module '../../src/modules/faces/face.service.js'` / `face.validation.js`; `service.checkMember is not a function`; `permissions[capability] is not iterable`; route matrix `expected 404 to be 401` for the four face routes.
+  - GREEN: backend suite 1053 passed plus 15 database tests with `TEST_DATABASE_URL`; without it 1053 passed and 13 database tests skipped.
+  - The frontend `AccessReason` does not list `not_recognized` yet; T4 adds it with the Ingreso camera mode.
 
 ## Next step
 T3.

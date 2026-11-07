@@ -13,6 +13,8 @@ import { createBackupRouter } from './modules/backup/backup.routes.js';
 import type { BackupService } from './modules/backup/backup.service.js';
 import { createCashCountRouter } from './modules/cashcount/cashcount.routes.js';
 import type { CashCountService } from './modules/cashcount/cashcount.service.js';
+import { createFaceRouter, createFacesUnavailableRouter } from './modules/faces/face.routes.js';
+import type { FaceService } from './modules/faces/face.service.js';
 import { createDisciplinesRouter } from './modules/disciplines/discipline.routes.js';
 import type { DisciplineService } from './modules/disciplines/discipline.service.js';
 import { createMembersRouter } from './modules/members/member.routes.js';
@@ -46,6 +48,9 @@ export interface AppDependencies {
   rosterService?: RosterService;
   noticeService?: Pick<NoticeService, 'debtNotices'>;
   accessService?: Pick<AccessService, 'check'>;
+  faceService?: FaceService;
+  // Set when there is no database: the face routes then answer 503 faces_unavailable instead of 404.
+  facesUnavailable?: boolean;
   auditService?: AuditService;
   backupService?: Pick<BackupService, 'status' | 'run'>;
   // Lets the process share one users repository with the audit log, which reads actor names from it.
@@ -114,6 +119,12 @@ if (options.noticeService) {
 if (options.accessService) {
   // One POST that reads and writes nothing, so a single capability guards it.
   app.use('/api/access', requireCapability(authenticate, 'access:check'), createAccessRouter(options.accessService));
+}
+if (options.faceService) {
+  // Enroll, remove and recognize share one capability; the router audits its own writes and recognize writes nothing.
+  app.use('/api/faces', requireCapability(authenticate, 'faces:manage'), createFaceRouter(options.faceService, authenticate));
+} else if (options.facesUnavailable) {
+  app.use('/api/faces', requireCapability(authenticate, 'faces:manage'), createFacesUnavailableRouter());
 }
 if (options.auditService) {
   // Read-only: audit:read for every request, and the router has no write route.

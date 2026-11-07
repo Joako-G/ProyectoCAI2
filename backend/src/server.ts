@@ -12,6 +12,8 @@ import {
 import { databaseUrl } from './config/database.js';
 import { runMigrations } from './database/migrate.js';
 import { createPool } from './database/pool.js';
+import { createFaceService } from './modules/faces/face.service.js';
+import { createPgFaceRepository } from './modules/faces/pg-face.repository.js';
 import { createAccessService } from './modules/access/access.service.js';
 import type { AuditLabelSources } from './modules/audit/audit.labels.js';
 import { createAuditService } from './modules/audit/audit.service.js';
@@ -128,7 +130,11 @@ const backupService = createBackupService({
   isDefaultDestination: backup.isDefault,
   audit: auditService,
 });
-const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, accessService, auditService, backupService, userRepository });
+// Face profiles live in PostgreSQL; without a database the routes answer 503 faces_unavailable.
+const faceService = pool
+  ? createFaceService({ repository: createPgFaceRepository(pool), members: memberService, access: accessService, audit: auditService })
+  : undefined;
+const app = createApp({ faceService, facesUnavailable: !pool, memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, accessService, auditService, backupService, userRepository });
 
 // Pending migrations run before the server listens; a failing one is fatal, so a half-migrated database never serves.
 const migrated = pool
