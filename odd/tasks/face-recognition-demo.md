@@ -62,7 +62,7 @@ Work on `manu` (user preference), with four work-unit commits. Push and PR remai
   - The backend starts when the database is down (faces answer 503 until restart; `migrate` still fails loudly), pool timeouts, and face profile deletion on deactivation through a members lifecycle port.
 - [x] T3 — Enroll a face from the member record. Route: same writer.
   - Camera capture in the browser, a consent checkbox, enroll and remove.
-- [ ] T4 — Recognize at Ingreso. Route: same writer.
+- [x] T4 — Recognize at Ingreso. Route: same writer.
   - A camera mode next to the DNI field, showing the same result panel, with the DNI as the fallback.
 
 ## Checks
@@ -97,5 +97,11 @@ Work on `manu` (user preference), with four work-unit commits. Push and PR remai
   - RED: `Failed to resolve import "../services/camera"` and `"./faces-api"` (both new test files failed to load); the member record test: `Unable to find role="heading" and name "Reconocimiento facial"` (1 of 3 failed).
   - GREEN: faces tests 17 passed, member record 3 passed. Not tested: the real camera and the real models, which need a browser.
 
+- 2026-11-07, T4 done (`feat(faces)`): Ingreso gets a "Cámara" toggle next to the DNI field (the field works at all times). `useCameraEntrance` looks every 500 ms; when exactly one face is in view for 3 looks in a row it POSTs only the descriptor to `/api/faces/recognize`, shows the same result panel, then rests 4 s. `useAccessCheck` gains `recognize`; `AccessReason` gains `not_recognized` ("No reconocido — ingrese el DNI"); a 503 shows "Reconocimiento facial no disponible — use el DNI" and turns the camera off. The camera stops when switching mode off and when leaving the screen. Timings are provisional and overridable through a `timing` prop (tests).
+  - RED: `Unable to find an accessible element with the role "button" and name "Cámara"` (12 tests failed), `describeRecognizeError is not a function`.
+  - GREEN: access tests 32 passed. Frontend suite: 541 passed before T4's tests were added; 552 of 553 in the final run; the one failure (`App.navigation` teacher roster) timed out under load and passes alone.
+  - The full frontend suite is flaky on this machine at the default 5 s timeout under parallel load (different files time out on each run); with `--maxWorkers=3 --testTimeout=30000` it passes.
+  - Not tested: the real camera, the real models and recognition quality (needs a browser and a face).
+
 ## Next step
-T4.
+Browser check with the team's faces (see Checks).

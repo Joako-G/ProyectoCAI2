@@ -1,11 +1,32 @@
 import { useRef, useState, type FormEvent } from 'react';
+import { useFaceCamera } from '../../faces/hooks/useFaceCamera';
 import { useAccessCheck } from '../hooks/useAccessCheck';
+import { DEFAULT_CAMERA_TIMING, useCameraEntrance, type CameraTiming } from '../hooks/useCameraEntrance';
 import { accessDueLine, accessHeadline, accessMonthLine } from '../utils/access-format';
 
-/** Container of the entrance check: type a DNI, press Enter, read a large green, yellow or red answer. */
-export function AccessView() {
-  const { state, check } = useAccessCheck();
+/**
+ * Container of the entrance check: type a DNI, press Enter, read a large green, yellow or red answer.
+ * "Cámara" adds face recognition next to it; the DNI field keeps working the whole time.
+ */
+export function AccessView({ timing }: { /** Overrides the camera timing; used by tests. */ timing?: Partial<CameraTiming> }) {
+  const { state, check, recognize } = useAccessCheck();
   const [dni, setDni] = useState('');
+  const [cameraOn, setCameraOn] = useState(false);
+  const camera = useFaceCamera();
+  const cameraTiming = { ...DEFAULT_CAMERA_TIMING, ...timing };
+
+  function turnCameraOff() {
+    camera.stop();
+    setCameraOn(false);
+  }
+
+  function toggleCamera() {
+    if (cameraOn) return turnCameraOff();
+    setCameraOn(true);
+    void camera.start();
+  }
+
+  useCameraEntrance({ camera, timing: cameraTiming, onFace: recognize, onUnavailable: turnCameraOff });
   const field = useRef<HTMLInputElement>(null);
 
   async function handleSubmit(event: FormEvent) {
@@ -38,7 +59,24 @@ export function AccessView() {
             onChange={(event) => setDni(event.target.value)}
           />
         </label>
+        <button type="button" className="button button--secondary" aria-pressed={cameraOn} onClick={toggleCamera}>
+          Cámara
+        </button>
       </form>
+      {cameraOn ? (
+        <div className="access-camera">
+          {camera.state.phase === 'starting' || camera.state.phase === 'ready' ? (
+            <video ref={camera.videoRef} className="face-video" muted playsInline autoPlay aria-label="Vista de la cámara" />
+          ) : null}
+          {camera.state.phase === 'starting' ? <p>Preparando la cámara…</p> : null}
+          {camera.state.phase === 'ready' ? <p>Mire a la cámara. También puede ingresar el DNI.</p> : null}
+          {camera.state.phase === 'error' ? (
+            <p className="members-page__notice members-page__notice--error" role="alert">
+              {camera.state.message}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       {/* Always rendered so assistive technology announces each result as it replaces the last one. */}
       <div role="status" aria-live="polite" className="access-live" data-result={state.phase === 'done' ? state.check.result : undefined}>
         {state.phase === 'checking' ? <p className="access-live__loading">Verificando…</p> : null}

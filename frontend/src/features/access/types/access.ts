@@ -1,6 +1,6 @@
 /** Mirrors `AccessCheck` in backend/src/modules/access/access.types.ts. */
 export type AccessResult = 'green' | 'yellow' | 'red';
-export type AccessReason = 'up_to_date' | 'debtor' | 'deregistered' | 'inactive' | 'not_found';
+export type AccessReason = 'up_to_date' | 'debtor' | 'deregistered' | 'inactive' | 'not_found' | 'not_recognized';
 
 export interface AccessCheck {
   result: AccessResult;
