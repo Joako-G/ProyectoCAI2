@@ -102,6 +102,10 @@ Work on `manu` (user preference), with four work-unit commits. Push and PR remai
   - GREEN: access tests 32 passed. Frontend suite: 541 passed before T4's tests were added; 552 of 553 in the final run; the one failure (`App.navigation` teacher roster) timed out under load and passes alone.
   - The full frontend suite is flaky on this machine at the default 5 s timeout under parallel load (different files time out on each run); with `--maxWorkers=3 --testTimeout=30000` it passes.
   - Not tested: the real camera, the real models and recognition quality (needs a browser and a face).
+- 2026-11-07: Gentle-AI reviews, consent granted each time; all approved and acknowledged.
+  - T1+T2 (`24b45ff`..`e2ea040`, lineage `review-f04504f933853a3a`, 41 files, 1,385 lines, high risk). Its warnings `R4-optional-db-blocks-startup`, `R3-startup-db-hard-dependency` and `R1-biometric-retention-inactive` were fixed in T2b.
+  - T2b+T3+T4 (`e2ea040`..`f55e0dd`, lineage `review-c260884f2e059526`, 43 files, 1,401 lines, medium risk).
+  - Later work: `R3-dni-dropped-during-recognize` (a DNI check started while a recognition is pending may be dropped), `R3-camera-error-stays-pressed`, `R3-postinstall-hard-fail` and `R3-timing-based-tests`.
 
 ## Next step
 Browser check with the team's faces (see Checks).
