@@ -15,7 +15,11 @@ import { createPool } from './database/pool.js';
 import { startFaces } from './modules/faces/faces.startup.js';
 import { createFaceService } from './modules/faces/face.service.js';
 import { createPgFaceRepository } from './modules/faces/pg-face.repository.js';
+import { createEntriesService } from './modules/access/access.entries.js';
 import { createAccessService } from './modules/access/access.service.js';
+import { createEntranceRecorder } from './modules/access/entrance.js';
+import type { EntryRepository } from './modules/access/entry.repository.js';
+import { createPgEntryRepository } from './modules/access/pg-entry.repository.js';
 import type { AuditLabelSources } from './modules/audit/audit.labels.js';
 import { createAuditService } from './modules/audit/audit.service.js';
 import { startBackupScheduler } from './modules/backup/backup.scheduler.js';
@@ -118,8 +122,13 @@ const noticeService = createNoticeService({
   pricing: pricingConfigService,
   sender: createWaMeSender(),
 });
+// Identified checks are logged in PostgreSQL. The repository exists only once the database is ready, so the recorder
+// reaches it late: without a database, or until it is ready, a check is simply not logged and still answers.
+let entryRepository: EntryRepository | undefined;
+const entranceRecorder = createEntranceRecorder({ entries: { append: async (entry) => entryRepository?.append(entry) } });
 // The entrance check reads the same four sources once per request and answers green, yellow or red.
 const accessService = createAccessService({
+  entrance: entranceRecorder,
   members: memberService,
   memberships: membershipService,
   payments: paymentRepository,
@@ -143,8 +152,10 @@ const facesReady = pool && connectionString
 facesReady.then((available) => {
   if (available && pool) {
     faceService = createFaceService({ repository: createPgFaceRepository(pool), members: memberService, access: accessService, audit: auditService });
+    entryRepository = createPgEntryRepository(pool);
   }
-  const app = createApp({ faceService, facesUnavailable: !faceService, memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, accessService, auditService, backupService, userRepository });
+  const accessEntries = entryRepository ? createEntriesService({ entries: entryRepository, members: memberService }) : undefined;
+  const app = createApp({ faceService, facesUnavailable: !faceService, memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, accessService, accessEntries, auditService, backupService, userRepository });
   return bootstrap({
     memberService,
     membershipService,

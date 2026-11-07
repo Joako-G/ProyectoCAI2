@@ -199,3 +199,49 @@ describe('access checkMember', () => {
     for (const port of Object.values(ports)) expect(Object.values(port)[0]).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('access entrance registration', () => {
+  function withEntrance(members: AccessMember[], memberships: Membership[] = [], payments: Payment[] = []) {
+    const entrance = { register: vi.fn(async (_input: unknown) => undefined) };
+    const ports = {
+      members: { list: vi.fn(async () => members) },
+      memberships: { list: vi.fn(async () => memberships) },
+      payments: { list: vi.fn(async () => payments) },
+      pricing: { get: vi.fn(async () => defaultConfig) },
+    };
+    return { entrance, service: createAccessService({ ...ports, entrance, now: () => TODAY }) };
+  }
+
+  it('registers a DNI check with the member id, the first name, the answer, the method and the staff member', async () => {
+    const { service, entrance } = withEntrance([member('one', '30111222')], [membership('one', '2026-10-01')], [paidMonths('one', '2026-10', '2026-11')]);
+    const answer = await service.check('30111222', { method: 'dni', actorId: 'user-1' });
+    expect(entrance.register).toHaveBeenCalledWith({ member: { id: 'one', firstName: 'one' }, answer, method: 'dni', actorId: 'user-1' });
+  });
+
+  it('registers an unknown DNI without a member', async () => {
+    const { service, entrance } = withEntrance([member('one', '30111222')]);
+    await service.check('99999999', { method: 'dni', actorId: 'user-1' });
+    expect(entrance.register).toHaveBeenCalledWith({ member: undefined, answer: { result: 'red', reason: 'not_found' }, method: 'dni', actorId: 'user-1' });
+  });
+
+  it('registers nothing when the caller gives no entrance context', async () => {
+    const { service, entrance } = withEntrance([member('one', '30111222')]);
+    await service.check('30111222');
+    await service.checkMember('one');
+    expect(entrance.register).not.toHaveBeenCalled();
+  });
+
+  it('registers a face check by member id, but not an inactive member, whom the door cannot name', async () => {
+    const { service, entrance } = withEntrance([member('one', '30111222'), member('two', '30111333', { status: 'inactive' })]);
+    await service.checkMember('one', { method: 'face', actorId: 'user-1' });
+    await service.checkMember('two', { method: 'face', actorId: 'user-1' });
+    expect(entrance.register).toHaveBeenNthCalledWith(1, expect.objectContaining({ member: { id: 'one', firstName: 'one' }, method: 'face' }));
+    expect(entrance.register).toHaveBeenNthCalledWith(2, expect.objectContaining({ member: undefined, method: 'face' }));
+  });
+
+  it('registers an inactive member checked by DNI, who is identified', async () => {
+    const { service, entrance } = withEntrance([member('two', '30111333', { status: 'inactive' })]);
+    await service.check('30111333', { method: 'dni', actorId: 'user-1' });
+    expect(entrance.register).toHaveBeenCalledWith(expect.objectContaining({ member: { id: 'two', firstName: 'two' } }));
+  });
+});

@@ -61,6 +61,7 @@ Work on `manu` (user preference), one work-unit commit per task. Push and PR rem
 ## Progress
 - 2026-11-07: scope agreed with the user; this document created.
 - 2026-11-07: T1 done (see task line for evidence).
+- 2026-11-07: T2 done (see task lines for evidence).
 
 ## Next step
-T2.
+T3.

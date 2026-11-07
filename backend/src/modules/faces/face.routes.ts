@@ -8,9 +8,9 @@ import { parseEnrollBody, parseRecognizeBody } from './face.validation.js';
 export function createFaceRouter(service: FaceService, authenticate: Authenticator): Router {
   const router = Router();
 
-  // A read: it writes nothing, so it is not audited (like POST /api/access/check).
+  // It writes no audit entry: an identified entrance goes to the entry log instead (like POST /api/access/check).
   router.post('/recognize', async (request, response) => {
-    response.json(await service.recognize(parseRecognizeBody(request.body).descriptor));
+    response.json(await service.recognize(parseRecognizeBody(request.body).descriptor, authenticate(request)!.id));
   });
 
   router.get('/:memberId', async (request, response) => {

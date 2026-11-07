@@ -1,6 +1,6 @@
 # Database (PostgreSQL with pgvector)
 
-The first module on PostgreSQL is face recognition. Every other module still uses JSON files. The database is optional: without `DATABASE_URL` the server runs as before and the face endpoints answer `503 faces_unavailable`.
+PostgreSQL holds face recognition (`face_profiles`) and the entrance log (`access_entries`: member id, result, reason code, method `dni` or `face`, time and the staff user id; never a DNI or a name). Every other module still uses JSON files. The database is optional: without `DATABASE_URL` the server runs as before, the face endpoints answer `503 faces_unavailable`, `GET /api/access/entries` answers `503 entries_unavailable`, and entrance checks still answer but are not logged.
 
 Requires Docker Desktop (Docker Compose v2).
 
