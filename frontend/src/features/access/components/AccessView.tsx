@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { CaptureGuide } from '../../faces/components/CaptureGuide';
 import { useFaceCamera } from '../../faces/hooks/useFaceCamera';
 import { useAccessCheck } from '../hooks/useAccessCheck';
@@ -9,7 +9,12 @@ import { accessDueLine, accessHeadline, accessMonthLine } from '../utils/access-
  * Container of the entrance check: type a DNI, press Enter, read a large green, yellow or red answer.
  * "Cámara" adds face recognition next to it; the DNI field keeps working the whole time.
  */
-export function AccessView({ timing }: { /** Overrides the camera timing; used by tests. */ timing?: Partial<CameraTiming> }) {
+export function AccessView({ timing, onAnswered }: {
+  /** Overrides the camera timing; used by tests. */
+  timing?: Partial<CameraTiming>;
+  /** Called after each check that got an answer, by DNI or by face, so the day's list can catch up. */
+  onAnswered?: () => void;
+}) {
   const { state, check, recognize } = useAccessCheck();
   const [dni, setDni] = useState('');
   const [cameraOn, setCameraOn] = useState(false);
@@ -26,6 +31,10 @@ export function AccessView({ timing }: { /** Overrides the camera timing; used b
     setCameraOn(true);
     void camera.start();
   }
+
+  useEffect(() => {
+    if (state.phase === 'done') onAnswered?.();
+  }, [state, onAnswered]);
 
   const guide = useCameraEntrance({ camera, timing: cameraTiming, onFace: recognize, onUnavailable: turnCameraOff });
   const field = useRef<HTMLInputElement>(null);

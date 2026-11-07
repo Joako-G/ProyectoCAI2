@@ -4,7 +4,7 @@ import { LoginScreen } from './features/auth/components/LoginScreen';
 import { useSession } from './features/auth/hooks/useSession';
 import type { AuthUser } from './features/auth/types/auth';
 import { can } from './features/auth/utils/can';
-import { AccessView } from './features/access/components/AccessView';
+import { AccessPage } from './features/access/components/AccessPage';
 import { EntranceDisplay } from './features/access/components/EntranceDisplay';
 import { AuditView } from './features/audit/components/AuditView';
 import { BackupView } from './features/backup/components/BackupView';
@@ -33,7 +33,7 @@ function pageFor(section: Section, user: AuthUser) {
     case 'disciplines': return <DisciplinesView canWrite={can(user, 'disciplines:write')} />;
     case 'payments': return <PaymentsView canCollect={can(user, 'payments:collect')} canAnnul={can(user, 'payments:annul')} />;
     case 'notices': return <NoticesView />;
-    case 'access': return <AccessView />;
+    case 'access': return <AccessPage />;
     case 'cashcount': return <ArqueoView />;
     case 'reports': return <ReportsView issuedBy={user.name} canReadCashCount={can(user, 'cashcount:run')} />;
     case 'roster': return <RosterView />;

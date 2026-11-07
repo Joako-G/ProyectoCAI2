@@ -55,7 +55,10 @@ Work on `manu` (user preference), one work-unit commit per task. Push and PR rem
   - Frontend: `/pantalla-ingreso` renders `EntranceDisplay` outside the shell but behind login and `access:check` (login returns to it). `EventSource` with manual reconnect when the browser gives up; greeting held 7 s, then "Bienvenidos al club". The parser keeps only tone, time and first name. Ingreso has an "Abrir pantalla pública" link (new tab/window).
   - Route matrix: `GET /api/access/display-events` added; the matrix test cancels the stream body so the server can close.
   - Flake seen once and not reproduced: `audit.coverage` failed with `bad port` from fetch on an unsafe ephemeral port; the rerun passed.
-- [ ] T4 — "Ingresos del día" for staff. Route: same writer.
+- [x] T4 — "Ingresos de hoy" for staff. Route: same writer.
+  - RED: `Failed to resolve import "./EntriesToday"` and `"./AccessPage"` (new tests failed before code).
+  - GREEN: frontend access and App suites pass (116 tests); full frontend suite 62 files / 633 tests.
+  - `AccessPage` renders the unchanged `AccessView` plus `EntriesToday`; `AccessView` calls an optional `onAnswered` after each answered check (DNI or camera), which bumps the panel's refresh key. The panel also refreshes every minute, keeps the last table when a refresh fails, shows the Spanish unavailable text on 503 and a retry on other errors. Time is shown in the club time zone.
 
 ## Checks
 - Backend tests with and without `TEST_DATABASE_URL`, frontend tests, and both typechecks.
@@ -70,6 +73,7 @@ Work on `manu` (user preference), one work-unit commit per task. Push and PR rem
 - 2026-11-07: T1 done (see task line for evidence).
 - 2026-11-07: T2 done (see task lines for evidence).
 - 2026-11-07: T3 done (see task lines for evidence).
+- 2026-11-07: T4 done. Final checks: backend tests with `TEST_DATABASE_URL` (68 files / 1111 tests, plus 22 database tests) and without (database tests skipped), both typechecks, frontend suite, `migrate` applied `003_create_access_entries.sql`, `git diff --check` clean. One no-database backend run had 19 failures in `tests/access/access.api.test.ts` (every test in the file, so a setup problem); four reruns of that file and a full rerun passed, cause not found.
 
 ## Next step
-T4.
+Owners confirm the open items; then review, push and PR are the user's call. Try the screen: sign in, open Ingreso, press "Abrir pantalla pública", then run a DNI check or the camera.
