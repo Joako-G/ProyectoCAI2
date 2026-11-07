@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useId, useState } from 'react';
+import { useCaptureGuide, DEFAULT_CAPTURE_TIMING } from '../hooks/useCaptureGuide';
 import { useFaceCamera } from '../hooks/useFaceCamera';
 import { enrollFace, getFaceStatus, removeFace } from '../services/faces-api';
 import type { FaceStatus } from '../types/face';
-import { describeFaceApiError, MANY_FACES_MESSAGE, NO_FACE_MESSAGE } from '../utils/face-messages';
+import { describeFaceApiError, NO_FACE_MESSAGE } from '../utils/face-messages';
+import { CaptureGuide } from './CaptureGuide';
 
 const CONSENT_LABEL = 'El socio (o su tutor, si es menor) autorizó el uso de su imagen para reconocimiento facial';
 
@@ -21,6 +23,7 @@ export function FaceEnrollment({ memberId }: { memberId: string }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [message, setMessage] = useState<string>();
   const camera = useFaceCamera();
+  const guide = useCaptureGuide({ camera, active: camera.state.phase === 'ready', timing: DEFAULT_CAPTURE_TIMING });
   const consentId = useId();
 
   const load = useCallback(
@@ -60,10 +63,9 @@ export function FaceEnrollment({ memberId }: { memberId: string }) {
     setMessage(undefined);
     setBusy(true);
     try {
-      const scan = await camera.scan();
-      if (!scan || scan.kind === 'none') return setMessage(NO_FACE_MESSAGE);
-      if (scan.kind === 'many') return setMessage(MANY_FACES_MESSAGE);
-      await enrollFace(memberId, scan.descriptor);
+      const descriptor = await camera.describe();
+      if (!descriptor) return setMessage(NO_FACE_MESSAGE);
+      await enrollFace(memberId, descriptor);
       closeCamera();
       setStatus({ phase: 'ready', status: { enrolled: true } });
       // Reads the enrollment date the server recorded.
@@ -139,7 +141,9 @@ export function FaceEnrollment({ memberId }: { memberId: string }) {
       {capturing ? (
         <div className="face-enrollment__capture">
           {cameraPhase === 'starting' || cameraPhase === 'ready' ? (
-            <video ref={camera.videoRef} className="face-video" muted playsInline autoPlay aria-label="Vista de la cámara" />
+            <CaptureGuide guide={guide}>
+              <video ref={camera.videoRef} className="face-video" muted playsInline autoPlay aria-label="Vista de la cámara" />
+            </CaptureGuide>
           ) : null}
           {cameraPhase === 'starting' ? <p role="status">Preparando la cámara…</p> : null}
           {cameraPhase === 'error' ? (
@@ -155,7 +159,7 @@ export function FaceEnrollment({ memberId }: { memberId: string }) {
             <button
               type="button"
               className="button button--primary"
-              disabled={cameraPhase !== 'ready' || !consent || busy}
+              disabled={cameraPhase !== 'ready' || !consent || busy || !guide.stable}
               onClick={() => void captureAndSave()}
             >
               Capturar y guardar

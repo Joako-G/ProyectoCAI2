@@ -1,4 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
+import { CaptureGuide } from '../../faces/components/CaptureGuide';
 import { useFaceCamera } from '../../faces/hooks/useFaceCamera';
 import { useAccessCheck } from '../hooks/useAccessCheck';
 import { DEFAULT_CAMERA_TIMING, useCameraEntrance, type CameraTiming } from '../hooks/useCameraEntrance';
@@ -26,7 +27,7 @@ export function AccessView({ timing }: { /** Overrides the camera timing; used b
     void camera.start();
   }
 
-  useCameraEntrance({ camera, timing: cameraTiming, onFace: recognize, onUnavailable: turnCameraOff });
+  const guide = useCameraEntrance({ camera, timing: cameraTiming, onFace: recognize, onUnavailable: turnCameraOff });
   const field = useRef<HTMLInputElement>(null);
 
   async function handleSubmit(event: FormEvent) {
@@ -66,10 +67,12 @@ export function AccessView({ timing }: { /** Overrides the camera timing; used b
       {cameraOn ? (
         <div className="access-camera">
           {camera.state.phase === 'starting' || camera.state.phase === 'ready' ? (
-            <video ref={camera.videoRef} className="face-video" muted playsInline autoPlay aria-label="Vista de la cámara" />
+            <CaptureGuide guide={guide}>
+              <video ref={camera.videoRef} className="face-video" muted playsInline autoPlay aria-label="Vista de la cámara" />
+            </CaptureGuide>
           ) : null}
           {camera.state.phase === 'starting' ? <p>Preparando la cámara…</p> : null}
-          {camera.state.phase === 'ready' ? <p>Mire a la cámara. También puede ingresar el DNI.</p> : null}
+          {camera.state.phase === 'ready' ? <p>Ubique la cara en el óvalo. También puede ingresar el DNI.</p> : null}
           {camera.state.phase === 'error' ? (
             <p className="members-page__notice members-page__notice--error" role="alert">
               {camera.state.message}

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { jsonResponse } from '../../members/test/fixtures';
 import { CameraError } from '../services/camera';
-import { createFakeTools, DESCRIPTOR, type FakeTools } from '../test/fakes';
+import { createFakeTools, DESCRIPTOR, FAR_FACTS, NO_FACE_FACTS, TWO_FACES_FACTS, type FakeTools } from '../test/fakes';
 import { FaceEnrollment } from './FaceEnrollment';
 
 const tools = vi.hoisted(() => ({ current: undefined as unknown as FakeTools }));
@@ -98,17 +98,32 @@ describe('FaceEnrollment', () => {
   });
 
   it.each([
-    [{ kind: 'none' as const }, 'No se detectó ninguna cara. Mire a la cámara e intente de nuevo.'],
-    [{ kind: 'many' as const }, 'Hay más de una cara en la imagen. Debe verse una sola persona.'],
-  ])('refuses a capture with %j and sends nothing', async (scan, message) => {
+    [NO_FACE_FACTS, 'No veo ninguna cara'],
+    [TWO_FACES_FACTS, 'Debe haber una sola persona frente a la cámara'],
+    [FAR_FACTS, 'Acercate'],
+  ])('guides the person and keeps the capture locked while the frame is not good (%j)', async (facts, hint) => {
     stubApi();
-    tools.current.detector.detect.mockResolvedValue(scan);
+    tools.current.detector.look.mockResolvedValue(facts);
+    const user = userEvent.setup();
+    render(<FaceEnrollment memberId="m1" />);
+    await user.click(await screen.findByRole('button', { name: 'Registrar cara' }));
+    await user.click(await screen.findByLabelText(CONSENT));
+
+    expect(await screen.findByText(hint)).toHaveAttribute('aria-live', 'polite');
+    expect(screen.getByRole('button', { name: 'Capturar y guardar' })).toBeDisabled();
+    expect(tools.current.detector.describe).not.toHaveBeenCalled();
+    expect(writes()).toHaveLength(0);
+  });
+
+  it('says so when the descriptor cannot be computed at the moment of the capture', async () => {
+    stubApi();
+    tools.current.detector.describe.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(<FaceEnrollment memberId="m1" />);
     await openAndTick(user);
     await user.click(screen.getByRole('button', { name: 'Capturar y guardar' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se detectó ninguna cara. Mire a la cámara e intente de nuevo.');
     expect(writes()).toHaveLength(0);
   });
 

@@ -25,5 +25,5 @@ export function describeFaceApiError(error: unknown): string {
   return 'No se pudo completar la operación. Intente de nuevo.';
 }
 
+/** Shown when the final capture finds no single face even though the guide said ready (the person moved away). */
 export const NO_FACE_MESSAGE = 'No se detectó ninguna cara. Mire a la cámara e intente de nuevo.';
-export const MANY_FACES_MESSAGE = 'Hay más de una cara en la imagen. Debe verse una sola persona.';

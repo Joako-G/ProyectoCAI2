@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { faceTools } from '../services/face-tools';
-import type { FaceDetector, FaceScan } from '../types/face';
+import type { FaceDetector, FrameFacts } from '../types/face';
 import { describeCameraError, MODELS_ERROR_MESSAGE } from '../utils/face-messages';
 
 export type FaceCameraState =
@@ -66,14 +66,21 @@ export function useFaceCamera() {
   // Leaving the screen releases the camera without touching state.
   useEffect(() => release, [release]);
 
-  /** One look at the current frame; undefined when the camera is not ready. */
-  const scan = useCallback(async (): Promise<FaceScan | undefined> => {
+  /** One cheap look at the current frame; undefined when the camera is not ready. */
+  const look = useCallback(async (): Promise<FrameFacts | undefined> => {
     const video = videoRef.current;
     const detector = detectorRef.current;
-    return video && detector ? detector.detect(video) : undefined;
+    return video && detector ? detector.look(video) : undefined;
   }, []);
 
-  return { videoRef, state, start, stop, scan };
+  /** The descriptor of the single face in the current frame; undefined when there is not exactly one. */
+  const describe = useCallback(async (): Promise<number[] | undefined> => {
+    const video = videoRef.current;
+    const detector = detectorRef.current;
+    return video && detector ? detector.describe(video) : undefined;
+  }, []);
+
+  return { videoRef, state, start, stop, look, describe };
 }
 
 export type FaceCamera = ReturnType<typeof useFaceCamera>;

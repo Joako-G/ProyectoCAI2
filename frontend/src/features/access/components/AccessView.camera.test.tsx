@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CameraError } from '../../faces/services/camera';
-import { createFakeTools, DESCRIPTOR, type FakeTools } from '../../faces/test/fakes';
+import { createFakeTools, DESCRIPTOR, FAR_FACTS, GOOD_FACTS, NO_FACE_FACTS, TWO_FACES_FACTS, type FakeTools } from '../../faces/test/fakes';
 import { jsonResponse } from '../../members/test/fixtures';
 import { buildAccessCheck } from '../test/fixtures';
 import type { AccessCheck } from '../types/access';
@@ -83,21 +83,52 @@ describe('AccessView camera mode', () => {
 
   it('does not send anything when the face is not stable or there are several faces', async () => {
     stubApi();
-    const scans = [{ kind: 'one' as const, descriptor: DESCRIPTOR }, { kind: 'none' as const }];
+    const scans = [GOOD_FACTS, NO_FACE_FACTS];
     let index = 0;
-    tools.current.detector.detect.mockImplementation(async () => scans[index++ % 2]!);
+    tools.current.detector.look.mockImplementation(async () => scans[index++ % 2]!);
     const user = userEvent.setup();
     render(<AccessView timing={TIMING} />);
     await user.click(cameraButton());
-    await waitFor(() => expect(tools.current.detector.detect.mock.calls.length).toBeGreaterThan(6));
-    tools.current.detector.detect.mockImplementation(async () => ({ kind: 'many' as const }));
+    await waitFor(() => expect(tools.current.detector.look.mock.calls.length).toBeGreaterThan(6));
+    tools.current.detector.look.mockResolvedValue(TWO_FACES_FACTS);
     await new Promise((resolve) => setTimeout(resolve, 60));
     expect(recognizeCalls()).toHaveLength(0);
   });
 
+  it('guides the person with one hint at a time, announced politely, and never recognizes while a hint is showing', async () => {
+    stubApi();
+    tools.current.detector.look.mockResolvedValue(FAR_FACTS);
+    const user = userEvent.setup();
+    render(<AccessView timing={TIMING} />);
+    await user.click(cameraButton());
+
+    const hint = await screen.findByText('Acercate');
+    expect(hint).toHaveAttribute('aria-live', 'polite');
+    expect(hint).toHaveAttribute('role', 'status');
+    expect(document.querySelector('.capture-guide')).toHaveAttribute('data-state', 'adjusting');
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(recognizeCalls()).toHaveLength(0);
+    expect(tools.current.detector.describe).not.toHaveBeenCalled();
+  });
+
+  it('shows the ready state once the face is well placed, and the hint follows the situation', async () => {
+    stubApi();
+    // The capture never completes, so the guide stays on screen in its ready state.
+    tools.current.detector.describe.mockImplementation(() => new Promise<number[]>(() => undefined));
+    tools.current.detector.look.mockResolvedValue(NO_FACE_FACTS);
+    const user = userEvent.setup();
+    render(<AccessView timing={TIMING} />);
+    await user.click(cameraButton());
+    expect(await screen.findByText('No veo ninguna cara')).toBeInTheDocument();
+    expect(document.querySelector('.capture-guide')).toHaveAttribute('data-state', 'neutral');
+
+    tools.current.detector.look.mockResolvedValue(GOOD_FACTS);
+    await waitFor(() => expect(document.querySelector('.capture-guide')).toHaveAttribute('data-state', 'ready'));
+  });
+
   it('keeps the DNI field working while the camera is on', async () => {
     stubApi();
-    tools.current.detector.detect.mockResolvedValue({ kind: 'none' });
+    tools.current.detector.look.mockResolvedValue(NO_FACE_FACTS);
     const user = userEvent.setup();
     render(<AccessView timing={TIMING} />);
     await user.click(cameraButton());
@@ -109,11 +140,11 @@ describe('AccessView camera mode', () => {
 
   it('stops the camera when switching mode off and when leaving the screen', async () => {
     stubApi();
-    tools.current.detector.detect.mockResolvedValue({ kind: 'none' });
+    tools.current.detector.look.mockResolvedValue(NO_FACE_FACTS);
     const user = userEvent.setup();
     const { unmount } = render(<AccessView timing={TIMING} />);
     await user.click(cameraButton());
-    await waitFor(() => expect(tools.current.detector.detect).toHaveBeenCalled());
+    await waitFor(() => expect(tools.current.detector.look).toHaveBeenCalled());
     await user.click(cameraButton());
     expect(tools.current.cam.stop).toHaveBeenCalledTimes(1);
     expect(cameraButton()).toHaveAttribute('aria-pressed', 'false');
@@ -121,7 +152,7 @@ describe('AccessView camera mode', () => {
     await user.click(cameraButton());
     await waitFor(() => expect(tools.current.openCamera).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(cameraButton()).toHaveAttribute('aria-pressed', 'true'));
-    await waitFor(() => expect(tools.current.detector.detect.mock.calls.length).toBeGreaterThan(1));
+    await waitFor(() => expect(tools.current.detector.look.mock.calls.length).toBeGreaterThan(1));
     unmount();
     expect(tools.current.cam.stop).toHaveBeenCalledTimes(2);
   });

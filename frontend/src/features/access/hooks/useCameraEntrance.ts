@@ -1,22 +1,21 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useRef } from 'react';
+import {
+  DEFAULT_CAPTURE_TIMING,
+  useCaptureGuide,
+  type CaptureGuideState,
+  type CaptureOutcome,
+  type CaptureTiming,
+} from '../../faces/hooks/useCaptureGuide';
 import type { FaceCamera } from '../../faces/hooks/useFaceCamera';
 import type { RecognizeOutcome } from './useAccessCheck';
 
-export interface CameraTiming {
-  /** Time between two looks at the camera. */
-  scanIntervalMs: number;
-  /** Consecutive looks with exactly one face before it counts as stable. */
-  stableScans: number;
-  /** Rest after an attempt, so one person standing there is not sent again and again. */
-  pauseMs: number;
-}
-
-export const DEFAULT_CAMERA_TIMING: CameraTiming = { scanIntervalMs: 500, stableScans: 3, pauseMs: 4000 };
+export type CameraTiming = CaptureTiming;
+export const DEFAULT_CAMERA_TIMING: CameraTiming = DEFAULT_CAPTURE_TIMING;
 
 /**
- * While the camera is ready, looks at it over and over. When exactly one face stays in view for `stableScans`
- * looks in a row, it hands that descriptor to `onFace`, then rests for `pauseMs`. Two faces or none reset the count.
- * `onFace` answers `unavailable` to end the loop (the server has no face recognition).
+ * While the camera is ready, guides the person into a good capture and, when the frame has been ready (one face,
+ * placed, frontal, lit, still) for the stability window, hands that descriptor to `onFace`, then rests for `pauseMs`.
+ * `onFace` answers `unavailable` to end the loop (the server has no face recognition). Returns the guide to show.
  */
 export function useCameraEntrance({
   camera,
@@ -28,43 +27,15 @@ export function useCameraEntrance({
   timing: CameraTiming;
   onFace: (descriptor: number[]) => Promise<RecognizeOutcome>;
   onUnavailable: () => void;
-}) {
+}): CaptureGuideState {
   const handlers = useRef({ onFace, onUnavailable });
   handlers.current = { onFace, onUnavailable };
-  const { scan } = camera;
-  const ready = camera.state.phase === 'ready';
-  const { scanIntervalMs, stableScans, pauseMs } = timing;
 
-  useEffect(() => {
-    if (!ready) return;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const sleep = (ms: number) => new Promise<void>((resolve) => { timer = setTimeout(resolve, ms); });
+  const onStable = useCallback(async (descriptor: number[]): Promise<CaptureOutcome> => {
+    const outcome = await handlers.current.onFace(descriptor);
+    return outcome === 'unavailable' ? 'stop' : 'continue';
+  }, []);
+  const onEnd = useCallback(() => handlers.current.onUnavailable(), []);
 
-    void (async () => {
-      let stable = 0;
-      while (!cancelled) {
-        await sleep(scanIntervalMs);
-        if (cancelled) return;
-        const found = await scan().catch(() => undefined);
-        if (cancelled) return;
-        if (found?.kind !== 'one') {
-          stable = 0;
-          continue;
-        }
-        stable += 1;
-        if (stable < stableScans) continue;
-        stable = 0;
-        const outcome = await handlers.current.onFace(found.descriptor);
-        if (cancelled) return;
-        if (outcome === 'unavailable') return handlers.current.onUnavailable();
-        await sleep(pauseMs);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [ready, scan, scanIntervalMs, stableScans, pauseMs]);
+  return useCaptureGuide({ camera, active: camera.state.phase === 'ready', timing, onStable, onEnd });
 }

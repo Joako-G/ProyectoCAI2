@@ -65,6 +65,11 @@ Work on `manu` (user preference), with four work-unit commits. Push and PR remai
 - [x] T4 — Recognize at Ingreso. Route: same writer.
   - A camera mode next to the DNI field, showing the same result panel, with the DNI as the fallback.
 
+- [x] T5 — Capture guidance. Route: delegated direct writer (trigger: 2+ non-trivial files).
+  - A pure `assessCapture(frame)` returns `ready` or the one most important hint (no face, several faces, Acercate, Alejate un poco, Centrá la cara with direction, Mirá de frente a la cámara, Falta luz, Hay demasiada luz detrás, Quedate quieto). An oval, a large hint and a visual state over the video in the member record and in Ingreso, announced with `aria-live="polite"` only when the hint changes. A capture happens only after `ready` holds for the stability window.
+- [ ] T6 — Better enrollment. Route: same writer.
+  - Three captures, each only when `ready`, with a "Captura 2 de 3" indicator; an inconsistent capture is retaken; one descriptor is sent, the element-wise mean.
+
 ## Checks
 - Backend and frontend test and typecheck commands.
 - Database tests with Docker running.
@@ -106,6 +111,14 @@ Work on `manu` (user preference), with four work-unit commits. Push and PR remai
   - T1+T2 (`24b45ff`..`e2ea040`, lineage `review-f04504f933853a3a`, 41 files, 1,385 lines, high risk). Its warnings `R4-optional-db-blocks-startup`, `R3-startup-db-hard-dependency` and `R1-biometric-retention-inactive` were fixed in T2b.
   - T2b+T3+T4 (`e2ea040`..`f55e0dd`, lineage `review-c260884f2e059526`, 43 files, 1,401 lines, medium risk).
   - Later work: `R3-dni-dropped-during-recognize` (a DNI check started while a recognition is pending may be dropped), `R3-camera-error-stays-pressed`, `R3-postinstall-hard-fail` and `R3-timing-based-tests`.
+
+- 2026-11-07, T5 done (`feat(faces)`): the user tested the demo with a real camera and it works; this makes it faster and more effective by guiding the person.
+  - New in `features/faces`: `utils/capture-assessment.ts` (named, commented thresholds: score 0.6, face width 0.22 to 0.6 of the frame, center offset 0.15 horizontal and 0.18 vertical, yaw 0.18, pitch 0.2, brightness 60 to 220, backlight delta 60, movement 0.04 of the frame), `utils/head-pose.ts` (yaw and pitch from the 68 landmarks, no extra model), `utils/brightness.ts` (mean luma of a 64 by 48 downscaled frame, face region and whole frame), `hooks/useCaptureGuide.ts` (the look loop: 250 ms between looks, 3 ready looks in a row, a new hint shown only after 2 looks, 4 s rest after a capture) and `components/CaptureGuide.tsx` (oval, large hint, state label, polite live region). `FaceDetector` now has `look` (cheap, tiny detector at input 256 plus landmarks, no descriptor) and `describe` (descriptor, input 416); the old `detect` and `FaceScan` are gone. Ingreso uses `ready` for its stable looks. In the member record the capture button unlocks only when `ready` has held.
+  - Detector: SSD MobileNet is not among the copied models, so the tiny detector serves both the live look and the final capture, with a larger input for the capture. No CDN, no new downloads.
+  - Backlit is judged by comparing the face with the whole frame (dark face, much brighter frame), because only the face region and the frame are measured.
+  - All thresholds, and the pitch zero (nose at 0.45 of the eye-to-chin line), are provisional and untested on the club's camera.
+  - RED: `Failed to resolve import "./capture-assessment"`, `"./head-pose"`, `"./brightness"`, `"./useCaptureGuide"` (4 files failed to load); 14 component tests failed (`Unable to find an element with the text: Acercate`, the capture button never unlocked).
+  - GREEN: faces and access tests 81 passed. Not tested: the real camera, the real models, the thresholds on real faces.
 
 ## Next step
 Browser check with the team's faces (see Checks).
