@@ -47,7 +47,7 @@ SQL files live in `backend/src/database/migrations`, named `NNN_description.sql`
 pnpm --filter @club-socios/backend migrate     # needs DATABASE_URL
 ```
 
-The server also applies pending migrations when it starts, if `DATABASE_URL` is set.
+The server also applies pending migrations when it starts, if `DATABASE_URL` is set. The database only serves face recognition, so if it is down or a migration fails the server still starts: it logs one line without credentials and the face routes answer 503 `faces_unavailable` until the server restarts. The `migrate` script, by contrast, fails loudly. The pool waits at most 5 s to connect and cancels any statement after 10 s.
 
 ## Tests
 

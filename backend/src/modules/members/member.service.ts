@@ -5,6 +5,7 @@ import { changedFields } from '../audit/audit.fields.js';
 import type { AuditRecorder } from '../audit/audit.service.js';
 import type { DisciplineHistory } from './discipline-history.js';
 import type { DisciplineLookup } from './discipline-lookup.js';
+import type { MemberLifecycle } from './member-lifecycle.js';
 import type { MemberRepository } from './member.repository.js';
 import type { Member, MemberInput, MemberListQuery } from './member.types.js';
 import { assertDisciplinesAssignable, validateMemberInput } from './member.validation.js';
@@ -14,6 +15,8 @@ export interface MemberServiceDeps {
   disciplineLookup: DisciplineLookup;
   // Optional: when absent, discipline changes are simply not recorded anywhere else.
   disciplineHistory?: DisciplineHistory;
+  // Optional: other modules that keep data about a member (face profiles) learn of a deactivation through this port.
+  lifecycle?: MemberLifecycle;
   audit: AuditRecorder;
   now?: () => Date;
 }
@@ -96,6 +99,7 @@ export function createMemberService({
   repository,
   disciplineLookup,
   disciplineHistory,
+  lifecycle,
   audit,
   now = () => new Date(),
 }: MemberServiceDeps) {
@@ -199,6 +203,12 @@ export function createMemberService({
       });
       // The reason is free text and stays out of the log.
       await audit.record({ actorId, action: 'deactivate', entityType: 'member', entityId: deactivated.id });
+      // The member is already saved, so a failing listener is logged, not raised.
+      try {
+        await lifecycle?.onMemberDeactivated(deactivated.id, actorId);
+      } catch (error) {
+        console.error('Could not tell the other modules that member', deactivated.id, 'was deactivated', error instanceof Error ? error.message : error);
+      }
       return deactivated;
     },
 

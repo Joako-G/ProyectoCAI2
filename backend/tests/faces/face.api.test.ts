@@ -11,6 +11,7 @@ import { descriptor } from './helpers.js';
 const service = {
   enroll: vi.fn(async (_memberId: string, _input: { descriptor: number[] }, _actorId: string) => undefined),
   remove: vi.fn(async (_memberId: string, _actorId: string) => undefined),
+  discardForDeactivatedMember: vi.fn(async (_memberId: string, _actorId: string) => undefined),
   status: vi.fn(async (_memberId: string): Promise<{ enrolled: boolean; enrolledAt?: string }> => ({ enrolled: true, enrolledAt: '2026-11-07T15:00:00.000Z' })),
   recognize: vi.fn(async (_descriptor: number[]): Promise<AccessCheck> => ({ result: 'red', reason: 'not_recognized' })),
 } satisfies FaceService;

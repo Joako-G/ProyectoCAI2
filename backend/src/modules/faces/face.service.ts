@@ -39,6 +39,13 @@ export function createFaceService({ repository, members, access, audit, now = ()
       await audit.record({ actorId, action: 'delete', entityType: 'face_profile', entityId: memberId });
     },
 
+    // Biometric data must not outlive its purpose: when the members flow deactivates a member, the profile goes too.
+    // It is quiet when there was none, and the audit entry names the staff member who deactivated.
+    async discardForDeactivatedMember(memberId: string, actorId: string): Promise<void> {
+      if (!(await repository.remove(memberId))) return;
+      await audit.record({ actorId, action: 'delete', entityType: 'face_profile', entityId: memberId });
+    },
+
     async status(memberId: string): Promise<{ enrolled: boolean; enrolledAt?: string }> {
       const found = await repository.findEnrollment(memberId);
       return found ? { enrolled: true, enrolledAt: found.enrolledAt } : { enrolled: false };
@@ -49,8 +56,8 @@ export function createFaceService({ repository, members, access, audit, now = ()
       const nearest = await repository.nearest(descriptor);
       if (!nearest || nearest.distance > RECOGNITION_MAX_DISTANCE) return NOT_RECOGNIZED;
       const answer = await access.checkMember(nearest.memberId);
-      // A profile whose member no longer exists is a leftover, not a person the door can name.
-      return answer.reason === 'not_found' ? NOT_RECOGNIZED : answer;
+      // A profile whose member no longer exists, or who is inactive, is a leftover, not a person the door can name.
+      return answer.reason === 'not_found' || answer.reason === 'inactive' ? NOT_RECOGNIZED : answer;
     },
   };
 }

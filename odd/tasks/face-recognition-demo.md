@@ -31,6 +31,7 @@ The survey report says the secretaries want to drop the physical card: "Fase 1 (
   - Enrollment requires ticking that the member, or the guardian for a minor, consented to biometric use. The time and the staff member are recorded.
   - Secretaries and the head secretary can enroll, remove and recognize.
   - The match threshold is conservative. No match falls back to typing the DNI.
+- Provisional, from review (T2b): when a member is deactivated, their face profile is deleted (biometric data must not outlive its purpose), and recognition never matches an inactive member. Reactivating a member does not restore the face; staff enroll again with consent. If the database is down at that moment the deletion is logged and skipped, and the leftover profile never matches; it is not purged later yet.
 - The rest of the app keeps working without a database. When `DATABASE_URL` is not set, the face features answer "not configured" and nothing else changes, so Joaquín's setup is unaffected.
 
 ## Constraints
@@ -57,6 +58,8 @@ Work on `manu` (user preference), with four work-unit commits. Push and PR remai
   - Table with one descriptor per member and consent fields.
   - Enroll, remove and recognize endpoints, with recognition reusing the access check.
   - Capability, wiring, route matrix and audit coverage.
+- [x] T2b — Review fixes. Route: same writer.
+  - The backend starts when the database is down (faces answer 503 until restart; `migrate` still fails loudly), pool timeouts, and face profile deletion on deactivation through a members lifecycle port.
 - [ ] T3 — Enroll a face from the member record. Route: same writer.
   - Camera capture in the browser, a consent checkbox, enroll and remove.
 - [ ] T4 — Recognize at Ingreso. Route: same writer.
@@ -84,6 +87,10 @@ Work on `manu` (user preference), with four work-unit commits. Push and PR remai
   - RED: `Cannot find module '../../src/modules/faces/face.service.js'` / `face.validation.js`; `service.checkMember is not a function`; `permissions[capability] is not iterable`; route matrix `expected 404 to be 401` for the four face routes.
   - GREEN: backend suite 1053 passed plus 15 database tests with `TEST_DATABASE_URL`; without it 1053 passed and 13 database tests skipped.
   - The frontend `AccessReason` does not list `not_recognized` yet; T4 adds it with the Ingreso camera mode.
+
+- 2026-11-07, T2b done (`fix(faces)`): `startFaces` (`modules/faces/faces.startup.ts`) wraps the migrations and degrades to the 503 router with one credential-free log line; `createPool` sets a 5 s connection timeout and a 10 s statement timeout (the `migrate` script allows 120 s); `MemberLifecycle` port on the members service, wired in `server.ts` to `faceService.discardForDeactivatedMember`; recognition answers `not_recognized` for an inactive member.
+  - RED: `Failed to load url ../../src/modules/faces/faces.startup.js`; `discardForDeactivatedMember is not a function`; pool options `expected undefined to be 5000`; hook `Number of calls: 0`; inactive recognize returned the `inactive` answer (7 tests failed).
+  - GREEN: backend 1061 passed plus 17 database tests. Manual: server with an unreachable `DATABASE_URL` logged one line and listened.
 
 ## Next step
 T3.

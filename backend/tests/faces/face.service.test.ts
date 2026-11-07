@@ -127,3 +127,28 @@ describe('recognize', () => {
     expect(upsert).not.toHaveBeenCalled();
   });
 });
+
+describe('discardForDeactivatedMember', () => {
+  it('deletes the profile and audits it as the staff member who deactivated', async () => {
+    const { service, profiles, audit } = setup();
+    await service.enroll('m1', { descriptor: descriptor() }, 'user-1');
+    await service.discardForDeactivatedMember('m1', 'user-2');
+    expect(profiles.size).toBe(0);
+    expect(audit.record).toHaveBeenLastCalledWith({ actorId: 'user-2', action: 'delete', entityType: 'face_profile', entityId: 'm1' });
+  });
+
+  it('does nothing, quietly, when the member had no face profile', async () => {
+    const { service, audit } = setup();
+    await expect(service.discardForDeactivatedMember('m1', 'user-2')).resolves.toBeUndefined();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+});
+
+describe('recognize an inactive member', () => {
+  it('never matches: it answers not_recognized and names nobody', async () => {
+    const inactive: AccessCheck = { result: 'red', reason: 'inactive', member: { memberNumber: '0002', name: 'Baja Prueba', unpaidPeriodCount: 0 } };
+    const { service } = setup({ access: inactive });
+    await service.enroll('m1', { descriptor: descriptor() }, 'user-1');
+    expect(await service.recognize(descriptor())).toEqual({ result: 'red', reason: 'not_recognized' });
+  });
+});

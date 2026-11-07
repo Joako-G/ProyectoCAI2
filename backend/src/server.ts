@@ -12,6 +12,7 @@ import {
 import { databaseUrl } from './config/database.js';
 import { runMigrations } from './database/migrate.js';
 import { createPool } from './database/pool.js';
+import { startFaces } from './modules/faces/faces.startup.js';
 import { createFaceService } from './modules/faces/face.service.js';
 import { createPgFaceRepository } from './modules/faces/pg-face.repository.js';
 import { createAccessService } from './modules/access/access.service.js';
@@ -78,6 +79,8 @@ const memberService = createMemberService({
     onDisciplinesChanged: (memberId, disciplineIds, date) =>
       membershipService.syncMember(memberId, disciplineIds, date),
   },
+  // A deactivated member's face profile is deleted; the thunk runs later, once the face service exists (or never, without a database).
+  lifecycle: { onMemberDeactivated: async (memberId, actorId) => faceService?.discardForDeactivatedMember(memberId, actorId) },
 });
 // Prices live in their own file; a missing file means the club defaults.
 const pricingConfigService = createPricingConfigService({
@@ -130,30 +133,32 @@ const backupService = createBackupService({
   isDefaultDestination: backup.isDefault,
   audit: auditService,
 });
-// Face profiles live in PostgreSQL; without a database the routes answer 503 faces_unavailable.
-const faceService = pool
-  ? createFaceService({ repository: createPgFaceRepository(pool), members: memberService, access: accessService, audit: auditService })
-  : undefined;
-const app = createApp({ faceService, facesUnavailable: !pool, memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, accessService, auditService, backupService, userRepository });
+// Face profiles live in PostgreSQL. The database is optional: without DATABASE_URL, or when it is down at start,
+// the face routes answer 503 faces_unavailable until the server restarts and everything else runs as usual.
+let faceService: ReturnType<typeof createFaceService> | undefined;
+const facesReady = pool && connectionString
+  ? startFaces({ migrate: () => runMigrations(pool), log: (message) => console.log(message), connectionString })
+  : Promise.resolve(false);
 
-// Pending migrations run before the server listens; a failing one is fatal, so a half-migrated database never serves.
-const migrated = pool
-  ? runMigrations(pool).then((applied) => { if (applied.length > 0) console.log(`Applied ${applied.length} database migration(s)`); })
-  : Promise.resolve();
-
-migrated.then(() => bootstrap({
-  memberService,
-  membershipService,
-  today: () => toIsoDate(new Date()),
-  listen: () => {
-    app.listen(port, () => {
-      console.log(`Server listening on port ${port}`);
-      // Checks now and then every hour; a copy is made when the last good one is a day old.
-      startBackupScheduler({ service: backupService });
-    });
-  },
-  log: (message, error) => console.error(message, error),
-})).catch((error: unknown) => {
+facesReady.then((available) => {
+  if (available && pool) {
+    faceService = createFaceService({ repository: createPgFaceRepository(pool), members: memberService, access: accessService, audit: auditService });
+  }
+  const app = createApp({ faceService, facesUnavailable: !faceService, memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, accessService, auditService, backupService, userRepository });
+  return bootstrap({
+    memberService,
+    membershipService,
+    today: () => toIsoDate(new Date()),
+    listen: () => {
+      app.listen(port, () => {
+        console.log(`Server listening on port ${port}`);
+        // Checks now and then every hour; a copy is made when the last good one is a day old.
+        startBackupScheduler({ service: backupService });
+      });
+    },
+    log: (message, error) => console.error(message, error),
+  });
+}).catch((error: unknown) => {
   // Anything bootstrap does not degrade on (an unreadable members file, a throwing listen) is fatal.
   console.error('Server failed to start', error);
   process.exit(1);
