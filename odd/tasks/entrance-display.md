@@ -47,7 +47,14 @@ Work on `manu` (user preference), one work-unit commit per task. Push and PR rem
 ## Tasks
 - [ ] T1 — Frontend test timeout. Route: delegated direct writer.
 - [ ] T2 — Entry log backend. Route: same writer.
-- [ ] T3 — Live greeting stream and public display. Route: same writer.
+- [x] T3 — Live greeting stream and public display. Route: same writer.
+  - RED backend: `Cannot find module '../../src/modules/access/greeting.bus.js'` (greeting and display tests), plus `recognize` not telling the entrance about an unmatched face. RED frontend: `Failed to resolve import "./EntranceDisplay"` and `"./greeting-format"`, no "Abrir pantalla pública" link, `/pantalla-ingreso` not rendering "Bienvenidos al club".
+  - GREEN: backend access/faces/authorization/audit suites and frontend access + App suites pass.
+  - Backend: in-memory `greeting.bus.ts`; the entrance recorder publishes `{ at, tone, firstName? }` before it writes the log, so the display needs no database. `GET /api/access/display-events` (capability `access:check`) sends SSE with `no-cache, no-transform`, `X-Accel-Buffering: no`, `retry: 3000` and a `: ping` heartbeat every 25 s, and unsubscribes on close. A face that matches nobody is reported by the faces service; a matched one is reported once by the access service.
+  - Vite proxy: `/api` is a plain string proxy to the backend, which streams SSE as is; no change needed. Not exercised through a live Vite proxy in this run.
+  - Frontend: `/pantalla-ingreso` renders `EntranceDisplay` outside the shell but behind login and `access:check` (login returns to it). `EventSource` with manual reconnect when the browser gives up; greeting held 7 s, then "Bienvenidos al club". The parser keeps only tone, time and first name. Ingreso has an "Abrir pantalla pública" link (new tab/window).
+  - Route matrix: `GET /api/access/display-events` added; the matrix test cancels the stream body so the server can close.
+  - Flake seen once and not reproduced: `audit.coverage` failed with `bad port` from fetch on an unsafe ephemeral port; the rerun passed.
 - [ ] T4 — "Ingresos del día" for staff. Route: same writer.
 
 ## Checks
@@ -62,6 +69,7 @@ Work on `manu` (user preference), one work-unit commit per task. Push and PR rem
 - 2026-11-07: scope agreed with the user; this document created.
 - 2026-11-07: T1 done (see task line for evidence).
 - 2026-11-07: T2 done (see task lines for evidence).
+- 2026-11-07: T3 done (see task lines for evidence).
 
 ## Next step
-T3.
+T4.

@@ -19,6 +19,7 @@ import { createEntriesService } from './modules/access/access.entries.js';
 import { createAccessService } from './modules/access/access.service.js';
 import { createEntranceRecorder } from './modules/access/entrance.js';
 import type { EntryRepository } from './modules/access/entry.repository.js';
+import { createGreetingBus } from './modules/access/greeting.bus.js';
 import { createPgEntryRepository } from './modules/access/pg-entry.repository.js';
 import type { AuditLabelSources } from './modules/audit/audit.labels.js';
 import { createAuditService } from './modules/audit/audit.service.js';
@@ -125,7 +126,9 @@ const noticeService = createNoticeService({
 // Identified checks are logged in PostgreSQL. The repository exists only once the database is ready, so the recorder
 // reaches it late: without a database, or until it is ready, a check is simply not logged and still answers.
 let entryRepository: EntryRepository | undefined;
-const entranceRecorder = createEntranceRecorder({ entries: { append: async (entry) => entryRepository?.append(entry) } });
+// The public display's greetings travel through memory and work without a database.
+const greetings = createGreetingBus();
+const entranceRecorder = createEntranceRecorder({ entries: { append: async (entry) => entryRepository?.append(entry) }, greetings });
 // The entrance check reads the same four sources once per request and answers green, yellow or red.
 const accessService = createAccessService({
   entrance: entranceRecorder,
@@ -151,11 +154,11 @@ const facesReady = pool && connectionString
 
 facesReady.then((available) => {
   if (available && pool) {
-    faceService = createFaceService({ repository: createPgFaceRepository(pool), members: memberService, access: accessService, audit: auditService });
+    faceService = createFaceService({ repository: createPgFaceRepository(pool), members: memberService, access: accessService, audit: auditService, entrance: entranceRecorder });
     entryRepository = createPgEntryRepository(pool);
   }
   const accessEntries = entryRepository ? createEntriesService({ entries: entryRepository, members: memberService }) : undefined;
-  const app = createApp({ faceService, facesUnavailable: !faceService, memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, accessService, accessEntries, auditService, backupService, userRepository });
+  const app = createApp({ faceService, facesUnavailable: !faceService, memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, accessService, accessEntries, greetings, auditService, backupService, userRepository });
   return bootstrap({
     memberService,
     membershipService,

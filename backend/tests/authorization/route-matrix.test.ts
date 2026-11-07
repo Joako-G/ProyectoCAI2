@@ -8,6 +8,7 @@ import { createTestContext as createMembers } from '../members/helpers.js';
 import { createTestContext as createMemberships } from '../memberships/helpers.js';
 import { createTestContext as createPricing } from '../payments/pricing-config.helpers.js';
 import { createTestContext as createPayments } from '../payments/payment.helpers.js';
+import { createGreetingBus } from '../../src/modules/access/greeting.bus.js';
 import { createRosterService } from '../../src/modules/roster/roster.service.js';
 import { roles, type Role as RoleName } from '../../src/modules/users/user.types.js';
 import { createTestContext as createAudit } from '../audit/helpers.js';
@@ -42,6 +43,7 @@ beforeAll(async () => {
     backupService: { status: async () => ({ destination: { isDefault: true, state: 'ready' }, keep: 30, keepRecent: 5, copies: 0, lastSuccessAt: null, lastFailure: null, running: false }), run: async () => ({ ok: true, backup: { name: 'backup-20261101T150000Z', at: '2026-11-01T15:00:00.000Z', files: [] } }) },
     noticeService: { debtNotices: async () => ({ asOf: '2026-11-01', rows: [] }) },
     accessService: { check: async () => ({ result: 'red', reason: 'not_found' }) },
+    greetings: createGreetingBus(),
     faceService: { enroll: async () => undefined, remove: async () => undefined, discardForDeactivatedMember: async () => undefined, status: async () => ({ enrolled: false }), recognize: async () => ({ result: 'red', reason: 'not_recognized' }) },
     rosterService: createRosterService({ memberships: memberships.service, members: members.service, disciplines: disciplines.service }),
   }).listen(0);
@@ -75,6 +77,8 @@ describe('route authorization matrix', () => {
       const response = await call(method, path, cookies[role]);
       if (allowed.includes(role)) {
         expect([401, 403]).not.toContain(response.status);
+        // An event stream never ends on its own; close it so the server can shut down.
+        await response.body?.cancel().catch(() => undefined);
       } else {
         expect(response.status).toBe(403);
         expect(await response.json()).toEqual({ error: 'Forbidden' });

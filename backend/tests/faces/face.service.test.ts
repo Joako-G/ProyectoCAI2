@@ -17,8 +17,9 @@ function setup(options: { memberStatus?: 'active' | 'inactive'; access?: AccessC
   };
   const access = { checkMember: vi.fn(async (_id: string) => options.access ?? green) };
   const audit = { record: vi.fn(async (_input: unknown) => undefined) };
-  const service = createFaceService({ repository, members, access, audit, now: () => NOW });
-  return { service, repository, profiles, members, access, audit };
+  const entrance = { register: vi.fn(async (_input: unknown) => undefined) };
+  const service = createFaceService({ repository, members, access, audit, entrance, now: () => NOW });
+  return { service, repository, profiles, members, access, audit, entrance };
 }
 
 describe('enroll', () => {
@@ -150,5 +151,29 @@ describe('recognize an inactive member', () => {
     const { service } = setup({ access: inactive });
     await service.enroll('m1', { descriptor: descriptor() }, 'user-1');
     expect(await service.recognize(descriptor(), 'user-1')).toEqual({ result: 'red', reason: 'not_recognized' });
+  });
+});
+
+describe('recognize and the entrance', () => {
+  const refusal = { member: undefined, answer: { result: 'red', reason: 'not_recognized' }, method: 'face', actorId: 'user-1' };
+
+  it('tells the entrance about a face that nobody matches, so the display can refuse it', async () => {
+    const { service, repository, entrance } = setup();
+    vi.spyOn(repository, 'nearest').mockResolvedValue({ memberId: 'm1', distance: RECOGNITION_MAX_DISTANCE + 0.01 });
+    await service.recognize(descriptor(), 'user-1');
+    expect(entrance.register).toHaveBeenCalledWith(refusal);
+  });
+
+  it('tells the entrance when nobody is enrolled', async () => {
+    const { service, entrance } = setup();
+    await service.recognize(descriptor(), 'user-1');
+    expect(entrance.register).toHaveBeenCalledWith(refusal);
+  });
+
+  it('leaves a matched member to the access service, which already registered it', async () => {
+    const { service, entrance } = setup();
+    await service.enroll('m1', { descriptor: descriptor() }, 'user-1');
+    await service.recognize(descriptor(), 'user-1');
+    expect(entrance.register).not.toHaveBeenCalled();
   });
 });

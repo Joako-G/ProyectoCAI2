@@ -64,6 +64,10 @@ export function AccessView({ timing }: { /** Overrides the camera timing; used b
           Cámara
         </button>
       </form>
+      {/* The greeting screen for a second monitor or another device; it keeps its own session in that window. */}
+      <a className="access-display-link" href="/pantalla-ingreso" target="_blank" rel="noopener noreferrer">
+        Abrir pantalla pública
+      </a>
       {cameraOn ? (
         <div className="access-camera">
           {camera.state.phase === 'starting' || camera.state.phase === 'ready' ? (
