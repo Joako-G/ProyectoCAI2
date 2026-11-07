@@ -26,6 +26,7 @@ function pageFor(section: Section, user: AuthUser) {
   switch (section) {
     case 'members': return <MembersView
       canWrite={can(user, 'members:write')}
+      canManageFaces={can(user, 'faces:manage')}
       renderCreate={can(user, 'payments:collect') ? (props) => <EnrollmentScreen {...props} /> : undefined}
     />;
     case 'disciplines': return <DisciplinesView canWrite={can(user, 'disciplines:write')} />;

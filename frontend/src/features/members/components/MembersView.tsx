@@ -18,6 +18,8 @@ interface MembersViewProps {
   today?: string;
   /** Whether the user may create, edit, deactivate and reactivate members. */
   canWrite: boolean;
+  /** Whether the record shows the face recognition block (`faces:manage`). */
+  canManageFaces?: boolean;
   /** Replaces the plain create form, for example with the enrollment that also collects; the app composes it. */
   renderCreate?: (props: CreateScreenProps) => ReactNode;
 }
@@ -30,7 +32,7 @@ type View =
   | { name: 'edit'; id: string };
 
 /** Container of the members feature: switches between list, detail and the create / edit form. */
-export function MembersView({ today = todayInClub(), canWrite, renderCreate }: MembersViewProps) {
+export function MembersView({ today = todayInClub(), canWrite, canManageFaces = false, renderCreate }: MembersViewProps) {
   const [view, setView] = useState<View>({ name: 'list' });
   // Kept here, not in the list, so the filters survive going to the detail or form and back.
   const [query, setQuery] = useState<MemberListQuery>({ search: '', status: 'all', disciplineId: '' });
@@ -58,6 +60,7 @@ export function MembersView({ today = todayInClub(), canWrite, renderCreate }: M
           today={today}
           catalog={catalog}
           canWrite={canWrite}
+          canManageFaces={canManageFaces}
           onBack={showList}
           onEdit={(id) => setView({ name: 'edit', id })}
         />

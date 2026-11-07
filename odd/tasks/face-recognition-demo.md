@@ -60,7 +60,7 @@ Work on `manu` (user preference), with four work-unit commits. Push and PR remai
   - Capability, wiring, route matrix and audit coverage.
 - [x] T2b — Review fixes. Route: same writer.
   - The backend starts when the database is down (faces answer 503 until restart; `migrate` still fails loudly), pool timeouts, and face profile deletion on deactivation through a members lifecycle port.
-- [ ] T3 — Enroll a face from the member record. Route: same writer.
+- [x] T3 — Enroll a face from the member record. Route: same writer.
   - Camera capture in the browser, a consent checkbox, enroll and remove.
 - [ ] T4 — Recognize at Ingreso. Route: same writer.
   - A camera mode next to the DNI field, showing the same result panel, with the DNI as the fallback.
@@ -92,5 +92,10 @@ Work on `manu` (user preference), with four work-unit commits. Push and PR remai
   - RED: `Failed to load url ../../src/modules/faces/faces.startup.js`; `discardForDeactivatedMember is not a function`; pool options `expected undefined to be 5000`; hook `Number of calls: 0`; inactive recognize returned the `inactive` answer (7 tests failed).
   - GREEN: backend 1061 passed plus 17 database tests. Manual: server with an unreachable `DATABASE_URL` logged one line and listened.
 
+- 2026-11-07, T3 done (`feat(faces)`): `@vladmandic/face-api` 1.7.15 (exact pin) in the frontend. New `frontend/src/features/faces`: `camera.ts` (getUserMedia, typed `CameraError`), `face-engine.ts` (the only file importing face-api: tiny face detector, 68 landmarks, recognition net; counts faces first, computes the descriptor only for exactly one), `face-tools.ts` (the single seam tests mock; loads the engine with a dynamic `import()` only when the camera opens), `useFaceCamera` (stream and detector lifecycle, released on stop and unmount), `FaceEnrollment` (the "Reconocimiento facial" block: status, "Registrar cara", consent checkbox, "Capturar y guardar", "Borrar cara" with confirmation). Shown in the member record only with `faces:manage` and only for active members. Images are never uploaded: only `{ descriptor, consent: true }` is sent.
+  - Models: `frontend/scripts/copy-face-models.mjs` copies the tiny detector (193 KB), the 68-point landmarks (357 KB) and the recognition net (6.4 MB) from the package into `frontend/public/models/face`, served at `/models/face` with no CDN. It runs on `postinstall` and `predev`. The copies are about 7 MB, so they are git-ignored. The tiny detector was chosen over SSD MobileNet (5.6 MB) because it is 30 times smaller and fast enough for one close face at a desk.
+  - RED: `Failed to resolve import "../services/camera"` and `"./faces-api"` (both new test files failed to load); the member record test: `Unable to find role="heading" and name "Reconocimiento facial"` (1 of 3 failed).
+  - GREEN: faces tests 17 passed, member record 3 passed. Not tested: the real camera and the real models, which need a browser.
+
 ## Next step
-T3.
+T4.

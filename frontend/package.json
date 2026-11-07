@@ -4,12 +4,16 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/copy-face-models.mjs",
     "dev": "vite",
+    "copy-face-models": "node scripts/copy-face-models.mjs",
+    "postinstall": "node scripts/copy-face-models.mjs",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
+    "@vladmandic/face-api": "1.7.15",
     "react": "19.1.1",
     "react-dom": "19.1.1",
     "react-router": "7.18.4",

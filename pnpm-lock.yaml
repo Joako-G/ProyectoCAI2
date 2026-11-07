@@ -41,6 +41,9 @@ importers:
 
   frontend:
     dependencies:
+      '@vladmandic/face-api':
+        specifier: 1.7.15
+        version: 1.7.15
       react:
         specifier: 19.1.1
         version: 19.1.1
@@ -676,6 +679,10 @@ packages:
 
   '@vitest/spy@5.0.3':
     resolution: {integrity: sha512-XhFysQTB8AZ+P4gMi+Lpo99vg2AZi0qKpaB9yXQl37+CaMEAPO3iH/wGVnSyL5MPERiLezpqTVtrR6UZH5GCXg==}
+
+  '@vladmandic/face-api@1.7.15':
+    resolution: {integrity: sha512-WDMmK3CfNLo8jylWqMoQgf4nIst3M0fzx1dnac96wv/dvMTN4DxC/Pq1DGtduDk1lktCamQ3MIDXFnvrdHTXDw==}
+    engines: {node: '>=14.0.0'}
 
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
@@ -1925,6 +1932,8 @@ snapshots:
       vite: 7.1.5(@types/node@24.3.1)
 
   '@vitest/spy@5.0.3': {}
+
+  '@vladmandic/face-api@1.7.15': {}
 
   accepts@2.0.0:
     dependencies:
