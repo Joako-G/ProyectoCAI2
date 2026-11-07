@@ -156,6 +156,23 @@ describe('FaceEnrollment', () => {
     expect(tools.current.cam.stop).toHaveBeenCalled();
   });
 
+  it('locks the consent while the captures run, so it cannot be withdrawn mid-sequence', async () => {
+    stubApi();
+    const gate = hold();
+    tools.current.detector.describe.mockImplementation(async () => {
+      await gate.released;
+      return DESCRIPTOR;
+    });
+    const user = userEvent.setup();
+    render(<FaceEnrollment memberId="m1" timing={TIMING} />);
+    await openAndTick(user);
+    await user.click(screen.getByRole('button', { name: 'Capturar y guardar' }));
+
+    expect(await screen.findByText('Captura 1 de 3')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox')).toBeDisabled();
+    gate.release();
+  });
+
   it('retakes a capture that does not match the others, and never sends it', async () => {
     stubApi();
     const stranger = DESCRIPTOR.map((value) => value + 0.1);

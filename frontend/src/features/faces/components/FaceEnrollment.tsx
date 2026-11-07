@@ -203,7 +203,8 @@ export function FaceEnrollment({
           ) : null}
           {notice ? <p className="face-enrollment__notice">{notice}</p> : null}
           <label htmlFor={consentId} className="face-enrollment__consent">
-            <input id={consentId} type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} />
+            {/* Locked while the captures run, so what is sent always matches the consent given. */}
+            <input id={consentId} type="checkbox" checked={consent} disabled={running || busy} onChange={(event) => setConsent(event.target.checked)} />
             <span>{CONSENT_LABEL}</span>
           </label>
           <div className="member-detail__actions">
