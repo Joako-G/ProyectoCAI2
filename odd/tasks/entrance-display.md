@@ -45,8 +45,13 @@ Mode: ON. Source: explicit user choice recorded in `odd/tasks/members-abm.md`. R
 Work on `manu` (user preference), one work-unit commit per task. Push and PR remain the user's decision.
 
 ## Tasks
-- [ ] T1 — Frontend test timeout. Route: delegated direct writer.
-- [ ] T2 — Entry log backend. Route: same writer.
+- [x] T1 — Frontend test timeout. Route: delegated direct writer. Commit `028663b`.
+  - RED: the plain frontend test run had 6 files and 10 tests failing with "Test timed out in 5000ms" (PricingView, DisciplinesView and others).
+  - GREEN: after `testTimeout` and `hookTimeout` 20000 and `maxWorkers` 2, 597/597 passed in about 2m17s.
+- [x] T2 — Entry log backend. Route: same writer. Commit `c4e6099`.
+  - RED: "Cannot find module" for the entrance recorder and the entries module. `GET /api/access/entries` returned 404. `check` and `checkMember` were not called with `{ method, actorId }`. 16 failures.
+  - GREEN: the backend suite passes with and without `TEST_DATABASE_URL`. `migrate` applied `003_create_access_entries.sql`.
+  - The audit coverage test moves `POST /api/access/check` and `POST /api/faces/recognize` to an explicit `SELF_LOGGING` list. The entry log is their record, and an audit entry per entrance would be noise. A test asserts that no exempt route has an audited scenario.
 - [x] T3 — Live greeting stream and public display. Route: same writer.
   - RED backend: `Cannot find module '../../src/modules/access/greeting.bus.js'` (greeting and display tests), plus `recognize` not telling the entrance about an unmatched face. RED frontend: `Failed to resolve import "./EntranceDisplay"` and `"./greeting-format"`, no "Abrir pantalla pública" link, `/pantalla-ingreso` not rendering "Bienvenidos al club".
   - GREEN: backend access/faces/authorization/audit suites and frontend access + App suites pass.
@@ -74,6 +79,12 @@ Work on `manu` (user preference), one work-unit commit per task. Push and PR rem
 - 2026-11-07: T2 done (see task lines for evidence).
 - 2026-11-07: T3 done (see task lines for evidence).
 - 2026-11-07: T4 done. Final checks: backend tests with `TEST_DATABASE_URL` (68 files / 1111 tests, plus 22 database tests) and without (database tests skipped), both typechecks, frontend suite, `migrate` applied `003_create_access_entries.sql`, `git diff --check` clean. One no-database backend run had 19 failures in `tests/access/access.api.test.ts` (every test in the file, so a setup problem); four reruns of that file and a full rerun passed, cause not found.
+
+- 2026-11-07: Gentle-AI reviews, in two parts because the whole range exceeded the review size, consent granted each time; both approved and acknowledged.
+  - T1+T2 (`4d88219`..`c4e6099`, lineage `review-9003926eb2495320`, 24 files, 712 lines, medium risk): reviewed in a temporary detached worktree.
+  - T3+T4 (`c4e6099`..`aa2465c`, lineage `review-2eb33a09e8bd046f`, 31 files, 1,242 lines, medium risk).
+  - Later work: `R3-count-not-distinct` (the day's count counts checks, not distinct members), `R3-awaited-entry-write` (a slow database delays the check), `R3-sse-auth-loop` (an expired session makes the display reconnect forever), `R3-hold-timing-flake`, `R3-entries-coupled-to-faces` and `R3-close-on-request`.
+  - Browser check not done: the running backend was started by the user before these commits and answers 404 on `/api/access/entries`.
 
 ## Next step
 Owners confirm the open items; then review, push and PR are the user's call. Try the screen: sign in, open Ingreso, press "Abrir pantalla pública", then run a DNI check or the camera.
