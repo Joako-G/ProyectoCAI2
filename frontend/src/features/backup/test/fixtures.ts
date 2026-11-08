@@ -9,6 +9,7 @@ export function buildStatus(overrides: Partial<BackupStatus> = {}): BackupStatus
     lastSuccessAt: '2026-11-04T15:00:00.000Z',
     lastFailure: null,
     running: false,
+    database: { lastCopy: { state: 'included', file: 'database.dump', format: 'pg_dump-custom', bytes: 5 * 1024 * 1024 }, lastFailure: null },
     ...overrides,
   };
 }

@@ -138,7 +138,7 @@ describe('URL routing', () => {
     const user = { id: '1', name: 'Demo', email: 'demo@example.com', role: 'head_secretary' };
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
       if (input === '/auth/me') return json({ user, capabilities: ['members:read', 'backup:run'] });
-      if (input === '/api/backups') return json({ destination: { isDefault: true, state: 'ready' }, keep: 30, keepRecent: 5, copies: 0, lastSuccessAt: null, lastFailure: null, running: false });
+      if (input === '/api/backups') return json({ destination: { isDefault: true, state: 'ready' }, keep: 30, keepRecent: 5, copies: 0, lastSuccessAt: null, lastFailure: null, running: false, database: { lastCopy: null, lastFailure: null } });
       return json([]);
     }));
     renderApp('/respaldo');

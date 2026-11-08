@@ -51,7 +51,7 @@ Work on `manu` (user preference), one work-unit commit per task. Push and PR rem
     - A failed dump leaves the JSON copy intact and the run partial.
     - No password or content in logs or responses.
     - Without `DATABASE_URL` nothing changes.
-- [ ] T2 — Respaldo screen and restore guide. Route: same writer.
+- [x] T2 — Respaldo screen and restore guide. Route: same writer. Done 2026-11-08, see Progress. The browser check of the screen is left to the caller (the backend must be restarted first).
   - The screen shows the database part: included, failed with its code, or not configured.
   - `docs/backup-restore.md` explains how to restore the database, and how to protect an external drive.
 - [ ] T3 — Restore rehearsal with evidence. Route: same writer.
@@ -78,5 +78,12 @@ Work on `manu` (user preference), one work-unit commit per task. Push and PR rem
   - Decision gaps: (1) a copy whose dump failed counts as a good copy for the scheduler (no hourly retry until a day passes) and for retention, so after many failing days the last copy that holds a dump could be pruned; (2) on Windows a timeout kills the Docker CLI process, and `pg_dump` inside the container may run on until its pipe breaks; (3) copies from before this change read as "not configured".
   - Route: `route-matrix`, `scheduler` and `api` tests only needed the new fields.
 
+- 2026-11-08 T2 (writer):
+  - RED: `vitest run src/features/backup` had 5 failing tests (`shows the database part of the last copy with its size`, `shows a very small dump as a minimum size instead of 0 MB`, `warns that the last copy has no database, and shows the code on the line`, `says the database is not configured, without a warning`, `says a manual copy was made without the database when the dump failed`), each with `Unable to find an element with the text: Base de datos: ...`.
+  - GREEN: frontend suite 72 files / 733 tests passed; typecheck clean. Two earlier full runs each had one failure that passed alone: `src/App.routing.test.tsx > opens Respaldo at /respaldo ...` (a real miss: its status fixture lacked `database`, fixed) and `src/App.navigation.test.tsx > shows a teacher only Mis disciplinas ...` (26 ms, passed alone and on the next full run; looks like a flake).
+  - The Respaldo screen shows "Base de datos: incluida (X MB)", "... no se pudo copiar (código)" with a warning alert, or "... no configurada"; a manual copy with a failed dump says "Respaldo realizado, pero sin la base de datos."
+  - Restore commands were run for real against a scratch database (see T3). Verified: `docker compose cp` + `pg_restore` works in every shell; Git Bash `< database.dump` works; Windows PowerShell 5.1 `Get-Content | docker ...` fails (binary corrupted), so the guide says not to use it. Git Bash rewrites `/tmp/...` unless `MSYS_NO_PATHCONV=1`. A Command Prompt `<` redirect was not verified.
+  - Decision gap: the BitLocker steps are written from general Windows knowledge, not run on the club's drive.
+
 ## Next step
-T2.
+T3.
