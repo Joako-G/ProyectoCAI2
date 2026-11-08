@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FaceCamera } from './useFaceCamera';
 import type { RelativeBox } from '../types/face';
 import { assessCapture, measureMovement } from '../utils/capture-assessment';
@@ -24,6 +24,8 @@ export interface CaptureGuideState {
   hint: string;
   /** True once ready has held for the whole stability window. */
   stable: boolean;
+  /** Where the single face in view is (fractions of the video frame); absent when there is not exactly one. */
+  box?: RelativeBox;
 }
 
 const IDLE: CaptureGuideState = { status: 'neutral', hint: '', stable: false };
@@ -53,6 +55,7 @@ export function useCaptureGuide({
   onEnd?: () => void;
 }): CaptureGuideState {
   const [guide, setGuide] = useState<CaptureGuideState>(IDLE);
+  const [box, setBox] = useState<RelativeBox | undefined>();
   const handlers = useRef({ onStable, onEnd });
   handlers.current = { onStable, onEnd };
   const { look, describe } = camera;
@@ -63,6 +66,8 @@ export function useCaptureGuide({
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const sleep = (ms: number) => new Promise<void>((resolve) => { timer = setTimeout(resolve, ms); });
+    const follow = (next: RelativeBox | undefined) =>
+      setBox((current) => (current?.x === next?.x && current?.y === next?.y && current?.width === next?.width && current?.height === next?.height ? current : next));
     const show = (next: CaptureGuideState) =>
       setGuide((current) => (current.status === next.status && current.hint === next.hint && current.stable === next.stable ? current : next));
 
@@ -83,6 +88,7 @@ export function useCaptureGuide({
           continue;
         }
 
+        follow(facts.box);
         const movement = facts.box && previousBox ? measureMovement(previousBox, facts.box) : undefined;
         previousBox = facts.box;
         const assessment = assessCapture({ ...facts, movement });
@@ -118,8 +124,9 @@ export function useCaptureGuide({
       cancelled = true;
       clearTimeout(timer);
       setGuide(IDLE);
+      setBox(undefined);
     };
   }, [active, look, describe, scanIntervalMs, stableScans, pauseMs]);
 
-  return guide;
+  return useMemo(() => (box ? { ...guide, box } : guide), [guide, box]);
 }

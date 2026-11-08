@@ -38,7 +38,7 @@ export function accessHeadline({ reason, member }: AccessCheck): string {
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 
 /** `2026-10` as "octubre 2026". */
-function monthLabel(period: string): string {
+export function monthLabel(period: string): string {
   const [year, month] = period.split('-');
   return `${MONTHS[Number(month) - 1]} ${year}`;
 }

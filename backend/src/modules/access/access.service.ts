@@ -29,17 +29,37 @@ export interface AccessServiceDeps {
   pricing: { get(): Promise<PricingConfig> };
   /** Records the identified checks that come with an entrance context. Optional: without it the service only answers. */
   entrance?: { register(input: EntranceInput): Promise<void> };
+  /** The names of a member's disciplines for the entrance screens. Optional: without it the list is empty. */
+  memberDisciplines?: { namesFor(memberId: string): Promise<string[]> };
   now?: () => Date;
 }
 
-export function createAccessService({ members, memberships, payments, pricing, entrance, now = () => new Date() }: AccessServiceDeps) {
+export function createAccessService({ members, memberships, payments, pricing, entrance, memberDisciplines, now = () => new Date() }: AccessServiceDeps) {
   // Each source is read once, then the member is picked by whichever key the caller has.
   async function answerFor(pick: (candidate: AccessMember) => boolean, context?: EntranceContext): Promise<AccessCheck> {
     const { answer, member } = await decide(pick);
     // A face that matches an inactive member is a leftover profile, which the door treats as not recognized, so nobody is named.
-    const identified = member && !(context?.method === 'face' && member.status === 'inactive') ? { id: member.id, firstName: member.firstName } : undefined;
-    if (context) await entrance?.register({ member: identified, answer, ...context });
+    const nameable = member && !(context?.method === 'face' && member.status === 'inactive') ? member : undefined;
+    if (context && entrance) {
+      const identified = nameable && {
+        id: nameable.id,
+        memberNumber: nameable.memberNumber,
+        firstName: nameable.firstName,
+        fullName: `${nameable.firstName} ${nameable.lastName}`,
+        disciplines: await disciplineNamesOf(nameable.id),
+      };
+      await entrance.register({ member: identified, answer, ...context });
+    }
     return answer;
+  }
+
+  // Read once per identified check. The discipline names only decorate the screens, so a failure must not fail the check.
+  async function disciplineNamesOf(memberId: string): Promise<string[]> {
+    try {
+      return (await memberDisciplines?.namesFor(memberId)) ?? [];
+    } catch {
+      return [];
+    }
   }
 
   async function decide(pick: (candidate: AccessMember) => boolean): Promise<{ answer: AccessCheck; member?: AccessMember }> {

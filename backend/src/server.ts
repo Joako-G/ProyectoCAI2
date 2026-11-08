@@ -20,6 +20,7 @@ import { createAccessService } from './modules/access/access.service.js';
 import { createEntranceRecorder } from './modules/access/entrance.js';
 import type { EntryRepository } from './modules/access/entry.repository.js';
 import { createGreetingBus } from './modules/access/greeting.bus.js';
+import { createMemberDisciplineNames } from './modules/access/member-disciplines.js';
 import { createPgEntryRepository } from './modules/access/pg-entry.repository.js';
 import type { AuditLabelSources } from './modules/audit/audit.labels.js';
 import { createAuditService } from './modules/audit/audit.service.js';
@@ -132,6 +133,7 @@ const entranceRecorder = createEntranceRecorder({ entries: { append: async (entr
 // The entrance check reads the same four sources once per request and answers green, yellow or red.
 const accessService = createAccessService({
   entrance: entranceRecorder,
+  memberDisciplines: createMemberDisciplineNames({ memberships: membershipService, disciplines: disciplineService }),
   members: memberService,
   memberships: membershipService,
   payments: paymentRepository,

@@ -54,6 +54,11 @@ export function createFaceService({ repository, members, access, audit, entrance
       return found ? { enrolled: true, enrolledAt: found.enrolledAt } : { enrolled: false };
     },
 
+    // How many faces the door compares against; the client screen shows it. A number only, never who.
+    async summary(): Promise<{ enrolled: number }> {
+      return { enrolled: await repository.count() };
+    },
+
     // Reads the face profiles and writes nothing of its own: the answer is the access check of the nearest member,
     // or red when nobody is close enough. The access service logs the entrance of an identified member.
     async recognize(descriptor: number[], actorId: string): Promise<AccessCheck> {

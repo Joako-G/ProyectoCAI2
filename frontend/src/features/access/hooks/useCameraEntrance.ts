@@ -15,7 +15,8 @@ export const DEFAULT_CAMERA_TIMING: CameraTiming = DEFAULT_CAPTURE_TIMING;
 /**
  * While the camera is ready, guides the person into a good capture and, when the frame has been ready (one face,
  * placed, frontal, lit, still) for the stability window, hands that descriptor to `onFace`, then rests for `pauseMs`.
- * `onFace` answers `unavailable` to end the loop (the server has no face recognition). Returns the guide to show.
+ * `onFace` answers `unavailable` or `unauthorized` to end the loop (no face recognition on the server, or the session
+ * ended). Returns the guide to show.
  */
 export function useCameraEntrance({
   camera,
@@ -33,7 +34,7 @@ export function useCameraEntrance({
 
   const onStable = useCallback(async (descriptor: number[]): Promise<CaptureOutcome> => {
     const outcome = await handlers.current.onFace(descriptor);
-    return outcome === 'unavailable' ? 'stop' : 'continue';
+    return outcome === 'unavailable' || outcome === 'unauthorized' ? 'stop' : 'continue';
   }, []);
   const onEnd = useCallback(() => handlers.current.onUnavailable(), []);
 

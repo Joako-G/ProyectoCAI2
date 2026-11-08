@@ -4,7 +4,7 @@ import type { EntryRepository } from '../../src/modules/access/entry.repository.
 
 const NOW = new Date('2026-11-07T15:00:00.000Z');
 const green: EntranceInput = {
-  member: { id: 'm1', firstName: 'Ana' },
+  member: { id: 'm1', memberNumber: '0001', firstName: 'Ana', fullName: 'Ana Prueba', disciplines: ['Básquet'] },
   answer: { result: 'green', reason: 'up_to_date', member: { memberNumber: '0001', name: 'Ana Prueba', unpaidPeriodCount: 0 } },
   method: 'dni',
   actorId: 'user-1',

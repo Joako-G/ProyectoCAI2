@@ -8,6 +8,11 @@ export function getFaceStatus(memberId: string, signal?: AbortSignal): Promise<F
   return request<FaceStatus>(faceUrl(memberId), { signal });
 }
 
+/** How many members have a face enrolled: a number only, for the client screen's "comparing with N members". */
+export function getFaceSummary(signal?: AbortSignal): Promise<{ enrolled: number }> {
+  return request<{ enrolled: number }>('/api/faces/summary', { signal });
+}
+
 /** Sends the 128-number descriptor and the confirmed consent. No image ever goes to the server. */
 export function enrollFace(memberId: string, descriptor: readonly number[]): Promise<void> {
   return request<void>(faceUrl(memberId), sendJson('PUT', { descriptor, consent: true }));

@@ -1,7 +1,15 @@
 import { screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Capability } from './features/auth/types/auth';
+import { createFakeTools, FAR_FACTS } from './features/faces/test/fakes';
 import { renderApp } from './test/renderApp';
+
+// The screen opens the camera; the test never needs a real one or the heavy face models.
+vi.mock('./features/faces/services/face-tools', () => {
+  const fakes = createFakeTools();
+  fakes.detector.look.mockResolvedValue(FAR_FACTS);
+  return { faceTools: { openCamera: () => fakes.openCamera(), loadDetector: () => fakes.loadDetector() } };
+});
 
 class SilentSource {
   static urls: string[] = [];
@@ -38,7 +46,7 @@ describe('public entrance display route', () => {
     stubSession(['access:check']);
     renderApp('/pantalla-ingreso');
 
-    expect(await screen.findByText('Bienvenidos al club')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Bienvenido al club' })).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'Navegación principal' })).not.toBeInTheDocument();
     expect(screen.queryByRole('banner')).not.toBeInTheDocument();
     expect(SilentSource.urls).toEqual(['/api/access/display-events']);
@@ -49,7 +57,7 @@ describe('public entrance display route', () => {
     renderApp('/pantalla-ingreso');
 
     expect(await screen.findByRole('heading', { name: 'Bienvenido/a de nuevo' })).toBeInTheDocument();
-    expect(screen.queryByText('Bienvenidos al club')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Bienvenido al club' })).not.toBeInTheDocument();
     expect(SilentSource.urls).toEqual([]);
   });
 

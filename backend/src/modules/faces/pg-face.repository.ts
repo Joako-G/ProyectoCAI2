@@ -48,6 +48,12 @@ export function createPgFaceRepository(pool: Pick<pg.Pool, 'query'>): FaceReposi
         return row ? { enrolledAt: row.enrolled_at.toISOString() } : undefined;
       }),
 
+    count: () =>
+      guard(async () => {
+        const result = await pool.query<{ total: string }>('SELECT count(*) AS total FROM face_profiles');
+        return Number(result.rows[0]!.total);
+      }),
+
     nearest: (descriptor) =>
       guard(async () => {
         // <-> is the Euclidean (L2) distance.

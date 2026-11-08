@@ -13,6 +13,11 @@ export function createFaceRouter(service: FaceService, authenticate: Authenticat
     response.json(await service.recognize(parseRecognizeBody(request.body).descriptor, authenticate(request)!.id));
   });
 
+  // Declared before /:memberId so "summary" is never read as a member id. Read-only, so it writes no audit entry.
+  router.get('/summary', async (_request, response) => {
+    response.json(await service.summary());
+  });
+
   router.get('/:memberId', async (request, response) => {
     response.json(await service.status(request.params.memberId));
   });

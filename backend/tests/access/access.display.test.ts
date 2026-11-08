@@ -66,7 +66,17 @@ describe('GET /api/access/display-events', () => {
   it('sends each published greeting as an event and heartbeat comments while idle', async () => {
     const abort = new AbortController();
     const response = await fetch(`${baseUrl}/api/access/display-events`, { headers: { cookie: await signIn(baseUrl, 'head_secretary') }, signal: abort.signal });
-    const event: GreetingEvent = { at: '2026-11-07T15:00:00.000Z', tone: 'welcome', firstName: 'Ana' };
+    const event: GreetingEvent = {
+      at: '2026-11-07T15:00:00.000Z',
+      tone: 'welcome',
+      firstName: 'Ana',
+      kind: 'up_to_date',
+      method: 'face',
+      member: { id: 'm1', memberNumber: '0001', fullName: 'Ana Prueba', firstName: 'Ana', disciplines: ['Básquet'] },
+      paidThrough: '2026-12',
+      dueDate: '2027-01-10',
+      unpaidPeriodCount: 0,
+    };
     setTimeout(() => greetings.publish(event), 20);
     const text = await readUntil(response, (seen) => seen.includes('event: greeting') && seen.includes(': ping'));
     abort.abort();

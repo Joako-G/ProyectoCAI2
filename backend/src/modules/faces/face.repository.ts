@@ -18,6 +18,8 @@ export interface FaceRepository {
   remove(memberId: string): Promise<boolean>;
   /** When the member was enrolled, or undefined. Never the descriptor. */
   findEnrollment(memberId: string): Promise<{ enrolledAt: string } | undefined>;
+  /** How many members have a face enrolled. */
+  count(): Promise<number>;
   /** The profile closest to the descriptor by Euclidean distance, or undefined when nobody is enrolled. */
   nearest(descriptor: readonly number[]): Promise<{ memberId: string; distance: number } | undefined>;
 }

@@ -1,0 +1,684 @@
+/*
+ * Design tokens and animations of the entrance ("kiosk") screens, taken from the approved mockup
+ * (KioscoFacial). Later tasks consume these variables; no existing screen uses them yet.
+ */
+:root {
+  /* Panel backgrounds, one per screen state. */
+  --kiosk-bg-idle: #1a2331;
+  --kiosk-bg-scanning: #16202c;
+  --kiosk-bg-green: #12332a;
+  --kiosk-bg-amber: #3a2f13;
+  --kiosk-bg-red: #3d1a13;
+  --kiosk-bg-gray: #252c36;
+
+  /* Accents. */
+  --kiosk-accent-green: #4ec98a;
+  --kiosk-accent-amber: #e8c15c;
+  --kiosk-accent-red: #f08a72;
+  --kiosk-accent-gray: #a9b4c4;
+  --kiosk-accent-idle: #7f8b9c;
+  --kiosk-scan-blue: #5da9ff;
+
+  /* White text and line opacities used over the dark panels. */
+  --kiosk-text-strong: rgba(255, 255, 255, 0.85);
+  --kiosk-text: rgba(255, 255, 255, 0.7);
+  --kiosk-text-soft: rgba(255, 255, 255, 0.55);
+  --kiosk-text-muted: rgba(255, 255, 255, 0.45);
+  --kiosk-text-faint: rgba(255, 255, 255, 0.35);
+  --kiosk-line: rgba(255, 255, 255, 0.18);
+  --kiosk-line-soft: rgba(255, 255, 255, 0.12);
+  --kiosk-fill: rgba(255, 255, 255, 0.07);
+}
+
+@keyframes scanLine {
+  0% {
+    top: 6%;
+  }
+  100% {
+    top: 92%;
+  }
+}
+
+@keyframes barFill {
+  0% {
+    width: 0;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+@keyframes softIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Expanding ring behind the state icon (the mockup's padPulse, reused for the face frame). */
+@keyframes padPulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.5;
+  }
+  75% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+/* Screens built on these styles wrap their content in an element with the `kiosk` class. */
+@media (prefers-reduced-motion: reduce) {
+  .kiosk,
+  .kiosk * {
+    animation: none !important;
+  }
+}
+
+/*
+ * The client screen ("Kiosco facial"). It is drawn at the design's reference size, 1180 x 700, and scaled to fit
+ * the window with a transform, so it stays centered at any monitor size. Every value below is the mockup's.
+ */
+.kiosk {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: #111820;
+  font-family: 'IBM Plex Sans', Helvetica, Arial, sans-serif;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+}
+
+.kiosk-mono {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.kiosk-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: -350px 0 0 -590px;
+  transform-origin: center center;
+  display: grid;
+  grid-template-columns: 1fr 470px;
+  overflow: hidden;
+  border-radius: 9px;
+  background: #0f1620;
+
+  /* Palette of the idle state; each state below overrides it. */
+  --kiosk-frame: rgba(255, 255, 255, 0.35);
+  --kiosk-panel-bg: var(--kiosk-bg-idle);
+  --kiosk-icon-bg: var(--kiosk-accent-idle);
+  --kiosk-icon-fg: #1a2331;
+  --kiosk-label-fg: #b6c0cd;
+  --kiosk-fee-fg: #fff;
+}
+
+.kiosk-stage[data-tone='scanning'] {
+  --kiosk-frame: var(--kiosk-scan-blue);
+  --kiosk-panel-bg: var(--kiosk-bg-scanning);
+}
+
+.kiosk-stage[data-tone='green'] {
+  --kiosk-frame: var(--kiosk-accent-green);
+  --kiosk-panel-bg: var(--kiosk-bg-green);
+  --kiosk-icon-bg: var(--kiosk-accent-green);
+  --kiosk-icon-fg: #0d2a21;
+  --kiosk-label-fg: #7fdcae;
+  --kiosk-fee-fg: #7fdcae;
+}
+
+.kiosk-stage[data-tone='amber'] {
+  --kiosk-frame: var(--kiosk-accent-amber);
+  --kiosk-panel-bg: var(--kiosk-bg-amber);
+  --kiosk-icon-bg: var(--kiosk-accent-amber);
+  --kiosk-icon-fg: #332a10;
+  --kiosk-label-fg: #f0d68f;
+  --kiosk-fee-fg: #f0d68f;
+}
+
+.kiosk-stage[data-tone='red'] {
+  --kiosk-frame: var(--kiosk-accent-red);
+  --kiosk-panel-bg: var(--kiosk-bg-red);
+  --kiosk-icon-bg: var(--kiosk-accent-red);
+  --kiosk-icon-fg: #3d1a13;
+  --kiosk-label-fg: #f7b8a7;
+  --kiosk-fee-fg: #f7b8a7;
+}
+
+.kiosk-stage[data-tone='gray'] {
+  --kiosk-frame: var(--kiosk-accent-gray);
+  --kiosk-panel-bg: var(--kiosk-bg-gray);
+  --kiosk-icon-bg: var(--kiosk-accent-gray);
+  --kiosk-icon-fg: #252c36;
+  --kiosk-label-fg: #c9d2de;
+  --kiosk-fee-fg: #c9d2de;
+}
+
+.kiosk-stage[data-tone='dark'] {
+  --kiosk-frame: var(--kiosk-accent-idle);
+  --kiosk-panel-bg: var(--kiosk-bg-idle);
+  --kiosk-icon-bg: var(--kiosk-accent-idle);
+  --kiosk-icon-fg: #1a2331;
+  --kiosk-label-fg: #b6c0cd;
+  --kiosk-fee-fg: #fff;
+}
+
+/* Camera pane */
+.kiosk-camera {
+  position: relative;
+  overflow: hidden;
+  background: repeating-linear-gradient(115deg, #1b2432 0 12px, #18202c 12px 24px);
+}
+
+.kiosk-camera__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+/* Dims everything outside the oval so the face goes where the light is. */
+.kiosk-camera__dim {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 330px;
+  height: 410px;
+  margin: -205px 0 0 -165px;
+  border-radius: 170px 170px 130px 130px;
+  box-shadow: 0 0 0 1000px rgba(15, 22, 32, 0.62);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.kiosk-camera__live {
+  position: absolute;
+  top: 20px;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  z-index: 3;
+}
+
+.kiosk-camera__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e0543c;
+  animation: blink 1.6s infinite;
+}
+
+.kiosk-camera__live-text {
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.kiosk-camera__clock {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.35);
+  z-index: 3;
+}
+
+.kiosk-camera__offline {
+  position: absolute;
+  top: 44px;
+  left: 24px;
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  color: var(--kiosk-accent-amber);
+  z-index: 3;
+}
+
+.kiosk-camera__notice {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 56px;
+  margin: 0;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.75);
+  z-index: 3;
+}
+
+.kiosk-camera__notice--error {
+  color: var(--kiosk-accent-amber);
+}
+
+.kiosk-oval-zone {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.kiosk-oval {
+  position: relative;
+  width: 330px;
+  height: 410px;
+}
+
+.kiosk-oval__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 170px 170px 130px 130px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 22px;
+}
+
+.kiosk-oval__placeholder {
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  color: rgba(255, 255, 255, 0.32);
+  text-align: center;
+  line-height: 1.6;
+}
+
+.kiosk-scan {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(93, 169, 255, 0), #5da9ff, rgba(93, 169, 255, 0));
+  box-shadow: 0 0 18px 3px rgba(93, 169, 255, 0.5);
+  animation: scanLine 1s ease-in-out infinite alternate;
+}
+
+/* The framing rectangle follows the detected face; the short transition smooths the 4 looks per second. */
+.kiosk-frame {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--kiosk-frame);
+  border-radius: 6px;
+  z-index: 2;
+  pointer-events: none;
+  transition: left 120ms linear, top 120ms linear, width 120ms linear, height 120ms linear, border-color 0.3s ease;
+}
+
+.kiosk-frame__tab {
+  position: absolute;
+  top: -11px;
+  left: 16px;
+  z-index: 2;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: var(--kiosk-frame);
+  color: #0f1620;
+  font: 600 9.5px 'IBM Plex Mono', monospace;
+  letter-spacing: 0.6px;
+  transition: background-color 0.3s ease;
+}
+
+.kiosk-frame__corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  transition: border-color 0.3s ease;
+}
+
+.kiosk-frame__corner--tl {
+  top: -1px;
+  left: -1px;
+  border-top: 3px solid var(--kiosk-frame);
+  border-left: 3px solid var(--kiosk-frame);
+}
+
+.kiosk-frame__corner--tr {
+  top: -1px;
+  right: -1px;
+  border-top: 3px solid var(--kiosk-frame);
+  border-right: 3px solid var(--kiosk-frame);
+}
+
+.kiosk-frame__corner--bl {
+  bottom: -1px;
+  left: -1px;
+  border-bottom: 3px solid var(--kiosk-frame);
+  border-left: 3px solid var(--kiosk-frame);
+}
+
+.kiosk-frame__corner--br {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 3px solid var(--kiosk-frame);
+  border-right: 3px solid var(--kiosk-frame);
+}
+
+.kiosk-caption {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 3;
+}
+
+.kiosk-caption__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.kiosk-caption__row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10.5px;
+  letter-spacing: 0.9px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.kiosk-caption__row--end {
+  justify-content: flex-end;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.kiosk-caption__idle {
+  font-size: 10.5px;
+  letter-spacing: 0.9px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+}
+
+.kiosk-bar {
+  height: 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.kiosk-bar__fill {
+  height: 4px;
+  border-radius: 3px;
+  background: #5da9ff;
+  animation: barFill 1.9s linear forwards;
+}
+
+/* Right panel */
+.kiosk-panel {
+  background: var(--kiosk-panel-bg);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 26px;
+  padding: 44px 40px;
+  color: #fff;
+  transition: background-color 0.5s ease;
+}
+
+.kiosk-view {
+  display: flex;
+  flex-direction: column;
+}
+
+.kiosk-view--idle {
+  gap: 20px;
+  animation: softIn 0.5s ease both;
+}
+
+.kiosk-view--identifying {
+  gap: 18px;
+  animation: softIn 0.4s ease both;
+}
+
+.kiosk-view--result {
+  gap: 24px;
+  animation: softIn 0.45s ease both;
+}
+
+.kiosk-crest {
+  width: 52px;
+  height: 60px;
+  flex: none;
+  object-fit: contain;
+}
+
+.kiosk-title {
+  margin: 0;
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-weight: 700;
+}
+
+/* The design breaks the title after "Bienvenido" and after "Quedate quieto"; a narrow width gives the same lines. */
+.kiosk-title--welcome {
+  font-size: 40px;
+  line-height: 1.15;
+  letter-spacing: -0.8px;
+  max-width: 10ch;
+}
+
+.kiosk-title--identifying {
+  font-size: 36px;
+  line-height: 1.2;
+  letter-spacing: -0.7px;
+  max-width: 12ch;
+}
+
+.kiosk-title--result {
+  font-size: 29px;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+}
+
+.kiosk-help {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.kiosk-note {
+  margin: 10px 0 0;
+  padding: 16px 18px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.kiosk-note strong {
+  color: #fff;
+}
+
+.kiosk-eyebrow {
+  font-size: 11px;
+  letter-spacing: 1.1px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.kiosk-body {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.kiosk-result__head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.kiosk-result__icon {
+  width: 62px;
+  height: 62px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--kiosk-icon-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--kiosk-icon-fg);
+}
+
+.kiosk-result__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kiosk-result__label {
+  font-size: 11px;
+  letter-spacing: 1.1px;
+  color: var(--kiosk-label-fg);
+}
+
+.kiosk-card {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  padding: 20px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Photos are not stored, so the design's photo box shows the member's initials in the same striped style. */
+.kiosk-card__avatar {
+  width: 78px;
+  height: 78px;
+  flex: none;
+  border-radius: 50%;
+  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0 7px, rgba(255, 255, 255, 0.07) 7px 14px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.kiosk-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.kiosk-card__name {
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+.kiosk-card__facts {
+  display: flex;
+  gap: 20px;
+}
+
+.kiosk-card__fact {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.kiosk-card__fact-label {
+  font-size: 9.5px;
+  letter-spacing: 0.8px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.kiosk-card__fact-value {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.kiosk-card__fee {
+  color: var(--kiosk-fee-fg);
+}
+
+.kiosk-result__text {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.kiosk-result__message {
+  margin: 0;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.kiosk-detail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.kiosk-detail__label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.kiosk-detail__value {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.kiosk-footer {
+  font-size: 10.5px;
+  letter-spacing: 0.9px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.kiosk-signin {
+  align-self: flex-start;
+  padding: 12px 20px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.kiosk-signin:hover,
+.kiosk-signin:focus-visible {
+  background: rgba(255, 255, 255, 0.24);
+}

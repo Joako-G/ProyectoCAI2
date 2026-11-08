@@ -44,7 +44,7 @@ beforeAll(async () => {
     noticeService: { debtNotices: async () => ({ asOf: '2026-11-01', rows: [] }) },
     accessService: { check: async () => ({ result: 'red', reason: 'not_found' }) },
     greetings: createGreetingBus(),
-    faceService: { enroll: async () => undefined, remove: async () => undefined, discardForDeactivatedMember: async () => undefined, status: async () => ({ enrolled: false }), recognize: async () => ({ result: 'red', reason: 'not_recognized' }) },
+    faceService: { enroll: async () => undefined, remove: async () => undefined, discardForDeactivatedMember: async () => undefined, status: async () => ({ enrolled: false }), summary: async () => ({ enrolled: 0 }), recognize: async () => ({ result: 'red', reason: 'not_recognized' }) },
     rosterService: createRosterService({ memberships: memberships.service, members: members.service, disciplines: disciplines.service }),
   }).listen(0);
   await new Promise<void>((resolve) => server.once('listening', resolve));
