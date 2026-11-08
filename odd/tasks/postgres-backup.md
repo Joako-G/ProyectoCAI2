@@ -115,5 +115,10 @@ Source: development database `club_socios` (only read). Target: temporary databa
 
 Limits: the development database is tiny (about 7 KB), so the timings say nothing about the two-hour restore goal with real data; repeat the rehearsal on a copy of real data before relying on it. The dump was restored on the same Postgres version and image that made it.
 
+- 2026-11-08: Gentle-AI reviews, consent granted each time; both approved and acknowledged.
+  - `a27ad30`..`8af8d35` (lineage `review-44e837ce366bcfbd`, 22 files, 1,023 lines, high risk): approved with warnings about a failed dump counting as a good copy (`R1-001`, `R3-failed-dump-counts-good`, `R4-partial-copy-counts-as-good`) and about Docker having no fallback (`R3-docker-no-fallback`). Both were fixed in `a99078b`.
+  - `8af8d35`..`a99078b` (lineage `review-0ffdf869b4f70c3f`, 11 files, 245 lines, high risk): approved, four suggestions for later (`R2-001` to `R2-004`).
+  - Browser check as `demo@club.test`: after restarting the backend, `Hacer un respaldo ahora` made a copy holding `database.dump` (6,978 bytes, header `PGDMP`), and the Respaldo screen shows `Base de datos: incluida`. The failure markers for a stopped Docker Desktop were not exercised on a stopped engine; the message `error during connect` seen earlier on this PC matches the first marker.
+
 ## Next step
 Caller: restart the backend, check the Respaldo screen in the browser, and take a first real copy with "Hacer un respaldo ahora". Owners still decide the external drive, copies to keep, who may restore, and encryption.
