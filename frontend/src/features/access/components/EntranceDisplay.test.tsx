@@ -1,7 +1,8 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createFakeTools, type FakeTools } from '../../faces/test/fakes';
+import { createFakeTools, FAR_FACTS, type FakeTools } from '../../faces/test/fakes';
 import { jsonResponse } from '../../members/test/fixtures';
+import { createFakeSource, FakeSource } from '../test/fake-source';
 import type { GreetingEvent } from '../types/greeting';
 import { EntranceDisplay } from './EntranceDisplay';
 
@@ -13,44 +14,8 @@ vi.mock('../../faces/services/face-tools', () => ({
   },
 }));
 
-/** Stands in for EventSource: the test decides when events and errors arrive. */
-class FakeSource {
-  static all: FakeSource[] = [];
-  readyState = 0;
-  onopen: (() => void) | null = null;
-  onerror: (() => void) | null = null;
-  private handlers = new Map<string, Array<(event: MessageEvent<string>) => void>>();
-
-  constructor(readonly url: string) {
-    FakeSource.all.push(this);
-  }
-
-  addEventListener(type: string, handler: (event: MessageEvent<string>) => void) {
-    this.handlers.set(type, [...(this.handlers.get(type) ?? []), handler]);
-  }
-
-  close() {
-    this.readyState = 2;
-  }
-
-  open() {
-    this.readyState = 1;
-    act(() => this.onopen?.());
-  }
-
-  greet(event: Partial<GreetingEvent>, raw?: string) {
-    const data = raw ?? JSON.stringify({ at: '2026-11-07T15:00:00.000Z', tone: 'welcome', kind: 'up_to_date', method: 'face', ...event });
-    act(() => (this.handlers.get('greeting') ?? []).forEach((handler) => handler({ data } as MessageEvent<string>)));
-  }
-
-  fail(closed: boolean) {
-    this.readyState = closed ? 2 : 0;
-    act(() => this.onerror?.());
-  }
-}
-
-const createSource = (url: string) => new FakeSource(url);
-const latest = () => FakeSource.all[FakeSource.all.length - 1]!;
+const createSource = createFakeSource;
+const latest = FakeSource.latest;
 
 const lucia = { id: 'm1', memberNumber: '0101', fullName: 'Lucía Prueba', firstName: 'Lucía', disciplines: ['Natación'] };
 const upToDate: Partial<GreetingEvent> = { tone: 'welcome', kind: 'up_to_date', firstName: 'Lucía', member: lucia, paidThrough: '2026-08', dueDate: '2026-09-10' };
@@ -60,6 +25,8 @@ let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(() => {
   FakeSource.all = [];
   tools.current = createFakeTools();
+  // A face that is too far to be captured: the camera has something to follow but never starts a recognition.
+  tools.current.detector.look.mockResolvedValue(FAR_FACTS);
   fetchMock = vi.fn(async (url: string) => (url === '/api/faces/summary' ? jsonResponse({ enrolled: 312 }) : jsonResponse({})));
   vi.stubGlobal('fetch', fetchMock);
 });
@@ -70,7 +37,7 @@ afterEach(() => {
 });
 
 function show(props: { holdMs?: number; reconnectMs?: number } = {}) {
-  return render(<EntranceDisplay createSource={createSource} holdMs={props.holdMs ?? 5000} reconnectMs={props.reconnectMs ?? 20} timing={{ scanIntervalMs: 5 }} />);
+  return render(<EntranceDisplay createSource={createSource} holdMs={props.holdMs ?? 5000} reconnectMs={props.reconnectMs ?? 20} timing={{ scanIntervalMs: 5 }} checkSession={async () => true} />);
 }
 
 describe('EntranceDisplay', () => {

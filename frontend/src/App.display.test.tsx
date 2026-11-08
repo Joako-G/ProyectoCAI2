@@ -1,12 +1,13 @@
 import { screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Capability } from './features/auth/types/auth';
-import { createFakeTools } from './features/faces/test/fakes';
+import { createFakeTools, FAR_FACTS } from './features/faces/test/fakes';
 import { renderApp } from './test/renderApp';
 
 // The screen opens the camera; the test never needs a real one or the heavy face models.
 vi.mock('./features/faces/services/face-tools', () => {
   const fakes = createFakeTools();
+  fakes.detector.look.mockResolvedValue(FAR_FACTS);
   return { faceTools: { openCamera: () => fakes.openCamera(), loadDetector: () => fakes.loadDetector() } };
 });
 

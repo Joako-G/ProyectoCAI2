@@ -10,8 +10,12 @@ export type AccessState =
   | { phase: 'error'; message: string }
   | { phase: 'done'; check: AccessCheck };
 
-/** How a face recognition ended: `unavailable` means the server has no face recognition (503), so stop trying. */
-export type RecognizeOutcome = 'answered' | 'failed' | 'unavailable';
+/**
+ * How a face recognition ended. `unavailable` means the server has no face recognition (503) and `unauthorized` that
+ * the session ended (401): in both cases stop trying. `skipped` means no call was made because the same person was
+ * just recognized.
+ */
+export type RecognizeOutcome = 'answered' | 'failed' | 'unavailable' | 'unauthorized' | 'skipped';
 
 /** Runs one entrance check at a time (by DNI or by face) and abandons a pending one when the screen closes. */
 export function useAccessCheck() {

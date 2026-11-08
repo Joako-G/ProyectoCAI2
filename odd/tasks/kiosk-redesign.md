@@ -77,7 +77,7 @@ Work on `manu` (user preference), one work-unit commit per task. Each commit sta
 - [x] T1 — Design foundation. Self-hosted fonts, the crest, the mockup's colors, typography and animations as shared styles.
 - [x] T2 — Richer entrance events: full name, case, month of the debt or of the due date, and the member's disciplines. Backend and parser.
 - [x] T3 — Client screen like "Kiosco facial": full viewport and centered, live camera, an oval guide, a frame that follows the detected face, the progress bar, the live clock and the five states.
-- [ ] T4 — Hands-free loop on the client screen, with the 30-second anti-repeat and a visible message when the session expires.
+- [x] T4 — Hands-free loop on the client screen, with the 30-second anti-repeat and a visible message when the session expires.
 - [ ] T5 — Secretary's Ingreso like "Ventanilla": the result banner, the member card, "Cobrar cuota" and "Ver ficha completa", "Accesos de hoy" with chips, and "Hoy en el club" counters. The "Cámara" button goes away and the DNI field stays as a fallback.
 - [ ] T6 — Side-by-side comparison with the mockup and tuning.
 
@@ -106,5 +106,12 @@ Work on `manu` (user preference), one work-unit commit per task. Each commit sta
   - Frontend event type: `kind` and `method` are now required; a stream message without them is ignored. `greetingText` was removed (all copy lives in `kiosk-texts.ts`).
   - Decision gaps: the member avatar is a 78 px circle (the photo box was 78x96); the idle fallback line reads "¿No funciona? Pedí ayuda en secretaría: te buscan por DNI."; a member kind with no member data is shown as "Probá otra vez". The hands-free loop, the identifying state, session expiry and the 503 state are wired in T4 (the screen already renders them). Visual check against the mockup is T6; the real camera was not exercised here.
 
+- 2026-11-08, T4 done (route: delegated writer, same writer as T3). RED: `repeat-guard` and `greeting-from-check` failed with "Failed to resolve import"; `EntranceDisplay.recognition.test.tsx` failed 17 tests (for example `expected [] to have a length of 1 but got +0` for the recognize call, and "Unable to find role heading and name Quedate quieto un segundo…"). GREEN: frontend 70 files, 718 tests (the recognition file passed three runs in a row), typecheck clean. Backend unchanged since T3.
+  - Loop: `useKioskRecognition` reuses `useCameraEntrance` (and so the capture guide, its 250 ms sampling, the 3-look stability window and the 4 s pause). `RecognizeOutcome` gained `skipped` and `unauthorized`; the secretary's camera mode is untouched.
+  - Anti-repeat: `createRepeatGuard` runs before the server call. `SAME_PERSON_DISTANCE = 0.4` (strictly below), `SAME_PERSON_WINDOW_MS = 30000`. Only a recognized member is remembered, so a stranger who tries again is asked about again; a different person is recognized at once.
+  - Results: the stream is the single source. The HTTP answer is a fallback: shown at once when the stream is down, and after `DEFAULT_STREAM_GRACE_MS = 2000` when the stream is up but the event does not arrive. A new attempt clears the result of the previous person.
+  - Session: when the stream closes, `GET /auth/me` decides (an EventSource cannot see the status); a 401 from recognize does the same. The screen then shows "Sesión vencida: iniciá sesión en esta PC", releases the camera and stops reconnecting. The link opens `/pantalla-ingreso`, which reloads the app: without a session it asks to sign in and returns to the screen, which reconnects. 503 shows the gray "Reconocimiento no disponible: pedí ayuda en secretaría" and stops asking; results sent by the secretary still show.
+  - Decision gaps: the stream key and the HTTP fallback rebuild the first name from the first word of the name and leave the disciplines empty. The "unauthorized" path was tested with a fake 401; the real expiry of the server session was not exercised. The real camera was not exercised.
+
 ## Next step
-T4, once the user says to start.
+T5, once the user says to start.
