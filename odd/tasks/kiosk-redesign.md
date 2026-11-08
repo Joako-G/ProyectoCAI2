@@ -79,7 +79,7 @@ Work on `manu` (user preference), one work-unit commit per task. Each commit sta
 - [x] T3 — Client screen like "Kiosco facial": full viewport and centered, live camera, an oval guide, a frame that follows the detected face, the progress bar, the live clock and the five states.
 - [x] T4 — Hands-free loop on the client screen, with the 30-second anti-repeat and a visible message when the session expires.
 - [x] T5 — Secretary's Ingreso like "Ventanilla": the result banner, the member card, "Cobrar cuota" and "Ver ficha completa", "Accesos de hoy" with chips, and "Hoy en el club" counters. The "Cámara" button goes away and the DNI field stays as a fallback.
-- [ ] T6 — Side-by-side comparison with the mockup and tuning.
+- [x] T6 — Side-by-side comparison with the mockup and tuning. Confirmed by the user with the real camera on 2026-11-08; the comparison with the mockup was done by eye in the browser.
 
 ## Checks
 - Backend and frontend tests and typechecks, with Docker running.
@@ -141,6 +141,8 @@ Work on `manu` (user preference), one work-unit commit per task. Each commit sta
 - 2026-11-08: Gentle-AI reviews of T5, retried after the connection came back, consent granted each time; both approved and acknowledged.
   - Part 1 (`b00509d`..`1220d53`, lineage `review-168e596c74077008`, 20 files, 779 lines, high risk), reviewed in a temporary detached worktree. Later work: `R3-route-param-change` (a `?dni=` change while Cobros is open does not reload the member) and `R3-deleted-accessview-coverage`.
   - Part 2 (`1220d53`..`1d66a41`, lineage `review-4b5bf38bbde690c4`, 23 files, 1,980 lines, medium risk; the net tree, so it already includes the repair of `global.css`). Later work: `R3-stream-suppresses-dni-answer`.
+
+- 2026-11-08: the user tried the client screen and the secretary Ingreso with the real door camera and confirmed that both work. That closes T6. The side-by-side comparison with the mockup was done by eye in the browser (client screen and Ventanilla); a pixel-level comparison was not made.
 
 ## Next step
 T6 remains for the side-by-side comparison with the camera on.
