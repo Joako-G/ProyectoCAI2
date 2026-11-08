@@ -14,18 +14,20 @@ export function methodLabel(method: EntryView['method']): string {
   return method === 'face' ? 'Cámara' : 'DNI';
 }
 
-const RESULT_LABEL: Record<AccessResult, string> = {
-  green: 'Ingresó',
-  yellow: 'Ingresó, con deuda',
-  red: 'No ingresó',
+const RESULT_CHIP: Record<AccessResult, string> = {
+  green: 'AUTORIZADO',
+  yellow: 'CON AVISO',
+  red: 'NO HABILITADO',
 };
 
-export function resultLabel(result: AccessResult): string {
-  return RESULT_LABEL[result];
+/** The text of the colored chip of a result; the color only reinforces it. */
+export function resultChip(result: AccessResult): string {
+  return RESULT_CHIP[result];
 }
 
-export function enteredLabel(count: number): string {
-  return count === 1 ? '1 socio ingresó' : `${count} socios ingresaron`;
+/** "1 registro" or "182 registros": the checks listed for the day. */
+export function recordsLabel(count: number): string {
+  return count === 1 ? '1 registro' : `${count} registros`;
 }
 
 export const UNAVAILABLE_MESSAGE = 'El registro de ingresos no está disponible en este servidor.';

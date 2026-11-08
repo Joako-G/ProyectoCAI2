@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { checkAccess, recognizeAccess } from '../services/access-api';
+import { checkAccess } from '../services/access-api';
 import type { AccessCheck } from '../types/access';
-import { describeCheckError, describeRecognizeError } from '../utils/access-format';
-import { ApiError } from '../../members/services/members-api';
+import { describeCheckError } from '../utils/access-format';
 
 export type AccessState =
   | { phase: 'idle' }
@@ -17,7 +16,7 @@ export type AccessState =
  */
 export type RecognizeOutcome = 'answered' | 'failed' | 'unavailable' | 'unauthorized' | 'skipped';
 
-/** Runs one entrance check at a time (by DNI or by face) and abandons a pending one when the screen closes. */
+/** Runs one entrance check at a time (by DNI) and abandons a pending one when the screen closes. */
 export function useAccessCheck() {
   const [state, setState] = useState<AccessState>({ phase: 'idle' });
   const controller = useRef<AbortController | null>(null);
@@ -50,11 +49,5 @@ export function useAccessCheck() {
     return outcome?.ok ?? false;
   }, [run]);
 
-  const recognize = useCallback(async (descriptor: readonly number[]): Promise<RecognizeOutcome> => {
-    const outcome = await run((signal) => recognizeAccess(descriptor, signal), describeRecognizeError);
-    if (outcome?.ok) return 'answered';
-    return outcome && outcome.error instanceof ApiError && outcome.error.status === 503 ? 'unavailable' : 'failed';
-  }, [run]);
-
-  return { state, check, recognize };
+  return { state, check };
 }
