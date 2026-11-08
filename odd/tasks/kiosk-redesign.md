@@ -138,5 +138,9 @@ Work on `manu` (user preference), one work-unit commit per task. Each commit sta
   - Not seen: the amber and gray cases, and the door camera path, which the Browser pane blocks. Tests with fakes cover them.
 - 2026-11-08: native reviews of T5 are pending. Part 1 (`b00509d`..`1220d53`) failed twice with `ENOTFOUND`: the machine had no internet, so the reviewers could not reach the API. Part 2 (`1220d53`..`1d66a41`, which includes the commit that emptied `global.css` and its repair) has not started. Retry both when the connection is back.
 
+- 2026-11-08: Gentle-AI reviews of T5, retried after the connection came back, consent granted each time; both approved and acknowledged.
+  - Part 1 (`b00509d`..`1220d53`, lineage `review-168e596c74077008`, 20 files, 779 lines, high risk), reviewed in a temporary detached worktree. Later work: `R3-route-param-change` (a `?dni=` change while Cobros is open does not reload the member) and `R3-deleted-accessview-coverage`.
+  - Part 2 (`1220d53`..`1d66a41`, lineage `review-4b5bf38bbde690c4`, 23 files, 1,980 lines, medium risk; the net tree, so it already includes the repair of `global.css`). Later work: `R3-stream-suppresses-dni-answer`.
+
 ## Next step
 T6 remains for the side-by-side comparison with the camera on.
