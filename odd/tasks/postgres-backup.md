@@ -54,7 +54,7 @@ Work on `manu` (user preference), one work-unit commit per task. Push and PR rem
 - [x] T2 — Respaldo screen and restore guide. Route: same writer. Done 2026-11-08, see Progress. The browser check of the screen is left to the caller (the backend must be restarted first).
   - The screen shows the database part: included, failed with its code, or not configured.
   - `docs/backup-restore.md` explains how to restore the database, and how to protect an external drive.
-- [ ] T3 — Restore rehearsal with evidence. Route: same writer.
+- [x] T3 — Restore rehearsal with evidence. Route: same writer. Done 2026-11-08, see the rehearsal record below.
   - Dump the development database, restore it into a temporary database, compare table row counts, and drop the temporary database. Record the command lines and numbers in this document.
 
 ## Checks
@@ -85,5 +85,29 @@ Work on `manu` (user preference), one work-unit commit per task. Push and PR rem
   - Restore commands were run for real against a scratch database (see T3). Verified: `docker compose cp` + `pg_restore` works in every shell; Git Bash `< database.dump` works; Windows PowerShell 5.1 `Get-Content | docker ...` fails (binary corrupted), so the guide says not to use it. Git Bash rewrites `/tmp/...` unless `MSYS_NO_PATHCONV=1`. A Command Prompt `<` redirect was not verified.
   - Decision gap: the BitLocker steps are written from general Windows knowledge, not run on the club's drive.
 
+- 2026-11-08 T3 (writer): restore rehearsal done, no failure. Record below.
+
+## Restore rehearsal (2026-11-08)
+Source: development database `club_socios` (only read). Target: temporary database `club_restore_check` in the same Postgres (`pgvector/pgvector:0.8.1-pg17`, container `proyectocai2-db-1`), dropped at the end.
+
+1. Dump with the implementation (`createPgDumper` from the built `dist`, which resolved to `docker compose -f <repo>/docker-compose.yml exec -T db pg_dump -U club -d club_socios -Fc -w`): 6,978 bytes, 553 ms.
+2. `docker compose exec -T db psql -U club -d club_socios -c "CREATE DATABASE club_restore_check"`
+3. `docker compose cp database.dump db:/tmp/database.dump`
+4. `docker compose exec -T db pg_restore --clean --if-exists --no-owner -U club -d club_restore_check /tmp/database.dump` -> exit 0, 606 ms. (The first attempt from Git Bash failed with `could not open input file "C:/Users/.../Temp/database.dump"` because Git Bash rewrote `/tmp/...`; with `MSYS_NO_PATHCONV=1` it worked. The guide says so.)
+5. Compared with `psql -At`:
+
+| | `club_socios` | `club_restore_check` |
+| --- | --- | --- |
+| `access_entries` | 11 | 11 |
+| `face_profiles` | 2 | 2 |
+| `schema_migrations` | 3 | 3 |
+| extensions | plpgsql 1.0, vector 0.8.1 | plpgsql 1.0, vector 0.8.1 |
+
+6. Restoring again over the already restored database with the Git Bash form `... pg_restore --clean --if-exists -U club -d club_restore_check < database.dump` exited 0 and left `access_entries` at 11 (a second run is safe).
+7. Windows PowerShell 5.1 `Get-Content -Raw database.dump | docker compose exec -T db pg_restore ...` exited 1 (binary corrupted). A Command Prompt `<` redirect was not verified.
+8. `docker compose exec -T db rm /tmp/database.dump`, then `DROP DATABASE club_restore_check`; the database list afterwards: `club_socios`, `club_socios_test`, `postgres`, `template0`, `template1`. `access_entries` in `club_socios` still 11.
+
+Limits: the development database is tiny (about 7 KB), so the timings say nothing about the two-hour restore goal with real data; repeat the rehearsal on a copy of real data before relying on it. The dump was restored on the same Postgres version and image that made it.
+
 ## Next step
-T3.
+Caller: restart the backend, check the Respaldo screen in the browser, and take a first real copy with "Hacer un respaldo ahora". Owners still decide the external drive, copies to keep, who may restore, and encryption.
