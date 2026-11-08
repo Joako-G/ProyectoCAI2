@@ -40,7 +40,7 @@ beforeAll(async () => {
     reportService: cashCount.reports,
     cashCountService: cashCount.cashCount,
     auditService: audit.service,
-    backupService: { status: async () => ({ destination: { isDefault: true, state: 'ready' }, keep: 30, keepRecent: 5, copies: 0, lastSuccessAt: null, lastFailure: null, running: false }), run: async () => ({ ok: true, backup: { name: 'backup-20261101T150000Z', at: '2026-11-01T15:00:00.000Z', files: [] } }) },
+    backupService: { status: async () => ({ destination: { isDefault: true, state: 'ready' }, keep: 30, keepRecent: 5, copies: 0, lastSuccessAt: null, lastFailure: null, running: false, database: { lastCopy: null, lastFailure: null } }), run: async () => ({ ok: true, backup: { name: 'backup-20261101T150000Z', at: '2026-11-01T15:00:00.000Z', files: [], database: { state: 'not_configured' }, partial: false } }) },
     noticeService: { debtNotices: async () => ({ asOf: '2026-11-01', rows: [] }) },
     accessService: { check: async () => ({ result: 'red', reason: 'not_found' }) },
     greetings: createGreetingBus(),

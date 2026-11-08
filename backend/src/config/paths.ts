@@ -22,6 +22,9 @@ export function backupDirectory(env: NodeJS.ProcessEnv = process.env): { path: s
   return { path, isDefault: path === DEFAULT_BACKUP_DIR };
 }
 
+/** The compose file at the repository root, which defines the `db` service the dump can run in. Resolved from the code location, so src and dist agree. */
+export const COMPOSE_FILE = resolve(BACKEND_DIR, '..', 'docker-compose.yml');
+
 export function membersFilePath(env: NodeJS.ProcessEnv = process.env): string {
   return dataFilePath(env, 'MEMBERS_FILE', 'members.json');
 }

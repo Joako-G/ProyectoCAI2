@@ -4,6 +4,15 @@ export interface BackupSource {
   path: string;
 }
 
+/**
+ * The database part of one copy, also stored in its manifest. `failed` carries a short code
+ * (`DATABASE_DUMP_FAILED`, `DATABASE_DUMP_UNAVAILABLE`): never a message, a path or any content of the dump.
+ */
+export type BackupDatabasePart =
+  | { state: 'not_configured' }
+  | { state: 'included'; file: 'database.dump'; format: 'pg_dump-custom'; bytes: number }
+  | { state: 'failed'; code: string };
+
 /** A finished copy. `files` lists what was copied; a file that does not exist yet is not an error and not listed. */
 export interface BackupResult {
   /** The folder name, which is also the entity id in the audit log. */
@@ -11,6 +20,9 @@ export interface BackupResult {
   /** ISO instant of the copy. */
   at: string;
   files: string[];
+  database: BackupDatabasePart;
+  /** True when the JSON files were copied but the database dump failed: the copy exists but is not complete. */
+  partial: boolean;
 }
 
 /** Why a copy failed, as a short code (a system error code such as `ENOSPC`, `NO_FILES`, or `DESTINATION_MISSING`): never a message or a path. */
@@ -42,4 +54,10 @@ export interface BackupStatus {
   /** The last failed attempt since the server started and since the last good copy, or null. */
   lastFailure: BackupFailure | null;
   running: boolean;
+  database: {
+    /** The database part of the newest copy, read from its manifest; null while there is no copy. */
+    lastCopy: BackupDatabasePart | null;
+    /** The last failed dump since the server started and since the last good dump, or null. */
+    lastFailure: BackupFailure | null;
+  };
 }

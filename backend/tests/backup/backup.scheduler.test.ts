@@ -5,7 +5,7 @@ import { ConflictError } from '../../src/shared/errors.js';
 
 const HOUR = 60 * 60 * 1000;
 const NOW = new Date('2026-11-04T15:00:00Z');
-const ok: BackupRun = { ok: true, backup: { name: 'backup-20261104T150000Z', at: NOW.toISOString(), files: ['members.json'] } };
+const ok: BackupRun = { ok: true, backup: { name: 'backup-20261104T150000Z', at: NOW.toISOString(), files: ['members.json'], database: { state: 'not_configured' }, partial: false } };
 
 const hoursAgo = (hours: number) => new Date(NOW.getTime() - hours * HOUR).toISOString();
 

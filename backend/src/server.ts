@@ -3,6 +3,7 @@ import {
   auditFilePath,
   backupDirectory,
   cashCountsFilePath,
+  COMPOSE_FILE,
   disciplinesFilePath,
   membershipsFilePath,
   membersFilePath,
@@ -25,6 +26,7 @@ import { createPgEntryRepository } from './modules/access/pg-entry.repository.js
 import type { AuditLabelSources } from './modules/audit/audit.labels.js';
 import { createAuditService } from './modules/audit/audit.service.js';
 import { startBackupScheduler } from './modules/backup/backup.scheduler.js';
+import { createPgDumper } from './modules/backup/backup.dump.js';
 import { createBackupService } from './modules/backup/backup.service.js';
 import { backupSources } from './modules/backup/backup.sources.js';
 import { createJsonAuditRepository } from './modules/audit/json-audit.repository.js';
@@ -139,10 +141,12 @@ const accessService = createAccessService({
   payments: paymentRepository,
   pricing: pricingConfigService,
 });
-// The daily backup copies the data files to BACKUP_DIR (an external drive, or backend/backups); see docs/backup-restore.md.
+// The daily backup copies the data files, and the PostgreSQL dump when DATABASE_URL is set, to BACKUP_DIR (an external drive,
+// or backend/backups); see docs/backup-restore.md.
 const backup = backupDirectory();
 const backupService = createBackupService({
   sources: backupSources(),
+  database: connectionString ? createPgDumper({ connectionString, composeFile: COMPOSE_FILE }) : undefined,
   destination: backup.path,
   isDefaultDestination: backup.isDefault,
   audit: auditService,
