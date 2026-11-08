@@ -42,7 +42,7 @@ export function createAccessRouter(service: Pick<AccessService, 'check'>, authen
     }
   });
 
-  // Server-sent events for the public entrance display. Each message is a GreetingEvent: first name and tone only.
+  // Server-sent events for the public entrance display. Each message is a GreetingEvent: tone, kind and, for an identified member, who it is; never a DNI or an amount.
   // It needs no database. The headers keep proxies (Vite's in development, nginx in front) from buffering the stream.
   if (greetings) {
     router.get('/display-events', (request, response) => {

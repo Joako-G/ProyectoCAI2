@@ -75,7 +75,7 @@ Work on `manu` (user preference), one work-unit commit per task. Each commit sta
 
 ## Tasks
 - [x] T1 — Design foundation. Self-hosted fonts, the crest, the mockup's colors, typography and animations as shared styles.
-- [ ] T2 — Richer entrance events: full name, case, month of the debt or of the due date, and the member's disciplines. Backend and parser.
+- [x] T2 — Richer entrance events: full name, case, month of the debt or of the due date, and the member's disciplines. Backend and parser.
 - [ ] T3 — Client screen like "Kiosco facial": full viewport and centered, live camera, an oval guide, a frame that follows the detected face, the progress bar, the live clock and the five states.
 - [ ] T4 — Hands-free loop on the client screen, with the 30-second anti-repeat and a visible message when the session expires.
 - [ ] T5 — Secretary's Ingreso like "Ventanilla": the result banner, the member card, "Cobrar cuota" and "Ver ficha completa", "Accesos de hoy" with chips, and "Hoy en el club" counters. The "Cámara" button goes away and the DNI field stays as a fallback.
@@ -95,6 +95,7 @@ Work on `manu` (user preference), one work-unit commit per task. Each commit sta
 - 2026-11-08: the plan is agreed with the user. The mockup was read. The existing screens were reviewed: `EntranceDisplay`, `AccessPage` and the fonts in `frontend/index.html`.
 
 - 2026-11-08, T1 done (route: delegated writer, trigger: 2+ non-trivial files). RED: `offline-fonts.test.ts` failed 2 of 2 (index.html still named fonts.googleapis.com; main.tsx lacked the `@fontsource/ibm-plex-sans/` imports). GREEN: 2 of 2 pass; frontend suite 63 files, 635 tests pass; typecheck clean. Fonts: @fontsource ibm-plex-sans, ibm-plex-mono, libre-baskerville 5.3.0, latin and latin-ext. Crest: `frontend/public/brand/logo-cai.png`, 188541 bytes. Vite dev server answered 200 for the font CSS, a woff2 file and the crest. Reduced motion is scoped to a `.kiosk` wrapper so existing screens are untouched.
+- 2026-11-08, T2 done (route: delegated writer, same writer as T1). RED: backend `tests/access` 16 failed (service registration with the new member shape, 3 discipline-port cases, 11 greeting/recorder cases) plus `member-disciplines.test.ts` failing with "Cannot find module"; frontend `greeting-format.test.ts` 4 of 11 failed (kind/member/detail parsing). GREEN: backend 69 files, 1122 tests, typecheck clean; frontend 63 files, 640 tests, typecheck clean. The event stays additive: `tone` and `firstName` are unchanged, and the frontend `kind` and `method` are optional so a message without them still drives the current display. A face that matched an inactive member is reported as `not_recognized` with no member data, as the door already treats it.
 
 ## Next step
-T2.
+T3, once the user says to start.

@@ -201,7 +201,7 @@ describe('access checkMember', () => {
 });
 
 describe('access entrance registration', () => {
-  function withEntrance(members: AccessMember[], memberships: Membership[] = [], payments: Payment[] = []) {
+  function withEntrance(members: AccessMember[], memberships: Membership[] = [], payments: Payment[] = [], memberDisciplines?: { namesFor(memberId: string): Promise<string[]> }) {
     const entrance = { register: vi.fn(async (_input: unknown) => undefined) };
     const ports = {
       members: { list: vi.fn(async () => members) },
@@ -209,13 +209,13 @@ describe('access entrance registration', () => {
       payments: { list: vi.fn(async () => payments) },
       pricing: { get: vi.fn(async () => defaultConfig) },
     };
-    return { entrance, service: createAccessService({ ...ports, entrance, now: () => TODAY }) };
+    return { entrance, service: createAccessService({ ...ports, entrance, memberDisciplines, now: () => TODAY }) };
   }
 
-  it('registers a DNI check with the member id, the first name, the answer, the method and the staff member', async () => {
+  it('registers a DNI check with the member identity, the answer, the method and the staff member', async () => {
     const { service, entrance } = withEntrance([member('one', '30111222')], [membership('one', '2026-10-01')], [paidMonths('one', '2026-10', '2026-11')]);
     const answer = await service.check('30111222', { method: 'dni', actorId: 'user-1' });
-    expect(entrance.register).toHaveBeenCalledWith({ member: { id: 'one', firstName: 'one' }, answer, method: 'dni', actorId: 'user-1' });
+    expect(entrance.register).toHaveBeenCalledWith({ member: { id: 'one', memberNumber: 'N-one', firstName: 'one', fullName: 'one Prueba', disciplines: [] }, answer, method: 'dni', actorId: 'user-1' });
   });
 
   it('registers an unknown DNI without a member', async () => {
@@ -235,13 +235,37 @@ describe('access entrance registration', () => {
     const { service, entrance } = withEntrance([member('one', '30111222'), member('two', '30111333', { status: 'inactive' })]);
     await service.checkMember('one', { method: 'face', actorId: 'user-1' });
     await service.checkMember('two', { method: 'face', actorId: 'user-1' });
-    expect(entrance.register).toHaveBeenNthCalledWith(1, expect.objectContaining({ member: { id: 'one', firstName: 'one' }, method: 'face' }));
+    expect(entrance.register).toHaveBeenNthCalledWith(1, expect.objectContaining({ member: expect.objectContaining({ id: 'one', fullName: 'one Prueba' }), method: 'face' }));
     expect(entrance.register).toHaveBeenNthCalledWith(2, expect.objectContaining({ member: undefined, method: 'face' }));
   });
 
   it('registers an inactive member checked by DNI, who is identified', async () => {
     const { service, entrance } = withEntrance([member('two', '30111333', { status: 'inactive' })]);
     await service.check('30111333', { method: 'dni', actorId: 'user-1' });
-    expect(entrance.register).toHaveBeenCalledWith(expect.objectContaining({ member: { id: 'two', firstName: 'two' } }));
+    expect(entrance.register).toHaveBeenCalledWith(expect.objectContaining({ member: expect.objectContaining({ id: 'two', memberNumber: 'N-two' }) }));
+  });
+
+  it('reads the discipline names once per identified check and hands them over', async () => {
+    const memberDisciplines = { namesFor: vi.fn(async (_memberId: string) => ['Básquet', 'Natación']) };
+    const { service, entrance } = withEntrance([member('one', '30111222')], [], [], memberDisciplines);
+    await service.check('30111222', { method: 'dni', actorId: 'user-1' });
+    expect(memberDisciplines.namesFor).toHaveBeenCalledTimes(1);
+    expect(memberDisciplines.namesFor).toHaveBeenCalledWith('one');
+    expect(entrance.register).toHaveBeenCalledWith(expect.objectContaining({ member: expect.objectContaining({ disciplines: ['Básquet', 'Natación'] }) }));
+  });
+
+  it('degrades to no disciplines when the lookup fails, without failing the check', async () => {
+    const memberDisciplines = { namesFor: vi.fn(async (_memberId: string): Promise<string[]> => { throw new Error('disciplines file unreadable'); }) };
+    const { service, entrance } = withEntrance([member('one', '30111222')], [], [], memberDisciplines);
+    await expect(service.check('30111222', { method: 'dni', actorId: 'user-1' })).resolves.toHaveProperty('result');
+    expect(entrance.register).toHaveBeenCalledWith(expect.objectContaining({ member: expect.objectContaining({ disciplines: [] }) }));
+  });
+
+  it('does not look up disciplines for nobody identified', async () => {
+    const memberDisciplines = { namesFor: vi.fn(async (_memberId: string) => ['Básquet']) };
+    const { service } = withEntrance([member('two', '30111333', { status: 'inactive' })], [], [], memberDisciplines);
+    await service.check('99999999', { method: 'dni', actorId: 'user-1' });
+    await service.checkMember('two', { method: 'face', actorId: 'user-1' });
+    expect(memberDisciplines.namesFor).not.toHaveBeenCalled();
   });
 });

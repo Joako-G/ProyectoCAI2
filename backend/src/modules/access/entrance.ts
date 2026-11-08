@@ -1,6 +1,6 @@
 import type { AccessCheck } from './access.types.js';
 import type { EntranceMethod, EntryRepository } from './entry.repository.js';
-import type { GreetingBus, GreetingEvent } from './greeting.bus.js';
+import type { EntranceKind, GreetingBus, GreetingEvent, GreetingMember } from './greeting.bus.js';
 
 /** Who ran a check and by which door method; passed by the routes so the entrance can be recorded. */
 export interface EntranceContext {
@@ -10,7 +10,7 @@ export interface EntranceContext {
 
 /** One finished check, as the entrance recorder sees it. `member` is absent when nobody was identified. */
 export interface EntranceInput extends EntranceContext {
-  member?: { id: string; firstName: string };
+  member?: GreetingMember;
   answer: AccessCheck;
 }
 
@@ -20,11 +20,32 @@ function describeFailure(error: unknown): string {
   return `code ${code}`;
 }
 
-// The public screen greets by first name only a member who enters; everyone else, identified or not, gets the same refusal.
-function greetingFor({ member, answer }: EntranceInput, at: string): GreetingEvent {
-  if (member && answer.result === 'green') return { at, tone: 'welcome', firstName: member.firstName };
-  if (member && answer.result === 'yellow') return { at, tone: 'see_desk', firstName: member.firstName };
-  return { at, tone: 'refused' };
+const MEMBER_KINDS: readonly EntranceKind[] = ['up_to_date', 'debtor', 'deregistered', 'inactive'];
+
+// A member nobody could name (an unknown DNI, a stranger's face, a leftover profile) is reported by `kind` alone.
+function kindFor({ member, answer }: EntranceInput): EntranceKind {
+  if (!member) return answer.reason === 'not_found' ? 'not_found' : 'not_recognized';
+  return MEMBER_KINDS.includes(answer.reason) ? answer.reason : 'not_recognized';
+}
+
+// The screens learn how the check went, and only for an identified member who it was. The public screen greets by
+// first name only a member who enters (`tone`/`firstName`); everything else is detail for the staff screen.
+function greetingFor(input: EntranceInput, at: string): GreetingEvent {
+  const { member, answer, method } = input;
+  const base = { at, kind: kindFor(input), method };
+  if (!member) return { ...base, tone: 'refused' };
+  const tone = answer.result === 'green' ? 'welcome' : answer.result === 'yellow' ? 'see_desk' : 'refused';
+  const summary = answer.member;
+  return {
+    ...base,
+    tone,
+    ...(tone === 'refused' ? {} : { firstName: member.firstName }),
+    member: { id: member.id, memberNumber: member.memberNumber, fullName: member.fullName, firstName: member.firstName, disciplines: member.disciplines },
+    ...(summary?.paidThrough ? { paidThrough: summary.paidThrough } : {}),
+    ...(summary?.dueDate ? { dueDate: summary.dueDate } : {}),
+    ...(summary?.debtSince ? { debtSince: summary.debtSince } : {}),
+    ...(summary ? { unpaidPeriodCount: summary.unpaidPeriodCount } : {}),
+  };
 }
 
 /**
