@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { fetchMembers } from '../../members/services/members-api';
 import type { Member } from '../../members/types/member';
 import { describeReadError } from '../utils/payment-format';
@@ -9,6 +9,8 @@ interface PaymentsViewProps {
   canCollect: boolean;
   /** Whether the user may annul payments (`payments:annul`). */
   canAnnul: boolean;
+  /** A DNI to search as soon as the screen opens, for example when it is reached from the entrance desk. */
+  initialDni?: string;
 }
 
 type SearchState =
@@ -18,14 +20,13 @@ type SearchState =
   | { phase: 'done'; members: Member[] };
 
 /** Container of the payments feature: find a member by DNI, then work on their account. */
-export function PaymentsView({ canCollect, canAnnul }: PaymentsViewProps) {
-  const [dni, setDni] = useState('');
+export function PaymentsView({ canCollect, canAnnul, initialDni = '' }: PaymentsViewProps) {
+  const [dni, setDni] = useState(initialDni);
   const [search, setSearch] = useState<SearchState>({ phase: 'idle' });
   const [chosen, setChosen] = useState<Member>();
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const term = dni.trim();
+  async function searchFor(typed: string) {
+    const term = typed.trim();
     if (!term) return;
     setChosen(undefined);
     setSearch({ phase: 'searching' });
@@ -37,6 +38,19 @@ export function PaymentsView({ canCollect, canAnnul }: PaymentsViewProps) {
       setSearch({ phase: 'error', message: describeReadError(error) });
     }
   }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void searchFor(dni);
+  }
+
+  // The DNI the screen was opened with is searched once, without anyone typing.
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current || !initialDni.trim()) return;
+    opened.current = true;
+    void searchFor(initialDni);
+  }, []);
 
   return (
     <div className="payments-view">
