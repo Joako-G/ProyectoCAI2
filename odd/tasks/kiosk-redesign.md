@@ -113,5 +113,15 @@ Work on `manu` (user preference), one work-unit commit per task. Each commit sta
   - Session: when the stream closes, `GET /auth/me` decides (an EventSource cannot see the status); a 401 from recognize does the same. The screen then shows "Sesión vencida: iniciá sesión en esta PC", releases the camera and stops reconnecting. The link opens `/pantalla-ingreso`, which reloads the app: without a session it asks to sign in and returns to the screen, which reconnects. 503 shows the gray "Reconocimiento no disponible: pedí ayuda en secretaría" and stops asking; results sent by the secretary still show.
   - Decision gaps: the stream key and the HTTP fallback rebuild the first name from the first word of the name and leave the disciplines empty. The "unauthorized" path was tested with a fake 401; the real expiry of the server session was not exercised. The real camera was not exercised.
 
+- 2026-11-08: Gentle-AI reviews of T3 and T4, in two parts because the whole range (2,576 lines) exceeded the review size, consent granted each time; both approved and acknowledged.
+  - Part 1 (`08070f9`..`117297d`, lineage `review-ee17b884c0711ff4`, 35 files, 1,870 lines, medium risk), reviewed in a temporary detached worktree. One suggestion, later work: `R3-frame-transition-vacuous` (the frame-follows-face test does not prove the CSS transition).
+  - Part 2 (`117297d`..`67acb5b`, lineage `review-34be278f434a2878`, 14 files, 744 lines, medium risk): no findings listed.
+- 2026-11-08: browser check at `/pantalla-ingreso` as `secretary@club.test`, with the Vite and backend dev servers (backend with `DATABASE_URL`), against the mockup served from its folder on another port. The Browser pane blocks the camera, so the live video, the face-following frame, the guidance hints and the recognition loop were NOT seen; they are covered by tests with fakes only.
+  - Idle: crest, `Bienvenido al club`, dashed oval, live badge and clock, same layout as the mockup. The camera-denied line shows on the left pane.
+  - Green (`99000005`): green panel, check icon, `Pasá, Hugo`, card with initials, `AL DÍA`, `Próximo vencimiento 10/01/2027`.
+  - Red (`99000003`): red panel, `Rocío, pasá por secretaría`, `Tenés cuotas pendientes desde enero 2026. Pasá por secretaría.` and no amounts.
+  - Not found (`99999999`): dark panel, `Probá otra vez`, no member data.
+  - Not seen in the browser: the amber (debtor) and gray (inactive) cases, because no synthetic member owes only 1 to 3 months. They are covered by tests.
+
 ## Next step
-T5, once the user says to start.
+T5. T6 remains for the side-by-side comparison with the camera on.
