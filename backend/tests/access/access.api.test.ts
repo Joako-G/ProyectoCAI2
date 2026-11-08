@@ -10,7 +10,7 @@ let withoutEntriesUrl: string;
 let baseUrl: string;
 let cleanup: () => Promise<void>;
 const answer = { result: 'green' as const, reason: 'up_to_date' as const, member: { memberNumber: '0001', name: 'Ana Prueba', unpaidPeriodCount: 0 } };
-const day = { date: '2026-11-07', count: 1, entries: [{ id: 'e1', checkedAt: '2026-11-07T14:00:00.000Z', memberNumber: '0001', name: 'Ana Prueba', method: 'dni' as const, result: 'green' as const }] };
+const day = { date: '2026-11-07', count: 1, distinctMembers: 1, counts: { entered: 1, warned: 0, refused: 0 }, entries: [{ id: 'e1', checkedAt: '2026-11-07T14:00:00.000Z', memberNumber: '0001', name: 'Ana Prueba', method: 'dni' as const, result: 'green' as const }] };
 const listEntries = vi.fn(async (_date?: string) => day);
 const check = vi.fn(async (_dni: string, _entry?: { method: 'dni' | 'face'; actorId: string }) => answer);
 

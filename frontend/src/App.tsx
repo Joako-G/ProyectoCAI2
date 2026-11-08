@@ -12,11 +12,11 @@ import { ArqueoView } from './features/cashcount/components/ArqueoView';
 import { DisciplinesView } from './features/disciplines/components/DisciplinesView';
 import { EnrollmentScreen } from './features/enrollment/components/EnrollmentScreen';
 import { NoticesView } from './features/notices/components/NoticesView';
-import { PaymentsView } from './features/payments/components/PaymentsView';
+import { PaymentsRoute } from './features/payments/components/PaymentsRoute';
 import { PricingView } from './features/pricing/components/PricingView';
 import { ReportsView } from './features/reports/components/ReportsView';
 import { RosterView } from './features/roster/components/RosterView';
-import { MembersView } from './features/members/components/MembersView';
+import { MembersRoute } from './features/members/components/MembersRoute';
 import { UsersView } from './features/users/components/UsersView';
 import { AppShell } from './layouts/AppShell';
 import { Forbidden, NoSections, NotFound } from './layouts/RouteMessages';
@@ -25,13 +25,13 @@ import { SECTIONS, sectionsFor, type Section } from './layouts/sections';
 /** The screen of each section; built only for routes whose capability was already checked. */
 function pageFor(section: Section, user: AuthUser) {
   switch (section) {
-    case 'members': return <MembersView
+    case 'members': return <MembersRoute
       canWrite={can(user, 'members:write')}
       canManageFaces={can(user, 'faces:manage')}
       renderCreate={can(user, 'payments:collect') ? (props) => <EnrollmentScreen {...props} /> : undefined}
     />;
     case 'disciplines': return <DisciplinesView canWrite={can(user, 'disciplines:write')} />;
-    case 'payments': return <PaymentsView canCollect={can(user, 'payments:collect')} canAnnul={can(user, 'payments:annul')} />;
+    case 'payments': return <PaymentsRoute canCollect={can(user, 'payments:collect')} canAnnul={can(user, 'payments:annul')} />;
     case 'notices': return <NoticesView />;
     case 'access': return <AccessPage />;
     case 'cashcount': return <ArqueoView />;

@@ -94,6 +94,8 @@ describe('URL routing', () => {
       if (input === '/auth/me') return json({ user, capabilities: ['members:read', 'access:check'] });
       return json([]);
     }));
+    // The desk listens to the live stream of controls; jsdom has no EventSource.
+    vi.stubGlobal('EventSource', class { readyState = 1; onopen = null; onerror = null; addEventListener() {} close() {} });
     renderApp('/ingreso');
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Ingreso' })).toBeInTheDocument();

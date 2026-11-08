@@ -13,7 +13,7 @@ interface CreateScreenProps {
   onCancel: () => void;
 }
 
-interface MembersViewProps {
+export interface MembersViewProps {
   /** Overrides today's club date (`YYYY-MM-DD`); used by tests. */
   today?: string;
   /** Whether the user may create, edit, deactivate and reactivate members. */
@@ -22,6 +22,8 @@ interface MembersViewProps {
   canManageFaces?: boolean;
   /** Replaces the plain create form, for example with the enrollment that also collects; the app composes it. */
   renderCreate?: (props: CreateScreenProps) => ReactNode;
+  /** A search applied when the screen opens, for example a member number sent from the entrance desk. */
+  initialSearch?: string;
 }
 
 // No router (the app has a single section): the visible screen is plain state.
@@ -32,10 +34,10 @@ type View =
   | { name: 'edit'; id: string };
 
 /** Container of the members feature: switches between list, detail and the create / edit form. */
-export function MembersView({ today = todayInClub(), canWrite, canManageFaces = false, renderCreate }: MembersViewProps) {
+export function MembersView({ today = todayInClub(), canWrite, canManageFaces = false, renderCreate, initialSearch = '' }: MembersViewProps) {
   const [view, setView] = useState<View>({ name: 'list' });
   // Kept here, not in the list, so the filters survive going to the detail or form and back.
-  const [query, setQuery] = useState<MemberListQuery>({ search: '', status: 'all', disciplineId: '' });
+  const [query, setQuery] = useState<MemberListQuery>({ search: initialSearch, status: 'all', disciplineId: '' });
   const showList = () => setView({ name: 'list' });
   // Fetched once for the whole feature: the list, detail and form all resolve ids through it.
   const catalog = useDisciplineCatalog();

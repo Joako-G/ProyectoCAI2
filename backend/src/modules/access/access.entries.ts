@@ -14,8 +14,12 @@ export interface EntryView {
 
 export interface EntriesDay {
   date: string;
-  /** Members who entered: green and yellow checks. */
+  /** Checks that let someone in: green and yellow. A person who is checked twice counts twice. */
   count: number;
+  /** Different members who entered: green or yellow at least once. */
+  distinctMembers: number;
+  /** The day by result. `entered` is green plus yellow, `warned` is yellow, `refused` is red. */
+  counts: { entered: number; warned: number; refused: number };
   entries: EntryView[];
 }
 
@@ -42,7 +46,18 @@ export function createEntriesService({ entries, members, now = () => new Date() 
           result: row.result,
         };
       });
-      return { date, count: views.filter((view) => view.result !== 'red').length, entries: views };
+      const entered = rows.filter((row) => row.result !== 'red');
+      return {
+        date,
+        count: entered.length,
+        distinctMembers: new Set(entered.map((row) => row.memberId)).size,
+        counts: {
+          entered: entered.length,
+          warned: rows.filter((row) => row.result === 'yellow').length,
+          refused: rows.length - entered.length,
+        },
+        entries: views,
+      };
     },
   };
 }

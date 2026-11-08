@@ -37,6 +37,33 @@ describe('entries service', () => {
     expect((await service.list('2026-11-07')).count).toBe(2);
   });
 
+  it('counts the day by result: entered (green and yellow), warned (yellow) and refused (red)', async () => {
+    const { service } = setup([
+      record('e4', 'm2', '2026-11-07T14:30:00.000Z', 'red'),
+      record('e3', 'm1', '2026-11-07T14:20:00.000Z', 'yellow'),
+      record('e2', 'm2', '2026-11-07T14:10:00.000Z', 'green'),
+      record('e1', 'm1', '2026-11-07T14:00:00.000Z', 'green'),
+    ]);
+    expect((await service.list('2026-11-07')).counts).toEqual({ entered: 3, warned: 1, refused: 1 });
+  });
+
+  it('counts people, not checks: a member who entered twice counts once, and a refused member does not count', async () => {
+    const { service } = setup([
+      record('e4', 'm2', '2026-11-07T14:30:00.000Z', 'red'),
+      record('e3', 'm1', '2026-11-07T14:20:00.000Z', 'green'),
+      record('e2', 'm1', '2026-11-07T14:10:00.000Z', 'yellow'),
+      record('e1', 'm1', '2026-11-07T14:00:00.000Z', 'green'),
+    ]);
+    const day = await service.list('2026-11-07');
+    expect(day.distinctMembers).toBe(1);
+    expect(day.count).toBe(3);
+  });
+
+  it('reports zero counts for an empty day', async () => {
+    const { service } = setup([]);
+    expect(await service.list('2026-11-07')).toMatchObject({ count: 0, distinctMembers: 0, counts: { entered: 0, warned: 0, refused: 0 } });
+  });
+
   it('defaults to today in the club time zone', async () => {
     const { service, entries } = setup([]);
     expect((await service.list()).date).toBe('2026-11-07');

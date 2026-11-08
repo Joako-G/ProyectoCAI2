@@ -4,6 +4,9 @@ import { fetchEntriesToday } from '../services/entries-api';
 import type { EntriesDay } from '../types/entries';
 import { describeEntriesError } from '../utils/entries-format';
 
+/** The list is read again this often, besides after every control. */
+export const DEFAULT_REFRESH_MS = 60_000;
+
 export interface EntriesTodayState {
   /** The last day read; kept on screen while a newer read runs or fails. */
   day?: EntriesDay;

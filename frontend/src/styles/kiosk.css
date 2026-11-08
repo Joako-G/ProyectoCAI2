@@ -85,10 +85,12 @@
   }
 }
 
-/* Screens built on these styles wrap their content in an element with the `kiosk` class. */
+/* Screens built on these styles wrap their content in an element with the `kiosk` (or, at the desk, `ventanilla`) class. */
 @media (prefers-reduced-motion: reduce) {
   .kiosk,
-  .kiosk * {
+  .kiosk *,
+  .ventanilla,
+  .ventanilla * {
     animation: none !important;
   }
 }

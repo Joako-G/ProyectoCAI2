@@ -5,6 +5,12 @@ import { greetingFromCheck } from './greeting-from-check';
 const AT = '2026-11-08T15:00:00.000Z';
 
 describe('greetingFromCheck', () => {
+  it('marks the method it is given: a DNI check typed at the desk is a dni event', () => {
+    const check: AccessCheck = { result: 'green', reason: 'up_to_date', member: { memberNumber: '1', name: 'Ana Prueba', unpaidPeriodCount: 0 } };
+    expect(greetingFromCheck(check, AT, 'dni').method).toBe('dni');
+    expect(greetingFromCheck(check, AT).method).toBe('face');
+  });
+
   it('turns an up to date answer into the event the stream would have sent', () => {
     const check: AccessCheck = {
       result: 'green',

@@ -21,6 +21,7 @@ import '@fontsource/libre-baskerville/latin-ext-400.css';
 import '@fontsource/libre-baskerville/latin-700.css';
 import '@fontsource/libre-baskerville/latin-ext-700.css';
 import './styles/global.css';
+import './styles/ventanilla.css';
 import './styles/kiosk.css';
 import './styles/report-print.css';
 

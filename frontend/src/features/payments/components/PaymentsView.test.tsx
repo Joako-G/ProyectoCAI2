@@ -69,6 +69,18 @@ async function previewAll(user: ReturnType<typeof userEvent.setup>) {
   return screen.findByRole('table', { name: 'Detalle del cobro' });
 }
 
+describe('PaymentsView opened with a DNI', () => {
+  it('searches that DNI by itself and shows the member, with no typing', async () => {
+    const fetchMock = stubApi();
+    render(<PaymentsView canCollect canAnnul={false} initialDni="30123456" />);
+
+    const member = await screen.findByRole('region', { name: 'Socio' });
+    expect(member).toHaveTextContent('Lucía Ríos');
+    expect(screen.getByLabelText('DNI del socio')).toHaveValue('30123456');
+    expect(callsTo(fetchMock, 'GET /api/members?search=30123456')).toHaveLength(1);
+  });
+});
+
 describe('PaymentsView search', () => {
   it('shows the member, the standing and every owed concept with its discipline name after searching by DNI', async () => {
     const fetchMock = stubApi();

@@ -716,3 +716,14 @@ describe('MembersView deactivate and reactivate', () => {
     expect(calls.some((call) => call.method === 'POST' && call.url === '/api/members/member-2/reactivate')).toBe(true);
   });
 });
+
+describe('MembersView opened from another screen', () => {
+  it('starts with the given search already applied, so one member is listed', async () => {
+    members = members.slice(0, 1);
+    render(<MembersView today={TODAY} canWrite initialSearch="0001" />);
+
+    expect(await screen.findByText('Lucía Ríos')).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: /Buscar socio/ })).toHaveValue('0001');
+    expect(listCalls()[0]?.url).toBe('/api/members?search=0001');
+  });
+});
