@@ -21,7 +21,7 @@ export function EntriesToday({ refreshKey, refreshMs = DEFAULT_REFRESH_MS }: { /
       {!day && !problem ? <p className="members-page__notice" role="status">Cargando los ingresos…</p> : null}
       {day ? (
         <>
-          <p className="entries-today__count">{enteredLabel(day.count)}</p>
+          <p className="entries-today__count">{enteredLabel(day.distinctMembers)}</p>
           {day.entries.length === 0 ? (
             <p className="members-page__notice">Todavía no ingresó nadie hoy.</p>
           ) : (

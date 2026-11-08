@@ -123,5 +123,7 @@ Work on `manu` (user preference), one work-unit commit per task. Each commit sta
   - Not found (`99999999`): dark panel, `Probá otra vez`, no member data.
   - Not seen in the browser: the amber (debtor) and gray (inactive) cases, because no synthetic member owes only 1 to 3 months. They are covered by tests.
 
+- 2026-11-08, T5 part 1 (route: delegated writer, same writer as T3/T4). `GET /api/access/entries` now also returns `distinctMembers` (different members with a green or yellow check) and `counts: { entered, warned, refused }` (entered is green plus yellow). `count` is unchanged. This answers the earlier review finding that the day's count counted checks, not people: the existing list now says "N socios ingresaron" from `distinctMembers`. RED: `access.entries.test.ts` 3 failed (`expected undefined to deeply equal { entered: 3, warned: 1, refused: 1 }`, `expected undefined to be 1`, and the empty-day match); frontend `EntriesToday` 1 failed (`Unable to find an element with the text: 1 socio ingresó`). GREEN: backend 69 files, 1131 tests with Docker, typecheck clean; frontend access suite 148 tests, typecheck clean.
+
 ## Next step
 T5. T6 remains for the side-by-side comparison with the camera on.

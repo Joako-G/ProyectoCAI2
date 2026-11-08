@@ -9,6 +9,8 @@ afterEach(() => vi.unstubAllGlobals());
 const day: EntriesDay = {
   date: '2026-11-07',
   count: 2,
+  distinctMembers: 2,
+  counts: { entered: 2, warned: 1, refused: 1 },
   entries: [
     { id: 'e3', checkedAt: '2026-11-07T15:30:00.000Z', memberNumber: '102', name: 'Mateo Prueba', method: 'face', result: 'yellow' },
     { id: 'e2', checkedAt: '2026-11-07T13:05:00.000Z', memberNumber: '101', name: 'Lucía Prueba', method: 'dni', result: 'green' },
@@ -44,8 +46,8 @@ describe('EntriesToday', () => {
     expect(within(rows[2]!).getAllByRole('cell').map((cell) => cell.textContent)).toEqual(['09:00', '103', 'Ana Prueba', 'DNI', 'No ingresó']);
   });
 
-  it('says "1 socio ingresó" in the singular', async () => {
-    stubEntries({ ...day, count: 1 });
+  it('counts people, not checks: says "1 socio ingresó" when one member entered twice', async () => {
+    stubEntries({ ...day, distinctMembers: 1 });
     render(<EntriesToday refreshKey={0} />);
     expect(await screen.findByText('1 socio ingresó')).toBeInTheDocument();
   });
@@ -58,7 +60,7 @@ describe('EntriesToday', () => {
   });
 
   it('says so when nobody has entered yet', async () => {
-    stubEntries({ date: day.date, count: 0, entries: [] });
+    stubEntries({ date: day.date, count: 0, distinctMembers: 0, counts: { entered: 0, warned: 0, refused: 0 }, entries: [] });
     render(<EntriesToday refreshKey={0} />);
     expect(await screen.findByText('Todavía no ingresó nadie hoy.')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
@@ -88,7 +90,7 @@ describe('EntriesToday', () => {
   });
 
   it('reads again when the refresh key changes, keeping the table on screen meanwhile', async () => {
-    const fetchMock = stubEntries(day, { ...day, count: 3, entries: [{ ...day.entries[0]!, id: 'e4', name: 'Nuevo Prueba' }, ...day.entries] });
+    const fetchMock = stubEntries(day, { ...day, count: 3, distinctMembers: 3, entries: [{ ...day.entries[0]!, id: 'e4', name: 'Nuevo Prueba' }, ...day.entries] });
     const { rerender } = render(<EntriesToday refreshKey={0} />);
     await screen.findByText('2 socios ingresaron');
 

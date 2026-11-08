@@ -8,7 +8,7 @@ import { AccessPage } from './AccessPage';
 
 afterEach(() => vi.unstubAllGlobals());
 
-const empty: EntriesDay = { date: '2026-11-07', count: 0, entries: [] };
+const empty: EntriesDay = { date: '2026-11-07', count: 0, distinctMembers: 0, counts: { entered: 0, warned: 0, refused: 0 }, entries: [] };
 
 describe('AccessPage', () => {
   it('shows the entrance check and, below it, the entries of the day', async () => {
