@@ -9,6 +9,12 @@ import {
   paymentsFilePath,
   pricingConfigFilePath,
 } from './config/paths.js';
+import { databaseUrl } from './config/database.js';
+import { runMigrations } from './database/migrate.js';
+import { createPool } from './database/pool.js';
+import { startFaces } from './modules/faces/faces.startup.js';
+import { createFaceService } from './modules/faces/face.service.js';
+import { createPgFaceRepository } from './modules/faces/pg-face.repository.js';
 import { createAccessService } from './modules/access/access.service.js';
 import type { AuditLabelSources } from './modules/audit/audit.labels.js';
 import { createAuditService } from './modules/audit/audit.service.js';
@@ -38,6 +44,9 @@ import { bootstrap } from './startup.js';
 import { toIsoDate } from './shared/date.js';
 
 const port = Number(process.env.PORT ?? 3001);
+// PostgreSQL is optional: without DATABASE_URL the database features stay off and everything else runs on the JSON files.
+const connectionString = databaseUrl();
+const pool = connectionString ? createPool(connectionString) : undefined;
 // The audit log snapshots each actor's name and role from the users repository, which the app shares.
 const userRepository = new UserRepository(defaultUsersFilePath);
 // Display labels are read when the log is read, from the services built below; the thunks run later, never here.
@@ -70,6 +79,8 @@ const memberService = createMemberService({
     onDisciplinesChanged: (memberId, disciplineIds, date) =>
       membershipService.syncMember(memberId, disciplineIds, date),
   },
+  // A deactivated member's face profile is deleted; the thunk runs later, once the face service exists (or never, without a database).
+  lifecycle: { onMemberDeactivated: async (memberId, actorId) => faceService?.discardForDeactivatedMember(memberId, actorId) },
 });
 // Prices live in their own file; a missing file means the club defaults.
 const pricingConfigService = createPricingConfigService({
@@ -122,20 +133,31 @@ const backupService = createBackupService({
   isDefaultDestination: backup.isDefault,
   audit: auditService,
 });
-const app = createApp({ memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, accessService, auditService, backupService, userRepository });
+// Face profiles live in PostgreSQL. The database is optional: without DATABASE_URL, or when it is down at start,
+// the face routes answer 503 faces_unavailable until the server restarts and everything else runs as usual.
+let faceService: ReturnType<typeof createFaceService> | undefined;
+const facesReady = pool && connectionString
+  ? startFaces({ migrate: () => runMigrations(pool), log: (message) => console.log(message), connectionString })
+  : Promise.resolve(false);
 
-bootstrap({
-  memberService,
-  membershipService,
-  today: () => toIsoDate(new Date()),
-  listen: () => {
-    app.listen(port, () => {
-      console.log(`Server listening on port ${port}`);
-      // Checks now and then every hour; a copy is made when the last good one is a day old.
-      startBackupScheduler({ service: backupService });
-    });
-  },
-  log: (message, error) => console.error(message, error),
+facesReady.then((available) => {
+  if (available && pool) {
+    faceService = createFaceService({ repository: createPgFaceRepository(pool), members: memberService, access: accessService, audit: auditService });
+  }
+  const app = createApp({ faceService, facesUnavailable: !faceService, memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, accessService, auditService, backupService, userRepository });
+  return bootstrap({
+    memberService,
+    membershipService,
+    today: () => toIsoDate(new Date()),
+    listen: () => {
+      app.listen(port, () => {
+        console.log(`Server listening on port ${port}`);
+        // Checks now and then every hour; a copy is made when the last good one is a day old.
+        startBackupScheduler({ service: backupService });
+      });
+    },
+    log: (message, error) => console.error(message, error),
+  });
 }).catch((error: unknown) => {
   // Anything bootstrap does not degrade on (an unreadable members file, a throwing listen) is fatal.
   console.error('Server failed to start', error);

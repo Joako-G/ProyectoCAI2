@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FaceEnrollment } from '../../faces/components/FaceEnrollment';
 import { DisciplineCatalogNotice } from '../../disciplines/components/DisciplineCatalogNotice';
 import { catalogDisciplines, type DisciplineCatalog } from '../../disciplines/hooks/useDisciplineCatalog';
 import { describeError, useMemberDetail } from '../hooks/useMemberDetail';
@@ -14,6 +15,8 @@ interface MemberDetailScreenProps {
   catalog: DisciplineCatalog;
   /** Whether to offer edit, deactivate and reactivate. */
   canWrite: boolean;
+  /** Whether to show the face recognition block (the `faces:manage` capability). */
+  canManageFaces?: boolean;
   onBack: () => void;
   onEdit: (id: string) => void;
 }
@@ -21,7 +24,7 @@ interface MemberDetailScreenProps {
 type Dialog = 'deactivate' | 'reactivate' | null;
 
 /** Container: loads the member and runs the deactivate / reactivate actions. */
-export function MemberDetailScreen({ id, today, catalog, canWrite, onBack, onEdit }: MemberDetailScreenProps) {
+export function MemberDetailScreen({ id, today, catalog, canWrite, canManageFaces = false, onBack, onEdit }: MemberDetailScreenProps) {
   const { state, retry, replace } = useMemberDetail(id);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [saving, setSaving] = useState(false);
@@ -109,6 +112,8 @@ export function MemberDetailScreen({ id, today, catalog, canWrite, onBack, onEdi
         onDeactivate={() => setDialog('deactivate')}
         onReactivate={() => setDialog('reactivate')}
       />
+      {/* An inactive member has no face: it is deleted on deactivation and cannot be enrolled. */}
+      {canManageFaces && member.status === 'active' ? <FaceEnrollment memberId={member.id} /> : null}
       {dialog === 'deactivate' ? (
         <DeactivateDialog
           memberName={memberName}

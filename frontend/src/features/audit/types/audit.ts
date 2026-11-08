@@ -9,7 +9,8 @@ export type AuditEntityType =
   | 'proration_rule'
   | 'payment'
   | 'cash_count'
-  | 'backup';
+  | 'backup'
+  | 'face_profile';
 
 /** Audit writes that failed since the server last started; it resets on restart. */
 export interface AuditFailedWrites {

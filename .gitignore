@@ -10,3 +10,5 @@ backend/data/*
 !backend/data/members.seed.json
 !backend/data/disciplines.seed.json
 backend/backups/
+# face-api models copied from node_modules by frontend/scripts/copy-face-models.mjs (about 7 MB)
+frontend/public/models/

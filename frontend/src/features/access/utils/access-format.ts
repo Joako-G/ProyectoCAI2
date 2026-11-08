@@ -10,7 +10,15 @@ export function describeCheckError(error: unknown): string {
   return 'No se pudo verificar el DNI. Intente de nuevo.';
 }
 
-const REFUSAL_REASON: Record<Exclude<AccessCheck['reason'], 'up_to_date' | 'debtor'>, string> = {
+/** Spanish copy for a failed face recognition; the DNI is always the way out. */
+export function describeRecognizeError(error: unknown): string {
+  if (!(error instanceof ApiError)) return NETWORK_ERROR_MESSAGE;
+  if (error.status === 503) return 'Reconocimiento facial no disponible — use el DNI';
+  if (error.status === 403) return 'No tiene permiso para usar el reconocimiento facial.';
+  return 'No se pudo reconocer la cara. Use el DNI.';
+}
+
+const REFUSAL_REASON: Record<Exclude<AccessCheck['reason'], 'up_to_date' | 'debtor' | 'not_recognized'>, string> = {
   deregistered: 'dado de baja',
   inactive: 'inactivo',
   not_found: 'DNI no registrado',
@@ -19,6 +27,7 @@ const REFUSAL_REASON: Record<Exclude<AccessCheck['reason'], 'up_to_date' | 'debt
 /** The headline the door staff read: the verdict in words, so the color is never the only signal. */
 export function accessHeadline({ reason, member }: AccessCheck): string {
   if (reason === 'up_to_date') return 'Puede ingresar';
+  if (reason === 'not_recognized') return 'No reconocido — ingrese el DNI';
   if (reason === 'debtor') {
     const months = member?.unpaidPeriodCount ?? 0;
     return `Puede ingresar — tiene ${months} ${months === 1 ? 'mes adeudado' : 'meses adeudados'}`;

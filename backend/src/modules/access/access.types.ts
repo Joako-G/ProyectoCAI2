@@ -1,5 +1,5 @@
 export type AccessResult = 'green' | 'yellow' | 'red';
-export type AccessReason = 'up_to_date' | 'debtor' | 'deregistered' | 'inactive' | 'not_found';
+export type AccessReason = 'up_to_date' | 'debtor' | 'deregistered' | 'inactive' | 'not_found' | 'not_recognized';
 
 /** What the door needs to know about a member: who it is and how many months are unpaid and since when, never amounts or the DNI. */
 export interface AccessMemberSummary {
@@ -17,6 +17,6 @@ export interface AccessMemberSummary {
 export interface AccessCheck {
   result: AccessResult;
   reason: AccessReason;
-  /** Absent when the DNI is not registered. */
+  /** Absent when the DNI is not registered or the face was not recognized. */
   member?: AccessMemberSummary;
 }

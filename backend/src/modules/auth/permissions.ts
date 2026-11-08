@@ -22,6 +22,8 @@ export const permissions = {
   'notices:read': ['secretary', 'head_secretary'],
   // The entrance check (RF-08): a DNI tells staff whether the member may enter. Provisional: there is no doorkeeper role yet.
   'access:check': ['secretary', 'head_secretary'],
+  // Face profiles (RF-08, phase 2): enroll, remove and recognize a member's face. Provisional: the club has yet to confirm who may.
+  'faces:manage': ['secretary', 'head_secretary'],
   'config:read': ['secretary', 'head_secretary'],
   'config:manage': ['head_secretary'],
   // The audit log (RF-27) is the head secretary's alone.

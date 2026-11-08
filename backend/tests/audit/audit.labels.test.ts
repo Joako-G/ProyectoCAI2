@@ -40,6 +40,12 @@ describe('audit labels', () => {
     expect(await labelOf(service, 'cash_count', 'cash-0000-1111')).toBe('Arqueo del 01/11/2026');
   });
 
+  it('shows a face profile by the member number, never a name or DNI', async () => {
+    const { service } = await setup(sources());
+    expect(await labelOf(service, 'face_profile', 'ea722372-1111-4222-8333-444455556666')).toBe('Perfil facial del socio 0007');
+    expect(await labelOf(service, 'face_profile', 'unknown-member-id-1234')).toBe('Perfil facial unknown-…');
+  });
+
   it('names a tariff by its period and the two singletons by a fixed label, without reading any source', async () => {
     const all = sources();
     const { service } = await setup(all);

@@ -15,7 +15,7 @@ export interface AuditLabelSources {
 }
 
 /** The rows of a source that need an id lookup, keyed by the entity type they describe. */
-type LookupType = 'member' | 'discipline' | 'user' | 'payment' | 'cash_count';
+type LookupType = 'member' | 'discipline' | 'user' | 'payment' | 'cash_count' | 'face_profile';
 type Names = ReadonlyMap<string, string>;
 
 const kindLabels: Record<AuditEntityType, string> = {
@@ -28,6 +28,7 @@ const kindLabels: Record<AuditEntityType, string> = {
   payment: 'Pago',
   cash_count: 'Arqueo',
   backup: 'Respaldo',
+  face_profile: 'Perfil facial',
 };
 
 // A club has one of each, so the id adds nothing and only the fixed name is shown.
@@ -41,6 +42,8 @@ const lookups: Record<LookupType, { read: (sources: AuditLabelSources) => Promis
   discipline: { read: async (s) => (await s.disciplines()).map((row) => [row.id, row.name]), text: (value) => `Disciplina ${value}` },
   user: { read: async (s) => (await s.users()).map((row) => [row.id, row.name]), text: (value) => `Usuario ${value}` },
   payment: { read: async (s) => (await s.payments()).map((row) => [row.id, String(row.receiptNumber)]), text: (value) => `Pago N.º ${value}` },
+  // A face profile is keyed by its member's id, so it is named by the member number, never by a name.
+  face_profile: { read: async (s) => (await s.members()).map((row) => [row.id, row.memberNumber]), text: (value) => `Perfil facial del socio ${value}` },
   cash_count: { read: async (s) => (await s.cashCounts()).map((row) => [row.id, row.businessDate]), text: (value) => `Arqueo del ${dayMonthYear(value)}` },
 };
 

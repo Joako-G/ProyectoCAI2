@@ -11,6 +11,7 @@ import type { AuditEntry } from '../../src/modules/audit/audit.types.js';
 import { createBackupService } from '../../src/modules/backup/backup.service.js';
 import { createJsonAuditRepository } from '../../src/modules/audit/json-audit.repository.js';
 import { createCashCountService } from '../../src/modules/cashcount/cashcount.service.js';
+import { createFaceService } from '../../src/modules/faces/face.service.js';
 import { createJsonCashCountRepository } from '../../src/modules/cashcount/json-cashcount.repository.js';
 import { createJsonDisciplineRepository } from '../../src/modules/disciplines/json-discipline.repository.js';
 import { createDisciplineService } from '../../src/modules/disciplines/discipline.service.js';
@@ -24,6 +25,7 @@ import { createPaymentService } from '../../src/modules/payments/payment.service
 import { createPricingConfigService } from '../../src/modules/payments/pricing-config.service.js';
 import { createPaymentIncomeSource } from '../../src/modules/reports/income.source.js';
 import { createReportService } from '../../src/modules/reports/report.service.js';
+import { createFakeFaceRepository, descriptor } from '../faces/helpers.js';
 import { UserRepository } from '../../src/modules/users/user.repository.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
 import { routes } from '../authorization/routes.js';
@@ -31,10 +33,10 @@ import { routes } from '../authorization/routes.js';
 const TODAY = new Date('2026-10-05T15:00:00Z');
 
 // Routes that are not reads but write nothing: they only compute a preview or answer a check.
-const WRITES_NOTHING = ['POST /api/payments/preview', 'POST /api/payments/enrollment-preview', 'POST /api/access/check'];
+const WRITES_NOTHING = ['POST /api/payments/preview', 'POST /api/payments/enrollment-preview', 'POST /api/access/check', 'POST /api/faces/recognize'];
 
 // Free text and personal data the scenarios send. None of it may reach the audit file.
-const FORBIDDEN = ['Se mudó de ciudad', 'Cobro duplicado', 'Faltó vuelto', 'Nora Díaz', 'nora@club.test', 'Passw0rd-Long-1', 'Another-Pass-2', 'passwordHash', '3000000'];
+const FORBIDDEN = ['Se mudó de ciudad', 'Cobro duplicado', 'Faltó vuelto', 'Nora Díaz', 'nora@club.test', 'Passw0rd-Long-1', 'Another-Pass-2', 'passwordHash', '3000000', '0.4242424242'];
 
 interface ApiResponse {
   status: number;
@@ -209,6 +211,18 @@ const scenarios: Record<string, (api: Api) => Promise<Prepared>> = {
     send: () => api.call('POST', '/api/backups'),
     expected: (response) => ({ action: 'create', entityType: 'backup', entityId: response.body.name as string, changedFields: [] }),
   }),
+  'PUT /api/faces/missing': async (api) => {
+    const { id } = await createMember(api);
+    return {
+      send: () => api.call('PUT', `/api/faces/${id}`, { descriptor: descriptor(), consent: true }),
+      expected: () => ({ action: 'create', entityType: 'face_profile', entityId: id, changedFields: [] }),
+    };
+  },
+  'DELETE /api/faces/missing': async (api) => {
+    const { id } = await createMember(api);
+    await api.call('PUT', `/api/faces/${id}`, { descriptor: descriptor(), consent: true });
+    return { send: () => api.call('DELETE', `/api/faces/${id}`), expected: () => ({ action: 'delete', entityType: 'face_profile', entityId: id, changedFields: [] }) };
+  },
 };
 
 const servers: Server[] = [];
@@ -258,6 +272,13 @@ async function startApp(failingAudit = false) {
     audit: auditService,
     now,
   });
+  const faceService = createFaceService({
+    repository: createFakeFaceRepository().repository,
+    members: memberService,
+    access: { checkMember: async () => ({ result: 'red', reason: 'not_found' }) },
+    audit: auditService,
+    now,
+  });
   const server = createApp({
     storePath: users.storePath,
     userRepository,
@@ -269,6 +290,7 @@ async function startApp(failingAudit = false) {
     reportService,
     cashCountService,
     backupService,
+    faceService,
     auditService,
   }).listen(0);
   servers.push(server);

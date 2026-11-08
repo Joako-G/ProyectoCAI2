@@ -176,3 +176,26 @@ describe('access check', () => {
     for (const port of Object.values(ports)) expect(Object.values(port)[0]).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('access checkMember', () => {
+  it('answers exactly like the DNI check for the same member', async () => {
+    const { service } = setup([member('one', '30111222')], [membership('one', '2026-10-01')], [paidMonths('one', '2026-10', '2026-11')]);
+    expect(await service.checkMember('one')).toEqual(await service.check('30111222'));
+  });
+
+  it('answers red not_found for an unknown member id', async () => {
+    const { service } = setup([member('one', '30111222')], []);
+    expect(await service.checkMember('nobody')).toEqual({ result: 'red', reason: 'not_found' });
+  });
+
+  it('answers red inactive for an inactive member', async () => {
+    const { service } = setup([member('one', '30111222', { status: 'inactive' })], []);
+    expect(await service.checkMember('one')).toMatchObject({ result: 'red', reason: 'inactive' });
+  });
+
+  it('reads each source once per check', async () => {
+    const { service, ports } = setup([member('one', '30111222')], [membership('one', '2026-10-01')]);
+    await service.checkMember('one');
+    for (const port of Object.values(ports)) expect(Object.values(port)[0]).toHaveBeenCalledTimes(1);
+  });
+});
