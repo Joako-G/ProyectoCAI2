@@ -132,5 +132,11 @@ Work on `manu` (user preference), one work-unit commit per task. Each commit sta
 - 2026-11-08, regression repair (route: single bounded writer). Commit 4ccccfb (Ingreso redesign) emptied `frontend/src/styles/global.css` (1,532 lines deleted, none added) and the Ventanilla styles written with it were lost, so the app rendered unstyled; tests do not cover CSS and stayed green. Found in the browser check. Restored `global.css` from 1220d53 (25,794 bytes), rebuilt the Ventanilla styles in the new `frontend/src/styles/ventanilla.css` (imported in `main.tsx` after `global.css`; `kiosk.css` already covers `.ventanilla` in prefers-reduced-motion), copying the mockup geometry and per-result colors.
   - Guard test `frontend/src/test/styles-coverage.test.ts`: RED before the rules existed (ventanilla.css empty: "expected 0 to be greater than 0"; 72 access classes without a selector); GREEN after: full frontend suite 727 passed, typecheck clean. Not checked on screen by the writer; to be confirmed in the browser.
 
+- 2026-11-08: browser check of `/ingreso` as `secretary@club.test` after the style repair, against the dev servers (the Vite server had to be restarted because it kept serving the emptied `global.css` from its cache).
+  - The app shell and the Ventanilla layout render like the mockup: connection card with the pulsing ring, result banner (green for `99000005`, red for `99000003`), member card with initials, facts row, discipline chips, `Cobrar cuota` and `Ver ficha completa`, the entries table and the `HOY EN EL CLUB` counters.
+  - The DNI field was oversized by an old wall-display rule; it now has a regular size (`1d66a41`).
+  - Not seen: the amber and gray cases, and the door camera path, which the Browser pane blocks. Tests with fakes cover them.
+- 2026-11-08: native reviews of T5 are pending. Part 1 (`b00509d`..`1220d53`) failed twice with `ENOTFOUND`: the machine had no internet, so the reviewers could not reach the API. Part 2 (`1220d53`..`1d66a41`, which includes the commit that emptied `global.css` and its repair) has not started. Retry both when the connection is back.
+
 ## Next step
 T6 remains for the side-by-side comparison with the camera on.
