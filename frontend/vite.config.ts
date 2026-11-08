@@ -15,5 +15,11 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    // Low-RAM development PCs (with Docker running) are slow to render and click through these views; with the
+    // default 5 s limit, correct tests time out. A real hang still fails, only later.
+    testTimeout: 20_000,
+    hookTimeout: 20_000,
+    // Fewer parallel jsdom workers keep the machine from swapping, which is what made the tests slow.
+    maxWorkers: 2,
   },
 });

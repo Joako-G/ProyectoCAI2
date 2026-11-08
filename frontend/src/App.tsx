@@ -4,7 +4,8 @@ import { LoginScreen } from './features/auth/components/LoginScreen';
 import { useSession } from './features/auth/hooks/useSession';
 import type { AuthUser } from './features/auth/types/auth';
 import { can } from './features/auth/utils/can';
-import { AccessView } from './features/access/components/AccessView';
+import { AccessPage } from './features/access/components/AccessPage';
+import { EntranceDisplay } from './features/access/components/EntranceDisplay';
 import { AuditView } from './features/audit/components/AuditView';
 import { BackupView } from './features/backup/components/BackupView';
 import { ArqueoView } from './features/cashcount/components/ArqueoView';
@@ -32,7 +33,7 @@ function pageFor(section: Section, user: AuthUser) {
     case 'disciplines': return <DisciplinesView canWrite={can(user, 'disciplines:write')} />;
     case 'payments': return <PaymentsView canCollect={can(user, 'payments:collect')} canAnnul={can(user, 'payments:annul')} />;
     case 'notices': return <NoticesView />;
-    case 'access': return <AccessView />;
+    case 'access': return <AccessPage />;
     case 'cashcount': return <ArqueoView />;
     case 'reports': return <ReportsView issuedBy={user.name} canReadCashCount={can(user, 'cashcount:run')} />;
     case 'roster': return <RosterView />;
@@ -57,6 +58,9 @@ function ShellLayout({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   </AppShell>;
 }
 
+/** The public entrance display lives outside the shell: full screen, no sidebar, but still behind login. */
+const DISPLAY_PATH = '/pantalla-ingreso';
+
 export function App() {
   const { user, restoring, signIn, signOut } = useSession();
   const navigate = useNavigate();
@@ -80,9 +84,12 @@ export function App() {
   const allowed = sectionsFor(user);
   const home = SECTIONS.find(({ id }) => id === allowed[0])?.path;
   const requested = (state as { from?: string } | null)?.from;
-  const landing = SECTIONS.find(({ id, path }) => path === requested && allowed.includes(id))?.path ?? home;
+  const landing = requested === DISPLAY_PATH && allowed.includes('access')
+    ? DISPLAY_PATH
+    : SECTIONS.find(({ id, path }) => path === requested && allowed.includes(id))?.path ?? home;
 
   return <Routes>
+    <Route path={DISPLAY_PATH} element={allowed.includes('access') ? <EntranceDisplay /> : <main><Forbidden homePath={home} /></main>} />
     <Route element={<ShellLayout user={user} onLogout={() => void handleLogout()} />}>
       {SECTIONS.map(({ id, path }) => (
         <Route key={id} path={path} element={allowed.includes(id) ? pageFor(id, user) : <Forbidden homePath={home} />} />

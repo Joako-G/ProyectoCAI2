@@ -1,5 +1,6 @@
 import { ConflictError, NotFoundError } from '../../shared/errors.js';
 import type { AccessCheck } from '../access/access.types.js';
+import type { EntranceContext, EntranceInput } from '../access/entrance.js';
 import type { AuditRecorder } from '../audit/audit.service.js';
 import type { FaceRepository } from './face.repository.js';
 
@@ -14,15 +15,17 @@ export const RECOGNITION_MAX_DISTANCE = 0.5;
 export interface FaceServiceDeps {
   repository: FaceRepository;
   members: { getById(id: string): Promise<{ id: string; status: 'active' | 'inactive' }> };
-  access: { checkMember(memberId: string): Promise<AccessCheck> };
+  access: { checkMember(memberId: string, context?: EntranceContext): Promise<AccessCheck> };
   audit: AuditRecorder;
+  /** Told about a face nobody matches, so the public display can refuse it. Optional: callers without a display omit it. */
+  entrance?: { register(input: EntranceInput): Promise<void> };
   now?: () => Date;
 }
 
 // Said when nobody matches. It names no member and no distance, so it cannot be used to probe who is enrolled.
 const NOT_RECOGNIZED: AccessCheck = { result: 'red', reason: 'not_recognized' };
 
-export function createFaceService({ repository, members, access, audit, now = () => new Date() }: FaceServiceDeps) {
+export function createFaceService({ repository, members, access, audit, entrance, now = () => new Date() }: FaceServiceDeps) {
   return {
     // Staff confirmed the member's consent (the route requires `consent: true`); the time and the staff member are kept.
     async enroll(memberId: string, input: { descriptor: number[] }, actorId: string): Promise<void> {
@@ -51,11 +54,15 @@ export function createFaceService({ repository, members, access, audit, now = ()
       return found ? { enrolled: true, enrolledAt: found.enrolledAt } : { enrolled: false };
     },
 
-    // Reads only: the answer is the access check of the nearest member, or red when nobody is close enough.
-    async recognize(descriptor: number[]): Promise<AccessCheck> {
+    // Reads the face profiles and writes nothing of its own: the answer is the access check of the nearest member,
+    // or red when nobody is close enough. The access service logs the entrance of an identified member.
+    async recognize(descriptor: number[], actorId: string): Promise<AccessCheck> {
       const nearest = await repository.nearest(descriptor);
-      if (!nearest || nearest.distance > RECOGNITION_MAX_DISTANCE) return NOT_RECOGNIZED;
-      const answer = await access.checkMember(nearest.memberId);
+      if (!nearest || nearest.distance > RECOGNITION_MAX_DISTANCE) {
+        await entrance?.register({ member: undefined, answer: NOT_RECOGNIZED, method: 'face', actorId });
+        return NOT_RECOGNIZED;
+      }
+      const answer = await access.checkMember(nearest.memberId, { method: 'face', actorId });
       // A profile whose member no longer exists, or who is inactive, is a leftover, not a person the door can name.
       return answer.reason === 'not_found' || answer.reason === 'inactive' ? NOT_RECOGNIZED : answer;
     },

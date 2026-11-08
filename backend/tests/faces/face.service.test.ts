@@ -17,8 +17,9 @@ function setup(options: { memberStatus?: 'active' | 'inactive'; access?: AccessC
   };
   const access = { checkMember: vi.fn(async (_id: string) => options.access ?? green) };
   const audit = { record: vi.fn(async (_input: unknown) => undefined) };
-  const service = createFaceService({ repository, members, access, audit, now: () => NOW });
-  return { service, repository, profiles, members, access, audit };
+  const entrance = { register: vi.fn(async (_input: unknown) => undefined) };
+  const service = createFaceService({ repository, members, access, audit, entrance, now: () => NOW });
+  return { service, repository, profiles, members, access, audit, entrance };
 }
 
 describe('enroll', () => {
@@ -87,34 +88,34 @@ describe('recognize', () => {
     const { service, access } = setup();
     await service.enroll('m1', { descriptor: descriptor(0.1) }, 'user-1');
     await service.enroll('m2', { descriptor: descriptor(0.9) }, 'user-1');
-    expect(await service.recognize(descriptor(0.1001))).toEqual(green);
-    expect(access.checkMember).toHaveBeenCalledWith('m1');
+    expect(await service.recognize(descriptor(0.1001), 'user-1')).toEqual(green);
+    expect(access.checkMember).toHaveBeenCalledWith('m1', { method: 'face', actorId: 'user-1' });
   });
 
   it('accepts a distance exactly at the threshold', async () => {
     const { service, repository, access } = setup();
     vi.spyOn(repository, 'nearest').mockResolvedValue({ memberId: 'm1', distance: RECOGNITION_MAX_DISTANCE });
-    expect(await service.recognize(descriptor())).toEqual(green);
-    expect(access.checkMember).toHaveBeenCalledWith('m1');
+    expect(await service.recognize(descriptor(), 'user-1')).toEqual(green);
+    expect(access.checkMember).toHaveBeenCalledWith('m1', { method: 'face', actorId: 'user-1' });
   });
 
   it('answers not recognized beyond the threshold, without checking access or naming anyone', async () => {
     const { service, repository, access } = setup();
     vi.spyOn(repository, 'nearest').mockResolvedValue({ memberId: 'm1', distance: RECOGNITION_MAX_DISTANCE + 0.01 });
-    const answer = await service.recognize(descriptor());
+    const answer = await service.recognize(descriptor(), 'user-1');
     expect(answer).toEqual({ result: 'red', reason: 'not_recognized' });
     expect(access.checkMember).not.toHaveBeenCalled();
   });
 
   it('answers not recognized when nobody is enrolled', async () => {
     const { service } = setup();
-    expect(await service.recognize(descriptor())).toEqual({ result: 'red', reason: 'not_recognized' });
+    expect(await service.recognize(descriptor(), 'user-1')).toEqual({ result: 'red', reason: 'not_recognized' });
   });
 
   it('answers not recognized when the matched member no longer exists', async () => {
     const { service } = setup({ access: { result: 'red', reason: 'not_found' } });
     await service.enroll('m1', { descriptor: descriptor() }, 'user-1');
-    expect(await service.recognize(descriptor())).toEqual({ result: 'red', reason: 'not_recognized' });
+    expect(await service.recognize(descriptor(), 'user-1')).toEqual({ result: 'red', reason: 'not_recognized' });
   });
 
   it('writes nothing', async () => {
@@ -122,7 +123,7 @@ describe('recognize', () => {
     await service.enroll('m1', { descriptor: descriptor() }, 'user-1');
     audit.record.mockClear();
     const upsert = vi.spyOn(repository, 'upsert');
-    await service.recognize(descriptor());
+    await service.recognize(descriptor(), 'user-1');
     expect(audit.record).not.toHaveBeenCalled();
     expect(upsert).not.toHaveBeenCalled();
   });
@@ -149,6 +150,30 @@ describe('recognize an inactive member', () => {
     const inactive: AccessCheck = { result: 'red', reason: 'inactive', member: { memberNumber: '0002', name: 'Baja Prueba', unpaidPeriodCount: 0 } };
     const { service } = setup({ access: inactive });
     await service.enroll('m1', { descriptor: descriptor() }, 'user-1');
-    expect(await service.recognize(descriptor())).toEqual({ result: 'red', reason: 'not_recognized' });
+    expect(await service.recognize(descriptor(), 'user-1')).toEqual({ result: 'red', reason: 'not_recognized' });
+  });
+});
+
+describe('recognize and the entrance', () => {
+  const refusal = { member: undefined, answer: { result: 'red', reason: 'not_recognized' }, method: 'face', actorId: 'user-1' };
+
+  it('tells the entrance about a face that nobody matches, so the display can refuse it', async () => {
+    const { service, repository, entrance } = setup();
+    vi.spyOn(repository, 'nearest').mockResolvedValue({ memberId: 'm1', distance: RECOGNITION_MAX_DISTANCE + 0.01 });
+    await service.recognize(descriptor(), 'user-1');
+    expect(entrance.register).toHaveBeenCalledWith(refusal);
+  });
+
+  it('tells the entrance when nobody is enrolled', async () => {
+    const { service, entrance } = setup();
+    await service.recognize(descriptor(), 'user-1');
+    expect(entrance.register).toHaveBeenCalledWith(refusal);
+  });
+
+  it('leaves a matched member to the access service, which already registered it', async () => {
+    const { service, entrance } = setup();
+    await service.enroll('m1', { descriptor: descriptor() }, 'user-1');
+    await service.recognize(descriptor(), 'user-1');
+    expect(entrance.register).not.toHaveBeenCalled();
   });
 });

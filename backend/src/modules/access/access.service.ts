@@ -5,6 +5,7 @@ import type { Payment } from '../payments/payment.types.js';
 import type { PricingConfig } from '../payments/pricing-config.types.js';
 import { earliestTariffPeriod, lastDayWithoutSurcharge, nextPeriod } from '../payments/pricing.js';
 import type { AccessCheck } from './access.types.js';
+import type { EntranceContext, EntranceInput } from './entrance.js';
 
 /** The slice of a member the check needs; the members service satisfies it as it is. */
 export interface AccessMember {
@@ -26,17 +27,30 @@ export interface AccessServiceDeps {
   memberships: { list(): Promise<Membership[]> };
   payments: { list(): Promise<Payment[]> };
   pricing: { get(): Promise<PricingConfig> };
+  /** Records the identified checks that come with an entrance context. Optional: without it the service only answers. */
+  entrance?: { register(input: EntranceInput): Promise<void> };
   now?: () => Date;
 }
 
-export function createAccessService({ members, memberships, payments, pricing, now = () => new Date() }: AccessServiceDeps) {
+export function createAccessService({ members, memberships, payments, pricing, entrance, now = () => new Date() }: AccessServiceDeps) {
   // Each source is read once, then the member is picked by whichever key the caller has.
-  async function answerFor(pick: (candidate: AccessMember) => boolean): Promise<AccessCheck> {
+  async function answerFor(pick: (candidate: AccessMember) => boolean, context?: EntranceContext): Promise<AccessCheck> {
+    const { answer, member } = await decide(pick);
+    // A face that matches an inactive member is a leftover profile, which the door treats as not recognized, so nobody is named.
+    const identified = member && !(context?.method === 'face' && member.status === 'inactive') ? { id: member.id, firstName: member.firstName } : undefined;
+    if (context) await entrance?.register({ member: identified, answer, ...context });
+    return answer;
+  }
+
+  async function decide(pick: (candidate: AccessMember) => boolean): Promise<{ answer: AccessCheck; member?: AccessMember }> {
     const asOf = toIsoDate(now());
     const [allMembers, history, paid, config] = await Promise.all([members.list(), memberships.list(), payments.list(), pricing.get()]);
     const member = allMembers.find(pick);
-    if (!member) return { result: 'red', reason: 'not_found' };
+    if (!member) return { answer: { result: 'red', reason: 'not_found' } };
+    return { answer: judge(member, history, paid, config, asOf), member };
+  }
 
+  function judge(member: AccessMember, history: Membership[], paid: Payment[], config: PricingConfig, asOf: string): AccessCheck {
     const owed = owedConcepts({ member, memberships: history, payments: paid, firstPeriod: earliestTariffPeriod(config), asOf });
     const summary = { memberNumber: member.memberNumber, name: `${member.firstName} ${member.lastName}`, unpaidPeriodCount: owed.length };
     // An inactive member stays out whatever the account says.
@@ -65,9 +79,10 @@ export function createAccessService({ members, memberships, payments, pricing, n
   return {
     // Whether the member with this (already validated) DNI may enter today.
     // Green: up to date. Yellow: owes 1 to 3 months and enters. Red: deregistered, inactive or unknown.
-    check: (dni: string): Promise<AccessCheck> => answerFor((candidate) => candidate.dni === dni),
+    // With a context (who ran it, by which method) an identified check is also handed to the entrance recorder.
+    check: (dni: string, context?: EntranceContext): Promise<AccessCheck> => answerFor((candidate) => candidate.dni === dni, context),
     // The same answer for a member known by id, for entrances that do not start from a DNI (face recognition).
-    checkMember: (memberId: string): Promise<AccessCheck> => answerFor((candidate) => candidate.id === memberId),
+    checkMember: (memberId: string, context?: EntranceContext): Promise<AccessCheck> => answerFor((candidate) => candidate.id === memberId, context),
   };
 }
 

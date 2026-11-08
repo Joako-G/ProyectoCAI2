@@ -3,7 +3,9 @@ import express from 'express';
 import { apiNotFound, errorHandler } from './middlewares/error-handler.js';
 import { requireCapability, requireCapabilityByMethod } from './middlewares/require-role.js';
 import { createAccessRouter } from './modules/access/access.routes.js';
+import type { EntriesService } from './modules/access/access.entries.js';
 import type { AccessService } from './modules/access/access.service.js';
+import type { GreetingBus } from './modules/access/greeting.bus.js';
 import { createAuditRouter } from './modules/audit/audit.routes.js';
 import { discardAudit, type AuditService } from './modules/audit/audit.service.js';
 import { createAuthRouter } from './modules/auth/auth.routes.js';
@@ -48,6 +50,12 @@ export interface AppDependencies {
   rosterService?: RosterService;
   noticeService?: Pick<NoticeService, 'debtNotices'>;
   accessService?: Pick<AccessService, 'check'>;
+  // Set when there is a database: without it GET /api/access/entries answers 503 entries_unavailable.
+  accessEntries?: Pick<EntriesService, 'list'>;
+  // Present: GET /api/access/display-events streams the public display's greetings. It needs no database.
+  greetings?: Pick<GreetingBus, 'subscribe'>;
+  // Test hook: how often an idle display stream sends a heartbeat comment.
+  displayHeartbeatMs?: number;
   faceService?: FaceService;
   // Set when there is no database: the face routes then answer 503 faces_unavailable instead of 404.
   facesUnavailable?: boolean;
@@ -117,8 +125,8 @@ if (options.noticeService) {
   app.use('/api/notices', requireCapability(authenticate, 'notices:read'), createNoticeRouter(options.noticeService));
 }
 if (options.accessService) {
-  // One POST that reads and writes nothing, so a single capability guards it.
-  app.use('/api/access', requireCapability(authenticate, 'access:check'), createAccessRouter(options.accessService));
+  // The check and the day's entries share one capability; the check writes to the entry log, not to the audit log.
+  app.use('/api/access', requireCapability(authenticate, 'access:check'), createAccessRouter(options.accessService, authenticate, { entries: options.accessEntries, greetings: options.greetings, heartbeatMs: options.displayHeartbeatMs }));
 }
 if (options.faceService) {
   // Enroll, remove and recognize share one capability; the router audits its own writes and recognize writes nothing.

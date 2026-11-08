@@ -1377,6 +1377,94 @@ a:hover {
   font-size: 22px;
 }
 
+.access-display-link {
+  align-self: flex-start;
+  color: var(--color-accent);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.access-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.entries-today {
+  max-width: 960px;
+  padding: 24px;
+}
+
+.entries-today__title {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.entries-today__count {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.entries-today__row--red td:last-child {
+  color: var(--color-error);
+  font-weight: 600;
+}
+
+/* Public entrance display: full screen, readable from across the hall. Color reinforces the words, never replaces them. */
+.entrance-display {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 4vw;
+  text-align: center;
+  color: #fff;
+  background: #1f2937;
+  transition: background-color 0.3s ease;
+}
+
+.entrance-display--welcome {
+  background: #1f7a52;
+}
+
+.entrance-display--see_desk {
+  background: #f5b82e;
+  color: #1a1a1a;
+}
+
+.entrance-display--refused {
+  background: #8f2f2f;
+}
+
+.entrance-display__message {
+  width: 100%;
+}
+
+.entrance-display__text {
+  margin: 0;
+  font-size: clamp(48px, 9vw, 160px);
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.entrance-display--idle .entrance-display__text {
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.entrance-display__offline {
+  position: absolute;
+  right: 24px;
+  bottom: 16px;
+  margin: 0;
+  font-size: 18px;
+  opacity: 0.7;
+}
+
 /* Face recognition: member record block and the Ingreso camera. */
 .face-enrollment {
   display: grid;

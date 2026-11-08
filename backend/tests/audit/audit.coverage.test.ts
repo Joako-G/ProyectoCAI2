@@ -32,8 +32,14 @@ import { routes } from '../authorization/routes.js';
 
 const TODAY = new Date('2026-10-05T15:00:00Z');
 
-// Routes that are not reads but write nothing: they only compute a preview or answer a check.
-const WRITES_NOTHING = ['POST /api/payments/preview', 'POST /api/payments/enrollment-preview', 'POST /api/access/check', 'POST /api/faces/recognize'];
+// Routes that are not reads but write nothing: they only compute a preview.
+const WRITES_NOTHING = ['POST /api/payments/preview', 'POST /api/payments/enrollment-preview'];
+
+// Routes that write, but into their own record instead of the audit log. An entrance check is written to the
+// entry log (access_entries) with who passed, how, the result and the staff member: that log is the record, and
+// an audit entry per entrance would only repeat it as noise. A route may join this list only when it keeps such
+// a record of its own and the reason is written here.
+const SELF_LOGGING = ['POST /api/access/check', 'POST /api/faces/recognize'];
 
 // Free text and personal data the scenarios send. None of it may reach the audit file.
 const FORBIDDEN = ['Se mudó de ciudad', 'Cobro duplicado', 'Faltó vuelto', 'Nora Díaz', 'nora@club.test', 'Passw0rd-Long-1', 'Another-Pass-2', 'passwordHash', '3000000', '0.4242424242'];
@@ -314,9 +320,11 @@ describe('audit coverage of the write routes', () => {
   const writeRoutes = routes.filter(([method]) => method !== 'GET').map(([method, path]) => `${method} ${path}`);
 
   it('has a scenario for every write route in the route matrix, so a new route cannot skip the audit', () => {
-    const audited = writeRoutes.filter((route) => !WRITES_NOTHING.includes(route));
+    const audited = writeRoutes.filter((route) => !WRITES_NOTHING.includes(route) && !SELF_LOGGING.includes(route));
     expect(Object.keys(scenarios).sort()).toEqual(audited.sort());
-    for (const route of WRITES_NOTHING) expect(writeRoutes).toContain(route);
+    for (const route of [...WRITES_NOTHING, ...SELF_LOGGING]) expect(writeRoutes).toContain(route);
+    // A route cannot be exempt from the audit and also have an audited scenario.
+    for (const route of [...WRITES_NOTHING, ...SELF_LOGGING]) expect(Object.keys(scenarios)).not.toContain(route);
   });
 
   it.each(Object.keys(scenarios))('%s leaves exactly one entry naming the actor and the record, and a failed call leaves none', async (route) => {

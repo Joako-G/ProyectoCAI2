@@ -241,3 +241,15 @@ describe('AccessView', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
+
+describe('AccessView public display link', () => {
+  it('offers to open the public entrance display in a new window', () => {
+    stubCheck(buildAccessCheck());
+    render(<AccessView />);
+
+    const link = screen.getByRole('link', { name: 'Abrir pantalla pública' });
+    expect(link).toHaveAttribute('href', '/pantalla-ingreso');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
+  });
+});
