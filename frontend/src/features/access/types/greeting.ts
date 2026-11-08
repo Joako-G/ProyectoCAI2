@@ -19,9 +19,8 @@ export interface GreetingEvent {
   tone: GreetingTone;
   /** Only with welcome and see_desk. */
   firstName?: string;
-  /** Optional on purpose: a message without a valid kind still drives the tone-based display. */
-  kind?: EntranceKind;
-  method?: EntranceMethod;
+  kind: EntranceKind;
+  method: EntranceMethod;
   /** Only when a member was identified. */
   member?: GreetingMember;
   /** Up to date members: last paid month, YYYY-MM. */

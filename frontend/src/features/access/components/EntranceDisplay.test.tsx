@@ -1,7 +1,17 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createFakeTools, type FakeTools } from '../../faces/test/fakes';
+import { jsonResponse } from '../../members/test/fixtures';
 import type { GreetingEvent } from '../types/greeting';
 import { EntranceDisplay } from './EntranceDisplay';
+
+const tools = vi.hoisted(() => ({ current: undefined as unknown as FakeTools }));
+vi.mock('../../faces/services/face-tools', () => ({
+  faceTools: {
+    openCamera: () => tools.current.openCamera(),
+    loadDetector: () => tools.current.loadDetector(),
+  },
+}));
 
 /** Stands in for EventSource: the test decides when events and errors arrive. */
 class FakeSource {
@@ -28,8 +38,8 @@ class FakeSource {
     act(() => this.onopen?.());
   }
 
-  greet(event: Partial<GreetingEvent> & Pick<GreetingEvent, 'tone'>, raw?: string) {
-    const data = raw ?? JSON.stringify({ at: '2026-11-07T15:00:00.000Z', ...event });
+  greet(event: Partial<GreetingEvent>, raw?: string) {
+    const data = raw ?? JSON.stringify({ at: '2026-11-07T15:00:00.000Z', tone: 'welcome', kind: 'up_to_date', method: 'face', ...event });
     act(() => (this.handlers.get('greeting') ?? []).forEach((handler) => handler({ data } as MessageEvent<string>)));
   }
 
@@ -42,75 +52,106 @@ class FakeSource {
 const createSource = (url: string) => new FakeSource(url);
 const latest = () => FakeSource.all[FakeSource.all.length - 1]!;
 
+const lucia = { id: 'm1', memberNumber: '0101', fullName: 'Lucía Prueba', firstName: 'Lucía', disciplines: ['Natación'] };
+const upToDate: Partial<GreetingEvent> = { tone: 'welcome', kind: 'up_to_date', firstName: 'Lucía', member: lucia, paidThrough: '2026-08', dueDate: '2026-09-10' };
+
+let fetchMock: ReturnType<typeof vi.fn>;
+
 beforeEach(() => {
   FakeSource.all = [];
+  tools.current = createFakeTools();
+  fetchMock = vi.fn(async (url: string) => (url === '/api/faces/summary' ? jsonResponse({ enrolled: 312 }) : jsonResponse({})));
+  vi.stubGlobal('fetch', fetchMock);
 });
 
 afterEach(() => {
   FakeSource.all = [];
+  vi.unstubAllGlobals();
 });
 
 function show(props: { holdMs?: number; reconnectMs?: number } = {}) {
-  return render(<EntranceDisplay createSource={createSource} holdMs={props.holdMs ?? 5000} reconnectMs={props.reconnectMs ?? 20} />);
+  return render(<EntranceDisplay createSource={createSource} holdMs={props.holdMs ?? 5000} reconnectMs={props.reconnectMs ?? 20} timing={{ scanIntervalMs: 5 }} />);
 }
 
 describe('EntranceDisplay', () => {
   it('connects to the greeting stream and waits with a welcome', () => {
     show();
     expect(latest().url).toBe('/api/access/display-events');
-    expect(screen.getByText('Bienvenidos al club')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Bienvenido al club' })).toBeInTheDocument();
   });
 
-  it('greets a member who may enter by first name', () => {
+  it('shows an up to date member with the full name, number, month and due date', () => {
     show();
-    latest().greet({ tone: 'welcome', firstName: 'Lucía' });
-    expect(screen.getByText('¡Bienvenido/a, Lucía!')).toBeInTheDocument();
-    expect(screen.queryByText('Bienvenidos al club')).not.toBeInTheDocument();
+    latest().greet(upToDate);
+    expect(screen.getByRole('heading', { name: 'Pasá, Lucía' })).toBeInTheDocument();
+    expect(screen.getByText('Lucía Prueba')).toBeInTheDocument();
+    expect(screen.getByText('0101')).toBeInTheDocument();
+    expect(screen.getByText('AL DÍA')).toBeInTheDocument();
+    expect(screen.getByText('Tu cuota está paga hasta agosto 2026. Disciplinas: Natación.')).toBeInTheDocument();
+    expect(screen.getByText('10/09/2026')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Bienvenido al club' })).not.toBeInTheDocument();
   });
 
-  it('asks a yellow member to pass by the desk', () => {
+  it('asks a member who owes to pass by the desk, without an amount or a count of months', () => {
     show();
-    latest().greet({ tone: 'see_desk', firstName: 'Lucía' });
-    expect(screen.getByText('¡Bienvenido/a, Lucía! Pasá por secretaría')).toBeInTheDocument();
+    latest().greet({ tone: 'see_desk', kind: 'debtor', firstName: 'Lucía', member: lucia, debtSince: '2026-06', unpaidPeriodCount: 5 });
+    expect(screen.getByText('Hola, Lucía Prueba. Tenés cuotas pendientes desde junio 2026. Pasá por secretaría.')).toBeInTheDocument();
+    expect(screen.getByText('PENDIENTE')).toBeInTheDocument();
+    expect(screen.getByText('ACCESO AUTORIZADO · AVISO')).toBeInTheDocument();
   });
 
-  it('refuses with no name and no reason', () => {
+  it('shows a deregistered and an inactive member in their own states', () => {
     show();
-    latest().greet({ tone: 'refused' });
-    expect(screen.getByText('Acercate a secretaría')).toBeInTheDocument();
-    expect(screen.queryByText(/Bienvenido\/a/)).not.toBeInTheDocument();
+    latest().greet({ tone: 'refused', kind: 'deregistered', member: lucia, debtSince: '2026-01' });
+    expect(screen.getByRole('heading', { name: 'Lucía, pasá por secretaría' })).toBeInTheDocument();
+    latest().greet({ tone: 'refused', kind: 'inactive', member: lucia });
+    expect(screen.getByRole('heading', { name: 'Lucía, hablá con secretaría' })).toBeInTheDocument();
   });
 
-  it('never shows more than the name it was given, even if the event carries more', () => {
+  it('asks to try again, with no member data, when nobody was recognized', () => {
     show();
-    latest().greet({ tone: 'refused' }, JSON.stringify({ at: '2026-11-07T15:00:00.000Z', tone: 'refused', firstName: 'Lucía', memberNumber: '101', reason: 'deregistered', debt: 90000 }));
+    latest().greet({ tone: 'refused', kind: 'not_recognized' });
+    expect(screen.getByRole('heading', { name: 'Probá otra vez' })).toBeInTheDocument();
+    expect(screen.queryByTestId('kiosk-card')).not.toBeInTheDocument();
+  });
+
+  it('never shows more than the screen knows, even if the event carries more', () => {
+    show();
+    latest().greet({}, JSON.stringify({ at: '2026-11-07T15:00:00.000Z', tone: 'refused', kind: 'not_found', method: 'dni', firstName: 'Lucía', memberNumber: '101', reason: 'deregistered', debt: 90000, dni: '30111222' }));
     const text = document.body.textContent ?? '';
-    expect(text).not.toMatch(/Lucía|101|deregistered|90000/);
+    expect(text).not.toMatch(/Lucía Prueba|90000|30111222|deregistered/);
   });
 
-  it('returns to the welcome after the greeting has been shown for a while', async () => {
+  it('shows the same result when the check came from the secretary by DNI', () => {
+    show();
+    latest().greet({ ...upToDate, method: 'dni' });
+    expect(screen.getByRole('heading', { name: 'Pasá, Lucía' })).toBeInTheDocument();
+  });
+
+  it('returns to the welcome after the result has been shown for a while', async () => {
     show({ holdMs: 40 });
-    latest().greet({ tone: 'welcome', firstName: 'Lucía' });
-    expect(screen.getByText('¡Bienvenido/a, Lucía!')).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText('Bienvenidos al club')).toBeInTheDocument());
+    latest().greet(upToDate);
+    expect(screen.getByRole('heading', { name: 'Pasá, Lucía' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Bienvenido al club' })).toBeInTheDocument());
   });
 
-  it('replaces a greeting with the next one and restarts the time', async () => {
+  it('replaces a result with the next one and restarts the time', async () => {
     show({ holdMs: 60 });
-    latest().greet({ tone: 'welcome', firstName: 'Lucía' });
+    latest().greet(upToDate);
     await new Promise((resolve) => setTimeout(resolve, 40));
-    latest().greet({ tone: 'welcome', firstName: 'Mateo' });
-    expect(screen.getByText('¡Bienvenido/a, Mateo!')).toBeInTheDocument();
+    latest().greet({ ...upToDate, firstName: 'Mateo', member: { ...lucia, firstName: 'Mateo', fullName: 'Mateo Quiroga' } });
+    expect(screen.getByRole('heading', { name: 'Pasá, Mateo' })).toBeInTheDocument();
     await new Promise((resolve) => setTimeout(resolve, 40));
-    expect(screen.getByText('¡Bienvenido/a, Mateo!')).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText('Bienvenidos al club')).toBeInTheDocument());
+    expect(screen.getByRole('heading', { name: 'Pasá, Mateo' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Bienvenido al club' })).toBeInTheDocument());
   });
 
   it('ignores a message that is not a greeting', () => {
     show();
-    latest().greet({ tone: 'welcome' }, 'not json');
-    latest().greet({ tone: 'welcome' }, JSON.stringify({ tone: 'party' }));
-    expect(screen.getByText('Bienvenidos al club')).toBeInTheDocument();
+    latest().greet({}, 'not json');
+    latest().greet({}, JSON.stringify({ tone: 'party' }));
+    latest().greet({}, JSON.stringify({ at: 'x', tone: 'welcome', firstName: 'Lucía' }));
+    expect(screen.getByRole('heading', { name: 'Bienvenido al club' })).toBeInTheDocument();
   });
 
   it('shows a quiet reconnecting notice while the stream is down, and clears it when it is back', () => {
@@ -147,5 +188,57 @@ describe('EntranceDisplay', () => {
     await new Promise((resolve) => setTimeout(resolve, 60));
     expect(first.readyState).toBe(2);
     expect(FakeSource.all).toHaveLength(1);
+  });
+});
+
+describe('EntranceDisplay camera', () => {
+  it('starts the camera when the screen opens and releases it when it closes', async () => {
+    const { unmount } = show();
+    await waitFor(() => expect(tools.current.openCamera).toHaveBeenCalledTimes(1));
+    expect(await screen.findByLabelText('Vista de la cámara')).toBeInTheDocument();
+    unmount();
+    expect(tools.current.cam.stop).toHaveBeenCalled();
+  });
+
+  it('shows the live hint of the capture guide under the camera', async () => {
+    tools.current.detector.look.mockResolvedValue({ faceCount: 1, box: { x: 0.4, y: 0.35, width: 0.2, height: 0.3 }, score: 0.95, yaw: 0, pitch: 0, brightness: 130, surroundBrightness: 120 });
+    show();
+    expect(await screen.findByText('Acercate')).toBeInTheDocument();
+  });
+
+  it('moves the framing rectangle to the detected face', async () => {
+    show();
+    const frame = screen.getByTestId('kiosk-frame');
+    expect(frame).toHaveStyle({ left: '224px', top: '201px' });
+    await waitFor(() => expect(frame).not.toHaveStyle({ left: '224px', top: '201px' }));
+  });
+
+  it('keeps the welcome and says what is wrong when the camera cannot be used', async () => {
+    tools.current.openCamera.mockRejectedValue(Object.assign(new Error('x'), { name: 'NotAllowedError' }));
+    show();
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Bienvenido al club' })).toBeInTheDocument();
+  });
+
+  it('asks how many faces are enrolled, once, and survives a failure', async () => {
+    fetchMock.mockImplementation(async () => new Response('x', { status: 503 }));
+    show();
+    await waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => url === '/api/faces/summary')).toHaveLength(1));
+    expect(screen.getByRole('heading', { name: 'Bienvenido al club' })).toBeInTheDocument();
+  });
+});
+
+describe('EntranceDisplay layout', () => {
+  it('scales the stage to the window and keeps it centered', () => {
+    vi.stubGlobal('innerWidth', 590);
+    vi.stubGlobal('innerHeight', 2000);
+    show();
+    expect(screen.getByTestId('kiosk-stage')).toHaveStyle({ transform: 'scale(0.5)' });
+    act(() => {
+      vi.stubGlobal('innerWidth', 2360);
+      vi.stubGlobal('innerHeight', 1400);
+      window.dispatchEvent(new Event('resize'));
+    });
+    expect(screen.getByTestId('kiosk-stage')).toHaveStyle({ transform: 'scale(2)' });
   });
 });

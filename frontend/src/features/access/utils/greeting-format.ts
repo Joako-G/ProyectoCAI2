@@ -24,18 +24,11 @@ function parseMember(value: unknown): GreetingMember | undefined {
   return { id, memberNumber, fullName, firstName, disciplines };
 }
 
-/** What the public screen says. Provisional wording, not yet confirmed by the club. A refusal never carries a name. */
-export function greetingText({ tone, firstName }: GreetingEvent): string {
-  if (tone === 'refused') return 'Acercate a secretaría';
-  const greeting = firstName ? `¡Bienvenido/a, ${firstName}!` : '¡Bienvenido/a!';
-  return tone === 'see_desk' ? `${greeting} Pasá por secretaría` : greeting;
-}
-
 /**
- * Reads one stream message and keeps only what the screens know: the time, the tone, the first name of someone who
- * enters and, when present and well formed, the kind, the method and the identified member with the month and date
- * details. Anything else is dropped, a field with the wrong shape is dropped on its own, and a message that is not
- * a greeting is ignored. A check that identified nobody never keeps member data, whatever the message says.
+ * Reads one stream message and keeps only what the screens know: the time, the tone, the kind, the method and, when
+ * present and well formed, the first name of someone who enters, the identified member and the month and date
+ * details. Anything else is dropped, an optional field with the wrong shape is dropped on its own, and a message
+ * without a valid tone, kind and method is ignored. A check that identified nobody never keeps member data, whatever the message says.
  */
 export function parseGreeting(raw: string): GreetingEvent | undefined {
   let value: unknown;
@@ -50,8 +43,10 @@ export function parseGreeting(raw: string): GreetingEvent | undefined {
   if (typeof tone !== 'string' || !TONES.includes(tone as GreetingTone)) return undefined;
   if (firstName !== undefined && typeof firstName !== 'string') return undefined;
   const name = firstName?.trim();
-  const validKind = typeof kind === 'string' && KINDS.includes(kind as EntranceKind) ? (kind as EntranceKind) : undefined;
-  const validMethod = typeof method === 'string' && METHODS.includes(method as EntranceMethod) ? (method as EntranceMethod) : undefined;
+  if (typeof kind !== 'string' || !KINDS.includes(kind as EntranceKind)) return undefined;
+  if (typeof method !== 'string' || !METHODS.includes(method as EntranceMethod)) return undefined;
+  const validKind = kind as EntranceKind;
+  const validMethod = method as EntranceMethod;
   const identifiesNobody = validKind === 'not_recognized' || validKind === 'not_found';
   const member = identifiesNobody ? undefined : parseMember(message.member);
   const detail = !identifiesNobody;
@@ -59,8 +54,8 @@ export function parseGreeting(raw: string): GreetingEvent | undefined {
     at: typeof at === 'string' ? at : '',
     tone: tone as GreetingTone,
     ...(tone !== 'refused' && name && detail ? { firstName: name } : {}),
-    ...(validKind ? { kind: validKind } : {}),
-    ...(validMethod ? { method: validMethod } : {}),
+    kind: validKind,
+    method: validMethod,
     ...(member ? { member } : {}),
     ...(detail && typeof paidThrough === 'string' && MONTH.test(paidThrough) ? { paidThrough } : {}),
     ...(detail && typeof dueDate === 'string' && DAY.test(dueDate) ? { dueDate } : {}),

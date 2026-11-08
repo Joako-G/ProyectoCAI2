@@ -76,7 +76,7 @@ Work on `manu` (user preference), one work-unit commit per task. Each commit sta
 ## Tasks
 - [x] T1 — Design foundation. Self-hosted fonts, the crest, the mockup's colors, typography and animations as shared styles.
 - [x] T2 — Richer entrance events: full name, case, month of the debt or of the due date, and the member's disciplines. Backend and parser.
-- [ ] T3 — Client screen like "Kiosco facial": full viewport and centered, live camera, an oval guide, a frame that follows the detected face, the progress bar, the live clock and the five states.
+- [x] T3 — Client screen like "Kiosco facial": full viewport and centered, live camera, an oval guide, a frame that follows the detected face, the progress bar, the live clock and the five states.
 - [ ] T4 — Hands-free loop on the client screen, with the 30-second anti-repeat and a visible message when the session expires.
 - [ ] T5 — Secretary's Ingreso like "Ventanilla": the result banner, the member card, "Cobrar cuota" and "Ver ficha completa", "Accesos de hoy" with chips, and "Hoy en el club" counters. The "Cámara" button goes away and the DNI field stays as a fallback.
 - [ ] T6 — Side-by-side comparison with the mockup and tuning.
@@ -99,5 +99,12 @@ Work on `manu` (user preference), one work-unit commit per task. Each commit sta
 
 - 2026-11-08: Gentle-AI review of T1+T2 (`d9a6570`..`e464602`, lineage `review-f70fbdbc92a87507`, 22 files, 670 lines, medium risk, consent granted): approved and acknowledged, with no findings listed.
 
+- 2026-11-08, T3 done (route: delegated writer, trigger: 2+ non-trivial files across backend and frontend). RED: backend `service.summary is not a function` and `GET /api/faces/summary` answered the member status instead of the count (2 failed); frontend utils `fit-scale`, `pane-geometry`, `kiosk-texts` failed with "Failed to resolve import", `greeting-format` 1 failed (a message without kind and method was still accepted), `useCaptureGuide` box test and `getFaceSummary is not a function`, `KioskScreen` failed to resolve, `EntranceDisplay` 16 failed. GREEN: backend 69 files, 1128 tests with Docker, typecheck clean; frontend 67 files, 688 tests, typecheck clean.
+  - Stage: rendered at 1180x700 and scaled with `fitScale(w, h) = min(w/1180, h/700)` by a resize listener, centered on both axes on #111820 inside a `kiosk` wrapper.
+  - Frame: `useCaptureGuide` now returns the face `box`; `frameForFace` maps it to the 710x700 pane (cover crop and mirror) and the frame moves with a 120 ms CSS transition, falling back to the design position. The oval dims what is outside it with a box-shadow.
+  - Backend: `GET /api/faces/summary` returns `{ enrolled }`, route matrix row added, read-only for the audit coverage. The client screen omits the number if it cannot be read.
+  - Frontend event type: `kind` and `method` are now required; a stream message without them is ignored. `greetingText` was removed (all copy lives in `kiosk-texts.ts`).
+  - Decision gaps: the member avatar is a 78 px circle (the photo box was 78x96); the idle fallback line reads "¿No funciona? Pedí ayuda en secretaría: te buscan por DNI."; a member kind with no member data is shown as "Probá otra vez". The hands-free loop, the identifying state, session expiry and the 503 state are wired in T4 (the screen already renders them). Visual check against the mockup is T6; the real camera was not exercised here.
+
 ## Next step
-T3, once the user says to start.
+T4, once the user says to start.

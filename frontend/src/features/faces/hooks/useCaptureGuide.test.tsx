@@ -94,4 +94,14 @@ describe('useCaptureGuide', () => {
     await waitFor(() => expect(describe).toHaveBeenCalled());
     expect(onStable).not.toHaveBeenCalled();
   });
+
+  it('exposes the box of the single face in view, and drops it when the face is gone', async () => {
+    const { result } = setup({ looks: [GOOD_FACTS] });
+    await waitFor(() => expect(result.current.box).toEqual(GOOD_FACTS.box));
+    const gone = setup({ looks: [GOOD_FACTS, NO_FACE_FACTS] });
+    await waitFor(() => expect(gone.result.current.box).toBeUndefined());
+    const two = setup({ looks: [TWO_FACES_FACTS] });
+    await waitFor(() => expect(two.result.current.status).toBe('adjusting'));
+    expect(two.result.current.box).toBeUndefined();
+  });
 });

@@ -1,27 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { greetingText, parseGreeting } from './greeting-format';
-
-describe('greetingText', () => {
-  it('words each tone exactly', () => {
-    expect(greetingText({ at: 'x', tone: 'welcome', firstName: 'Lucía' })).toBe('¡Bienvenido/a, Lucía!');
-    expect(greetingText({ at: 'x', tone: 'see_desk', firstName: 'Lucía' })).toBe('¡Bienvenido/a, Lucía! Pasá por secretaría');
-    expect(greetingText({ at: 'x', tone: 'refused' })).toBe('Acercate a secretaría');
-  });
-
-  it('never names anyone on a refusal, whatever the event carries', () => {
-    expect(greetingText({ at: 'x', tone: 'refused', firstName: 'Lucía' })).toBe('Acercate a secretaría');
-  });
-
-  it('greets without a name rather than showing a gap when the name is missing', () => {
-    expect(greetingText({ at: 'x', tone: 'welcome' })).toBe('¡Bienvenido/a!');
-    expect(greetingText({ at: 'x', tone: 'see_desk' })).toBe('¡Bienvenido/a! Pasá por secretaría');
-  });
-});
+import { parseGreeting } from './greeting-format';
 
 describe('parseGreeting', () => {
   it('keeps only the known fields: the tone, the time, the first name and the entrance detail', () => {
-    const event = parseGreeting(JSON.stringify({ at: '2026-11-07T15:00:00.000Z', tone: 'welcome', firstName: 'Lucía', dni: '30111222', amount: 20000, reason: 'x' }));
-    expect(event).toEqual({ at: '2026-11-07T15:00:00.000Z', tone: 'welcome', firstName: 'Lucía' });
+    const event = parseGreeting(JSON.stringify({ at: '2026-11-07T15:00:00.000Z', tone: 'welcome', firstName: 'Lucía', kind: 'up_to_date', method: 'dni', dni: '30111222', amount: 20000, reason: 'x' }));
+    expect(event).toEqual({ at: '2026-11-07T15:00:00.000Z', tone: 'welcome', firstName: 'Lucía', kind: 'up_to_date', method: 'dni' });
   });
 
   const identified = { id: 'm1', memberNumber: '0101', fullName: 'Lucía Prueba', firstName: 'Lucía', disciplines: ['Básquet', 'Natación'], dni: '30111222' };
@@ -48,17 +31,26 @@ describe('parseGreeting', () => {
     expect(event).toMatchObject({ tone: 'refused', kind: 'deregistered', method: 'dni', debtSince: '2026-06', unpaidPeriodCount: 5, member: { id: 'm1' } });
   });
 
-  it('drops a field with the wrong shape instead of trusting it', () => {
+  it('drops an optional field with the wrong shape instead of trusting it', () => {
     const event = parseGreeting(
-      JSON.stringify({ at: 'x', tone: 'see_desk', firstName: 'Lucía', kind: 'party', method: 'telepathy', member: { ...identified, id: 7 }, paidThrough: '2026-13', dueDate: 'soon', debtSince: '06/2026', unpaidPeriodCount: -1 }),
+      JSON.stringify({ at: 'x', tone: 'see_desk', firstName: 'Lucía', kind: 'debtor', method: 'face', member: { ...identified, id: 7 }, paidThrough: '2026-13', dueDate: 'soon', debtSince: '06/2026', unpaidPeriodCount: -1 }),
     );
-    expect(event).toEqual({ at: 'x', tone: 'see_desk', firstName: 'Lucía' });
+    expect(event).toEqual({ at: 'x', tone: 'see_desk', firstName: 'Lucía', kind: 'debtor', method: 'face' });
+  });
+
+  it('requires a valid kind and method: a message without them is not a greeting', () => {
+    const base = { at: 'x', tone: 'welcome', firstName: 'Lucía' };
+    expect(parseGreeting(JSON.stringify(base))).toBeUndefined();
+    expect(parseGreeting(JSON.stringify({ ...base, kind: 'up_to_date' }))).toBeUndefined();
+    expect(parseGreeting(JSON.stringify({ ...base, method: 'dni' }))).toBeUndefined();
+    expect(parseGreeting(JSON.stringify({ ...base, kind: 'party', method: 'dni' }))).toBeUndefined();
+    expect(parseGreeting(JSON.stringify({ ...base, kind: 'up_to_date', method: 'telepathy' }))).toBeUndefined();
   });
 
   it('keeps only the string discipline names', () => {
-    const event = parseGreeting(JSON.stringify({ at: 'x', tone: 'welcome', member: { ...identified, disciplines: ['Básquet', 3, null, '  '] } }));
+    const event = parseGreeting(JSON.stringify({ at: 'x', tone: 'welcome', kind: 'up_to_date', method: 'dni', member: { ...identified, disciplines: ['Básquet', 3, null, '  '] } }));
     expect(event?.member?.disciplines).toEqual(['Básquet']);
-    const broken = parseGreeting(JSON.stringify({ at: 'x', tone: 'welcome', member: { ...identified, disciplines: 'Básquet' } }));
+    const broken = parseGreeting(JSON.stringify({ at: 'x', tone: 'welcome', kind: 'up_to_date', method: 'dni', member: { ...identified, disciplines: 'Básquet' } }));
     expect(broken?.member?.disciplines).toEqual([]);
   });
 
@@ -70,11 +62,11 @@ describe('parseGreeting', () => {
   });
 
   it('drops a name from a refusal', () => {
-    expect(parseGreeting(JSON.stringify({ at: 'x', tone: 'refused', firstName: 'Lucía' }))).toEqual({ at: 'x', tone: 'refused' });
+    expect(parseGreeting(JSON.stringify({ at: 'x', tone: 'refused', kind: 'inactive', method: 'dni', firstName: 'Lucía' }))).toEqual({ at: 'x', tone: 'refused', kind: 'inactive', method: 'dni' });
   });
 
   it('rejects anything that is not a greeting', () => {
-    for (const raw of ['', 'nope', '[]', 'null', '{"tone":"party"}', '{"tone":"welcome","firstName":42}']) {
+    for (const raw of ['', 'nope', '[]', 'null', '{"tone":"party"}', '{"tone":"welcome","firstName":42,"kind":"up_to_date","method":"dni"}']) {
       expect(parseGreeting(raw), raw).toBeUndefined();
     }
   });
