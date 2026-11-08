@@ -8,7 +8,7 @@ export type BackupState =
   | { phase: 'error'; message: string }
   | { phase: 'ready'; status: BackupStatus };
 
-export type RunState = { phase: 'idle' } | { phase: 'running' } | { phase: 'done' } | { phase: 'error'; message: string };
+export type RunState = { phase: 'idle' } | { phase: 'running' } | { phase: 'done'; partial: boolean } | { phase: 'error'; message: string };
 
 /** Loads the backup status and makes a copy now. */
 export function useBackups() {
@@ -41,8 +41,8 @@ export function useBackups() {
   const makeCopy = useCallback(async () => {
     setRun({ phase: 'running' });
     try {
-      await runBackup();
-      setRun({ phase: 'done' });
+      const result = await runBackup();
+      setRun({ phase: 'done', partial: result.partial === true });
     } catch (error: unknown) {
       setRun({ phase: 'error', message: describeRunError(error) });
     }

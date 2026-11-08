@@ -60,4 +60,6 @@ Without `TEST_DATABASE_URL` the database tests are skipped, with a message namin
 
 ## Backups
 
-The daily backup copies JSON files only. Data in PostgreSQL is not backed up yet; solve that before any real use.
+The daily backup (RNF-03) also dumps this database with `pg_dump -Fc` when `DATABASE_URL` is set, and saves it as `database.dump` in the same dated folder as the JSON files. It runs `pg_dump` through `PG_DUMP_COMMAND`, `docker compose exec` on the `db` service, or a `pg_dump` on the `PATH`, in that order. The dump holds the face descriptors and the entrance log: protect the backup drive. How it works, how to restore it and a restore rehearsal: `docs/backup-restore.md`.
+
+`backend/tests/database/backup-dump.test.ts` dumps the test database for real, and skips itself if no dump command can run.

@@ -77,6 +77,66 @@ describe('BackupView', () => {
     expect(alert).not.toHaveTextContent('ENOSPC');
   });
 
+  it('shows the database part of the last copy with its size', async () => {
+    stubStatus(buildStatus());
+    render(<BackupView />);
+
+    expect(await screen.findByText('Base de datos: incluida (5,0 MB)')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('shows a very small dump as a minimum size instead of 0 MB', async () => {
+    stubStatus(buildStatus({ database: { lastCopy: { state: 'included', file: 'database.dump', format: 'pg_dump-custom', bytes: 20_000 }, lastFailure: null } }));
+    render(<BackupView />);
+
+    expect(await screen.findByText('Base de datos: incluida (menos de 0,1 MB)')).toBeInTheDocument();
+  });
+
+  it('warns that the last copy has no database, and shows the code on the line', async () => {
+    stubStatus(buildStatus({ database: { lastCopy: { state: 'failed', code: 'DATABASE_DUMP_UNAVAILABLE' }, lastFailure: { at: '2026-11-04T15:00:00.000Z', code: 'DATABASE_DUMP_UNAVAILABLE' } } }));
+    render(<BackupView />);
+
+    expect(await screen.findByText('Base de datos: no se pudo copiar (DATABASE_DUMP_UNAVAILABLE)')).toBeInTheDocument();
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('La última copia no incluye la base de datos');
+    expect(alert).toHaveTextContent('caras registradas y el registro de ingresos');
+    expect(alert).toHaveTextContent('quien mantiene el sistema');
+    expect(alert).not.toHaveTextContent('DATABASE_DUMP');
+  });
+
+  it('says the database is not configured, without a warning', async () => {
+    stubStatus(buildStatus({ database: { lastCopy: { state: 'not_configured' }, lastFailure: null } }));
+    render(<BackupView />);
+
+    expect(await screen.findByText('Base de datos: no configurada')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('shows no database line while there is no copy', async () => {
+    stubStatus(buildStatus({ lastSuccessAt: null, copies: 0, database: { lastCopy: null, lastFailure: null } }));
+    render(<BackupView />);
+
+    expect(await screen.findByText('Todavía no hay ningún respaldo.')).toBeInTheDocument();
+    expect(screen.queryByText(/Base de datos:/)).not.toBeInTheDocument();
+  });
+
+  it('says a manual copy was made without the database when the dump failed', async () => {
+    let copied = false;
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        copied = true;
+        return jsonResponse({ ...COPY, database: { state: 'failed', code: 'DATABASE_DUMP_FAILED' }, partial: true }, 201);
+      }
+      return jsonResponse(copied ? buildStatus({ database: { lastCopy: { state: 'failed', code: 'DATABASE_DUMP_FAILED' }, lastFailure: null } }) : buildStatus());
+    }));
+    const user = userEvent.setup();
+    render(<BackupView />);
+
+    await user.click(await screen.findByRole('button', { name: 'Hacer un respaldo ahora' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Respaldo realizado, pero sin la base de datos.');
+  });
+
   it('shows an error with a retry that loads the status again', async () => {
     const fetchMock = vi
       .fn()

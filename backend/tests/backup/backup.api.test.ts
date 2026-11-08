@@ -14,10 +14,21 @@ const STATUS: BackupStatus = {
   keepRecent: 5,
   copies: 2,
   lastSuccessAt: '2026-11-04T15:00:00.000Z',
+  lastGoodAt: '2026-11-04T15:00:00.000Z',
   lastFailure: null,
   running: false,
+  database: { lastCopy: { state: 'included', file: 'database.dump', format: 'pg_dump-custom', bytes: 1024 }, lastFailure: null },
 };
-const GOOD: BackupRun = { ok: true, backup: { name: 'backup-20261104T150000Z', at: '2026-11-04T15:00:00.000Z', files: ['members.json'] } };
+const GOOD: BackupRun = {
+  ok: true,
+  backup: {
+    name: 'backup-20261104T150000Z',
+    at: '2026-11-04T15:00:00.000Z',
+    files: ['members.json'],
+    database: { state: 'included', file: 'database.dump', format: 'pg_dump-custom', bytes: 1024 },
+    partial: false,
+  },
+};
 
 let baseUrl: string;
 let server: Server;
@@ -70,6 +81,14 @@ describe('backup API: the head secretary', () => {
     expect(response.status).toBe(201);
     expect(await response.json()).toEqual(GOOD.ok ? GOOD.backup : null);
     expect(run).toHaveBeenCalledWith('user-head_secretary');
+  });
+
+  it('answers 201 with the failure code of the database part when the dump failed but the copy was made', async () => {
+    const partial: BackupRun = { ok: true, backup: { name: 'backup-20261104T150000Z', at: '2026-11-04T15:00:00.000Z', files: ['members.json'], database: { state: 'failed', code: 'DATABASE_DUMP_FAILED' }, partial: true } };
+    run.mockResolvedValueOnce(partial);
+    const response = await send('POST', 'head_secretary');
+    expect(response.status).toBe(201);
+    expect(await response.json()).toMatchObject({ partial: true, database: { state: 'failed', code: 'DATABASE_DUMP_FAILED' } });
   });
 
   it('answers 409 when a copy is already running', async () => {

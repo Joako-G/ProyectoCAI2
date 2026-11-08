@@ -17,7 +17,7 @@ In another terminal, run `pnpm --filter @club-socios/backend start` after buildi
 
 ## Backups
 
-While the backend runs it copies every data file once a day to `backend/backups`, or to the folder in `BACKUP_DIR` (for example an external drive), and keeps the newest copy of each of the last 30 days plus the 5 most recent copies. A configured folder must already exist: with the drive unplugged the copy fails and the screen says so. The head secretary sees the last copy in the Respaldo section. To restore a copy, follow `docs/backup-restore.md`.
+While the backend runs it copies every data file, and the PostgreSQL database as `database.dump` when `DATABASE_URL` is set, once a day to `backend/backups`, or to the folder in `BACKUP_DIR` (for example an external drive), and keeps the newest copy of each of the last 30 days plus the 5 most recent copies. A configured folder must already exist: with the drive unplugged the copy fails and the screen says so. The head secretary sees the last copy in the Respaldo section. To restore a copy, follow `docs/backup-restore.md`.
 
 ## Database (optional)
 

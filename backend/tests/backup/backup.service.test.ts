@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, readFile, readdir, rename, rm, stat, writeFile } from '
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DumpError, type DatabaseDumper } from '../../src/modules/backup/backup.dump.js';
 import { createBackupService } from '../../src/modules/backup/backup.service.js';
 import { ConflictError } from '../../src/shared/errors.js';
 import type { AuditRecordInput } from '../../src/modules/audit/audit.types.js';
@@ -33,7 +34,7 @@ async function writeData(name: string, content: string) {
   await writeFile(dataFile(name), content);
 }
 
-function createService(overrides: { keep?: number; keepRecent?: number; isDefaultDestination?: boolean } = {}) {
+function createService(overrides: { keep?: number; keepRecent?: number; isDefaultDestination?: boolean; database?: DatabaseDumper } = {}) {
   return createBackupService({
     sources: [
       { name: 'members.json', path: dataFile('members.json') },
@@ -44,6 +45,7 @@ function createService(overrides: { keep?: number; keepRecent?: number; isDefaul
     isDefaultDestination: overrides.isDefaultDestination ?? false,
     keep: overrides.keep,
     keepRecent: overrides.keepRecent,
+    database: overrides.database,
     audit: { record: async (input) => { audited.push(input); } },
     now: () => clock,
   });
@@ -58,11 +60,19 @@ describe('backup service: a copy', () => {
 
     const outcome = await createService().run();
 
-    expect(outcome).toEqual({ ok: true, backup: { name: 'backup-20261104T150000Z', at: '2026-11-04T15:00:00.000Z', files: ['members.json', 'payments.json'] } });
+    expect(outcome).toEqual({
+      ok: true,
+      backup: { name: 'backup-20261104T150000Z', at: '2026-11-04T15:00:00.000Z', files: ['members.json', 'payments.json'], database: { state: 'not_configured' }, partial: false },
+    });
     expect(await copiesOf()).toEqual(['backup-20261104T150000Z']);
     const folder = join(destination(), 'backup-20261104T150000Z');
     expect(await readFile(join(folder, 'members.json'), 'utf8')).toBe('[{"id":"m1"}]');
-    expect(JSON.parse(await readFile(join(folder, 'manifest.json'), 'utf8'))).toEqual({ createdAt: '2026-11-04T15:00:00.000Z', files: ['members.json', 'payments.json'] });
+    expect(JSON.parse(await readFile(join(folder, 'manifest.json'), 'utf8'))).toEqual({
+      createdAt: '2026-11-04T15:00:00.000Z',
+      files: ['members.json', 'payments.json'],
+      database: { state: 'not_configured' },
+    });
+    expect(await readdir(folder)).not.toContain('database.dump');
   });
 
   it('fails without leaving a folder when there is nothing to copy', async () => {
@@ -241,8 +251,10 @@ describe('backup service: status', () => {
       keepRecent: 5,
       copies: 1,
       lastSuccessAt: '2026-11-04T15:00:00.000Z',
+      lastGoodAt: '2026-11-04T15:00:00.000Z',
       lastFailure: null,
       running: false,
+      database: { lastCopy: { state: 'not_configured' }, lastFailure: null },
     });
   });
 
@@ -330,5 +342,208 @@ describe('backup service: a destination that is not there', () => {
     expect(outcome.ok).toBe(false);
     expect(outcome).not.toMatchObject({ failure: { code: 'DESTINATION_MISSING' } });
     expect(await readFile(destination(), 'utf8')).toBe('a file where the folder should be');
+  });
+});
+
+// A fake dumper: writes what it is told to the file the service gives it, or fails.
+const goodDumper = (content = 'PGDMP fake'): DatabaseDumper => ({
+  dump: async (target) => {
+    await writeFile(target, content);
+    return { bytes: Buffer.byteLength(content) };
+  },
+});
+const failingDumper = (error: unknown, partial?: string): DatabaseDumper => ({
+  dump: async (target) => {
+    if (partial) await writeFile(target, partial);
+    throw error;
+  },
+});
+
+describe('backup service: the database dump', () => {
+  it('saves database.dump inside the same dated folder, lists it in the manifest and returns it in the copy', async () => {
+    await writeData('members.json', '[]');
+
+    const outcome = await createService({ database: goodDumper('PGDMP fake') }).run();
+
+    const database = { state: 'included', file: 'database.dump', format: 'pg_dump-custom', bytes: 10 };
+    expect(outcome).toEqual({ ok: true, backup: { name: 'backup-20261104T150000Z', at: '2026-11-04T15:00:00.000Z', files: ['members.json'], database, partial: false } });
+    const folder = join(destination(), 'backup-20261104T150000Z');
+    expect((await readdir(folder)).sort()).toEqual(['database.dump', 'manifest.json', 'members.json']);
+    expect(await readFile(join(folder, 'database.dump'), 'utf8')).toBe('PGDMP fake');
+    expect(JSON.parse(await readFile(join(folder, 'manifest.json'), 'utf8')).database).toEqual(database);
+  });
+
+  it('reports the database part of the last good copy in the status, read from the folders so it survives a restart', async () => {
+    await writeData('members.json', '[]');
+    await createService({ database: goodDumper() }).run();
+
+    const status = await createService({ database: goodDumper() }).status();
+
+    expect(status.database).toEqual({ lastCopy: { state: 'included', file: 'database.dump', format: 'pg_dump-custom', bytes: 10 }, lastFailure: null });
+  });
+
+  it('has no database part to report while there is no copy', async () => {
+    expect((await createService({ database: goodDumper() }).status()).database).toEqual({ lastCopy: null, lastFailure: null });
+  });
+
+  it('finishes the JSON copy and marks the run partial when the dump fails, without leaving any dump file', async () => {
+    await writeData('members.json', '[{"id":"m1"}]');
+    const dumper = failingDumper(new DumpError('DATABASE_DUMP_FAILED', 'exit code 1'), 'PGDMP half');
+    const service = createService({ database: dumper });
+
+    const outcome = await service.run('user-head');
+
+    expect(outcome).toEqual({
+      ok: true,
+      backup: { name: 'backup-20261104T150000Z', at: '2026-11-04T15:00:00.000Z', files: ['members.json'], database: { state: 'failed', code: 'DATABASE_DUMP_FAILED' }, partial: true },
+    });
+    const folder = join(destination(), 'backup-20261104T150000Z');
+    expect((await readdir(folder)).sort()).toEqual(['manifest.json', 'members.json']);
+    expect(JSON.parse(await readFile(join(folder, 'manifest.json'), 'utf8')).database).toEqual({ state: 'failed', code: 'DATABASE_DUMP_FAILED' });
+    expect(await copiesOf()).toEqual(['backup-20261104T150000Z']);
+    expect(audited).toEqual([{ actorId: 'user-head', action: 'create', entityType: 'backup', entityId: 'backup-20261104T150000Z' }]);
+  });
+
+  it('uses a distinct code when no dump command can run, and DATABASE_DUMP_FAILED for any other error', async () => {
+    await writeData('members.json', '[]');
+
+    const unavailable = await createService({ database: failingDumper(new DumpError('DATABASE_DUMP_UNAVAILABLE')) }).run();
+    expect(unavailable).toMatchObject({ ok: true, backup: { partial: true, database: { state: 'failed', code: 'DATABASE_DUMP_UNAVAILABLE' } } });
+
+    clock = new Date('2026-11-05T15:00:00Z');
+    const unexpected = await createService({ database: failingDumper(new Error('anything')) }).run();
+    expect(unexpected).toMatchObject({ ok: true, backup: { partial: true, database: { state: 'failed', code: 'DATABASE_DUMP_FAILED' } } });
+  });
+
+  it('keeps the older copies and their dumps when a later dump fails, and reports it as the newest copy but not as the last good one', async () => {
+    await writeData('members.json', '[]');
+    await createService({ database: goodDumper() }).run();
+
+    clock = new Date('2026-11-05T15:00:00Z');
+    const service = createService({ database: failingDumper(new DumpError('DATABASE_DUMP_FAILED')) });
+    await service.run();
+
+    expect(await copiesOf()).toEqual(['backup-20261104T150000Z', 'backup-20261105T150000Z']);
+    expect(await readFile(join(destination(), 'backup-20261104T150000Z', 'database.dump'), 'utf8')).toBe('PGDMP fake');
+    const status = await service.status();
+    expect(status.copies).toBe(2);
+    expect(status.lastSuccessAt).toBe('2026-11-05T15:00:00.000Z');
+    expect(status.lastGoodAt).toBe('2026-11-04T15:00:00.000Z');
+    expect(status.lastFailure).toBeNull();
+    expect(status.database).toEqual({
+      lastCopy: { state: 'failed', code: 'DATABASE_DUMP_FAILED' },
+      lastFailure: { at: '2026-11-05T15:00:00.000Z', code: 'DATABASE_DUMP_FAILED' },
+    });
+  });
+
+  it('clears the reported dump failure after the next good dump', async () => {
+    await writeData('members.json', '[]');
+    let working = false;
+    const flaky: DatabaseDumper = { dump: (target) => (working ? goodDumper().dump(target) : Promise.reject(new DumpError('DATABASE_DUMP_FAILED'))) };
+    const service = createService({ database: flaky });
+    await service.run();
+    expect((await service.status()).database.lastFailure).not.toBeNull();
+
+    working = true;
+    clock = new Date('2026-11-05T15:00:00Z');
+    await service.run();
+
+    expect((await service.status()).database).toMatchObject({ lastCopy: { state: 'included' }, lastFailure: null });
+  });
+
+  it('still fails with NO_FILES and leaves no folder when there are no data files, even if the dump would work', async () => {
+    const outcome = await createService({ database: goodDumper() }).run();
+
+    expect(outcome).toMatchObject({ ok: false, failure: { code: 'NO_FILES' } });
+    expect(await copiesOf()).toEqual([]);
+  });
+
+  it('never exposes a path, a password or dump text in a log, the status or a copy', async () => {
+    await writeData('members.json', '[]');
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const service = createService({ database: failingDumper(new DumpError('DATABASE_DUMP_FAILED', 'password authentication failed')) });
+
+    const outcome = await service.run();
+
+    const everything = JSON.stringify([outcome, await service.status(), errors.mock.calls]);
+    expect(everything).not.toContain(root);
+    expect(everything).not.toMatch(/postgres:\/\/|PGPASSWORD/);
+    // The sanitized stderr tail may reach the server log, but nothing else of the child's output does.
+    expect(JSON.stringify([outcome, await service.status()])).not.toContain('password authentication');
+  });
+});
+
+// Dumps work or fail in the given order, one answer per copy.
+const scripted = (...works: boolean[]): DatabaseDumper => {
+  const queue = [...works];
+  return { dump: (target) => (queue.shift() ? goodDumper().dump(target) : Promise.reject(new DumpError('DATABASE_DUMP_FAILED'))) };
+};
+
+describe('backup service: a failed dump and the last good copy', () => {
+  it('reports the newest copy with a good database part as the last good one, and the newest copy separately', async () => {
+    await writeData('members.json', '[]');
+    const service = createService({ database: scripted(true, false) });
+    await copyAt(service, '2026-11-04T15:00:00Z', '2026-11-05T15:00:00Z');
+
+    expect(await service.status()).toMatchObject({ lastSuccessAt: '2026-11-05T15:00:00.000Z', lastGoodAt: '2026-11-04T15:00:00.000Z', database: { lastCopy: { state: 'failed' } } });
+  });
+
+  it('has no last good copy when every copy lacks its dump, and counts a copy without a database as good', async () => {
+    await writeData('members.json', '[]');
+    const failing = createService({ database: scripted(false) });
+    await copyAt(failing, '2026-11-04T15:00:00Z');
+    expect((await failing.status()).lastGoodAt).toBeNull();
+
+    clock = new Date('2026-11-05T15:00:00Z');
+    await createService().run();
+    expect((await failing.status()).lastGoodAt).toBe('2026-11-05T15:00:00.000Z');
+  });
+
+  it('keeps, for a day, the newest copy that has a good dump instead of a newer one without it', async () => {
+    await writeData('members.json', '[]');
+    const service = createService({ keep: 2, keepRecent: 1, database: scripted(true, false, true, true) });
+
+    await copyAt(service, '2026-11-04T13:00:00Z', '2026-11-04T14:00:00Z', '2026-11-05T13:00:00Z', '2026-11-05T14:00:00Z');
+
+    expect(await copiesOf()).toEqual(['backup-20261104T130000Z', 'backup-20261105T140000Z']);
+  });
+
+  it('keeps the newest copy of a day when none of that day has a dump', async () => {
+    await writeData('members.json', '[]');
+    const service = createService({ keep: 2, keepRecent: 1, database: scripted(true, false, false, false) });
+
+    await copyAt(service, '2026-11-03T15:00:00Z', '2026-11-04T13:00:00Z', '2026-11-04T14:00:00Z', '2026-11-05T15:00:00Z');
+
+    expect(await copiesOf()).toEqual(['backup-20261103T150000Z', 'backup-20261104T140000Z', 'backup-20261105T150000Z']);
+  });
+
+  it('never prunes the last copy with a good dump, however old, after many days of failed dumps', async () => {
+    await writeData('members.json', '[]');
+    const service = createService({ keep: 2, keepRecent: 2, database: scripted(true, false, false, false, false, false) });
+
+    await copyAt(service, '2026-11-01T15:00:00Z', '2026-11-02T15:00:00Z', '2026-11-03T15:00:00Z', '2026-11-04T15:00:00Z', '2026-11-05T15:00:00Z', '2026-11-06T15:00:00Z');
+
+    expect(await copiesOf()).toEqual(['backup-20261101T150000Z', 'backup-20261105T150000Z', 'backup-20261106T150000Z']);
+    expect(await readFile(join(destination(), 'backup-20261101T150000Z', 'database.dump'), 'utf8')).toBe('PGDMP fake');
+  });
+
+  it('treats a corrupt or unreadable manifest as having no good dump, keeps it when unsure and breaks nothing', async () => {
+    await writeData('members.json', '[]');
+    await mkdir(join(destination(), 'backup-20261103T150000Z'));
+    await writeFile(join(destination(), 'backup-20261103T150000Z', 'manifest.json'), '{ not json');
+    await mkdir(join(destination(), 'backup-20261102T150000Z'));
+    const service = createService({ keep: 2, keepRecent: 1 });
+
+    await copyAt(service, '2026-11-04T15:00:00Z');
+
+    expect(await copiesOf()).toEqual(['backup-20261103T150000Z', 'backup-20261104T150000Z']);
+    expect(await service.status()).toMatchObject({ lastGoodAt: '2026-11-04T15:00:00.000Z' });
+  });
+
+  it('reads an unknown failure code in a manifest as DATABASE_DUMP_FAILED', async () => {
+    await mkdir(join(destination(), 'backup-20261103T150000Z'));
+    await writeFile(join(destination(), 'backup-20261103T150000Z', 'manifest.json'), JSON.stringify({ database: { state: 'failed', code: 'SOMETHING' } }));
+
+    expect((await createService().status()).database.lastCopy).toEqual({ state: 'failed', code: 'DATABASE_DUMP_FAILED' });
   });
 });
