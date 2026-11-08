@@ -173,6 +173,19 @@
 
 .door-card__field .access-form__input {
   width: 100%;
+  /* The base rule is sized for a wall display; inside the card it is a regular field. */
+  height: 46px;
+  padding: 0 14px;
+  border-width: 1px;
+  border-radius: var(--radius-md);
+  font: 600 18px var(--font-mono);
+  letter-spacing: 1px;
+}
+
+.door-card__field .access-form__input::placeholder {
+  font: 400 13px var(--font-sans);
+  letter-spacing: 0;
+  color: rgba(0, 0, 0, 0.4);
 }
 
 .door-card__primary {
