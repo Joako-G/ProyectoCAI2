@@ -60,6 +60,13 @@ describeWithDatabase('PostgreSQL face repository', () => {
     expect((await pool.query('SELECT 1 FROM face_profiles')).rowCount).toBe(0);
   });
 
+  it('counts the profiles', async () => {
+    expect(await repository.count()).toBe(0);
+    await repository.upsert(profile('m1', unit(0.1)));
+    await repository.upsert(profile('m2', unit(0.2)));
+    expect(await repository.count()).toBe(2);
+  });
+
   it('finds the nearest profile by Euclidean distance', async () => {
     await repository.upsert(profile('near', unit(0.3)));
     await repository.upsert(profile('far', unit(0.9)));

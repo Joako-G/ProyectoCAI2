@@ -19,6 +19,7 @@ export function createFakeFaceRepository() {
       const found = profiles.get(memberId);
       return found ? { enrolledAt: found.enrolledAt } : undefined;
     },
+    count: async () => profiles.size,
     nearest: async (query) => {
       let best: { memberId: string; distance: number } | undefined;
       for (const profile of profiles.values()) {

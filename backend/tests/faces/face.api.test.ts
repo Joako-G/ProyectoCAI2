@@ -13,6 +13,7 @@ const service = {
   remove: vi.fn(async (_memberId: string, _actorId: string) => undefined),
   discardForDeactivatedMember: vi.fn(async (_memberId: string, _actorId: string) => undefined),
   status: vi.fn(async (_memberId: string): Promise<{ enrolled: boolean; enrolledAt?: string }> => ({ enrolled: true, enrolledAt: '2026-11-07T15:00:00.000Z' })),
+  summary: vi.fn(async (): Promise<{ enrolled: number }> => ({ enrolled: 312 })),
   recognize: vi.fn(async (_descriptor: number[], _actorId: string): Promise<AccessCheck> => ({ result: 'red', reason: 'not_recognized' })),
 } satisfies FaceService;
 
@@ -50,7 +51,7 @@ function send(baseUrl: string, method: string, path: string, body?: unknown, coo
   });
 }
 
-const FACE_ROUTES = [['GET', '/api/faces/m1'], ['PUT', '/api/faces/m1'], ['DELETE', '/api/faces/m1'], ['POST', '/api/faces/recognize']] as const;
+const FACE_ROUTES = [['GET', '/api/faces/summary'], ['GET', '/api/faces/m1'], ['PUT', '/api/faces/m1'], ['DELETE', '/api/faces/m1'], ['POST', '/api/faces/recognize']] as const;
 
 describe('faces routes', () => {
   it('answers 401 without a session and 403 to a teacher', async () => {
@@ -97,6 +98,13 @@ describe('faces routes', () => {
     const response = await send(enabledUrl, 'GET', '/api/faces/m1', undefined, await signIn(enabledUrl, 'secretary'));
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ enrolled: true, enrolledAt: '2026-11-07T15:00:00.000Z' });
+  });
+
+  it('GET /summary returns the number of enrolled faces and is not read as a member id', async () => {
+    const response = await send(enabledUrl, 'GET', '/api/faces/summary', undefined, await signIn(enabledUrl, 'secretary'));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ enrolled: 312 });
+    expect(service.status).not.toHaveBeenCalled();
   });
 
   it('POST /recognize returns the service answer and rejects a bad descriptor', async () => {

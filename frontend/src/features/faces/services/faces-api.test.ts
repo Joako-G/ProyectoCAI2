@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../members/services/members-api';
 import { jsonResponse } from '../../members/test/fixtures';
 import { DESCRIPTOR } from '../test/fakes';
-import { enrollFace, getFaceStatus, removeFace } from './faces-api';
+import { enrollFace, getFaceStatus, getFaceSummary, removeFace } from './faces-api';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -17,6 +17,12 @@ describe('faces api', () => {
     const fetchMock = stubFetch(jsonResponse({ enrolled: true, enrolledAt: '2026-11-07T15:00:00.000Z' }));
     expect(await getFaceStatus('member 1')).toEqual({ enrolled: true, enrolledAt: '2026-11-07T15:00:00.000Z' });
     expect(fetchMock.mock.calls[0]![0]).toBe('/api/faces/member%201');
+  });
+
+  it('reads how many faces are enrolled', async () => {
+    const fetchMock = stubFetch(jsonResponse({ enrolled: 312 }));
+    expect(await getFaceSummary()).toEqual({ enrolled: 312 });
+    expect(fetchMock.mock.calls[0]![0]).toBe('/api/faces/summary');
   });
 
   it('enrolls with the descriptor and the confirmed consent, and nothing else', async () => {

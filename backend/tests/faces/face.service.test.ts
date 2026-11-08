@@ -83,6 +83,16 @@ describe('status', () => {
   });
 });
 
+describe('summary', () => {
+  it('counts the enrolled faces and nothing else', async () => {
+    const { service } = setup();
+    expect(await service.summary()).toEqual({ enrolled: 0 });
+    await service.enroll('m1', { descriptor: descriptor() }, 'user-1');
+    await service.enroll('m2', { descriptor: descriptor(0.2) }, 'user-1');
+    expect(await service.summary()).toEqual({ enrolled: 2 });
+  });
+});
+
 describe('recognize', () => {
   it('returns exactly the access answer of the nearest member within the threshold', async () => {
     const { service, access } = setup();
