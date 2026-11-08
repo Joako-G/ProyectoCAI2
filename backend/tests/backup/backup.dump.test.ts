@@ -138,6 +138,31 @@ describe('the dumper', () => {
     await expect(createDumperFromCommands([failing, node(`${MAGIC}`)], { timeoutMs: 5_000, secrets: [] }).dump(target)).rejects.toMatchObject({ code: 'DATABASE_DUMP_FAILED' });
   });
 
+  it('moves on to the next command when the container engine or the db service is not available', async () => {
+    for (const marker of [
+      'error during connect: Cannot connect to the Docker daemon at npipe:////./pipe/docker_engine',
+      'no such service: db',
+      'service "db" is not running',
+    ]) {
+      const engineDown = node(`process.stderr.write(${JSON.stringify(marker)}); process.exit(1);`);
+      const outcome = await createDumperFromCommands([engineDown, node(MAGIC)], { timeoutMs: 5_000, secrets: [] }).dump(target);
+      expect(outcome.bytes).toBe(5);
+    }
+  });
+
+  it('reports DATABASE_DUMP_UNAVAILABLE, and leaves no file, when every command fails because the engine is not available', async () => {
+    const engineDown = node("process.stderr.write('Cannot connect to the Docker daemon'); process.exit(1);");
+
+    await expect(createDumperFromCommands([engineDown, engineDown], { timeoutMs: 5_000, secrets: [] }).dump(target)).rejects.toMatchObject({ code: 'DATABASE_DUMP_UNAVAILABLE' });
+    expect(await readdir(folder)).toEqual([]);
+  });
+
+  it('stops at a real pg_dump failure even when the message also mentions the engine', async () => {
+    const real = node("process.stderr.write('pg_dump: error: connection to server failed (service \"db\" is not running)'); process.exit(1);");
+
+    await expect(createDumperFromCommands([real, node(MAGIC)], { timeoutMs: 5_000, secrets: [] }).dump(target)).rejects.toMatchObject({ code: 'DATABASE_DUMP_FAILED' });
+  });
+
   it('fails with DATABASE_DUMP_FAILED on a non-zero exit, keeps a sanitized stderr tail and leaves no file', async () => {
     const script = "process.stderr.write('FATAL: password authentication failed for s3cret!pw at postgres://club:s3cret!pw@h/db'); process.exit(1);";
     const error = await dumper(node(script)).dump(target).catch((caught: unknown) => caught as DumpError);

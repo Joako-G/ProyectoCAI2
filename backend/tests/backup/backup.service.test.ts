@@ -251,6 +251,7 @@ describe('backup service: status', () => {
       keepRecent: 5,
       copies: 1,
       lastSuccessAt: '2026-11-04T15:00:00.000Z',
+      lastGoodAt: '2026-11-04T15:00:00.000Z',
       lastFailure: null,
       running: false,
       database: { lastCopy: { state: 'not_configured' }, lastFailure: null },
@@ -414,7 +415,7 @@ describe('backup service: the database dump', () => {
     expect(unexpected).toMatchObject({ ok: true, backup: { partial: true, database: { state: 'failed', code: 'DATABASE_DUMP_FAILED' } } });
   });
 
-  it('keeps the older copies and their dumps when a later dump fails, and counts the copy with the failed dump', async () => {
+  it('keeps the older copies and their dumps when a later dump fails, and reports it as the newest copy but not as the last good one', async () => {
     await writeData('members.json', '[]');
     await createService({ database: goodDumper() }).run();
 
@@ -427,6 +428,7 @@ describe('backup service: the database dump', () => {
     const status = await service.status();
     expect(status.copies).toBe(2);
     expect(status.lastSuccessAt).toBe('2026-11-05T15:00:00.000Z');
+    expect(status.lastGoodAt).toBe('2026-11-04T15:00:00.000Z');
     expect(status.lastFailure).toBeNull();
     expect(status.database).toEqual({
       lastCopy: { state: 'failed', code: 'DATABASE_DUMP_FAILED' },
@@ -468,5 +470,80 @@ describe('backup service: the database dump', () => {
     expect(everything).not.toMatch(/postgres:\/\/|PGPASSWORD/);
     // The sanitized stderr tail may reach the server log, but nothing else of the child's output does.
     expect(JSON.stringify([outcome, await service.status()])).not.toContain('password authentication');
+  });
+});
+
+// Dumps work or fail in the given order, one answer per copy.
+const scripted = (...works: boolean[]): DatabaseDumper => {
+  const queue = [...works];
+  return { dump: (target) => (queue.shift() ? goodDumper().dump(target) : Promise.reject(new DumpError('DATABASE_DUMP_FAILED'))) };
+};
+
+describe('backup service: a failed dump and the last good copy', () => {
+  it('reports the newest copy with a good database part as the last good one, and the newest copy separately', async () => {
+    await writeData('members.json', '[]');
+    const service = createService({ database: scripted(true, false) });
+    await copyAt(service, '2026-11-04T15:00:00Z', '2026-11-05T15:00:00Z');
+
+    expect(await service.status()).toMatchObject({ lastSuccessAt: '2026-11-05T15:00:00.000Z', lastGoodAt: '2026-11-04T15:00:00.000Z', database: { lastCopy: { state: 'failed' } } });
+  });
+
+  it('has no last good copy when every copy lacks its dump, and counts a copy without a database as good', async () => {
+    await writeData('members.json', '[]');
+    const failing = createService({ database: scripted(false) });
+    await copyAt(failing, '2026-11-04T15:00:00Z');
+    expect((await failing.status()).lastGoodAt).toBeNull();
+
+    clock = new Date('2026-11-05T15:00:00Z');
+    await createService().run();
+    expect((await failing.status()).lastGoodAt).toBe('2026-11-05T15:00:00.000Z');
+  });
+
+  it('keeps, for a day, the newest copy that has a good dump instead of a newer one without it', async () => {
+    await writeData('members.json', '[]');
+    const service = createService({ keep: 2, keepRecent: 1, database: scripted(true, false, true, true) });
+
+    await copyAt(service, '2026-11-04T13:00:00Z', '2026-11-04T14:00:00Z', '2026-11-05T13:00:00Z', '2026-11-05T14:00:00Z');
+
+    expect(await copiesOf()).toEqual(['backup-20261104T130000Z', 'backup-20261105T140000Z']);
+  });
+
+  it('keeps the newest copy of a day when none of that day has a dump', async () => {
+    await writeData('members.json', '[]');
+    const service = createService({ keep: 2, keepRecent: 1, database: scripted(true, false, false, false) });
+
+    await copyAt(service, '2026-11-03T15:00:00Z', '2026-11-04T13:00:00Z', '2026-11-04T14:00:00Z', '2026-11-05T15:00:00Z');
+
+    expect(await copiesOf()).toEqual(['backup-20261103T150000Z', 'backup-20261104T140000Z', 'backup-20261105T150000Z']);
+  });
+
+  it('never prunes the last copy with a good dump, however old, after many days of failed dumps', async () => {
+    await writeData('members.json', '[]');
+    const service = createService({ keep: 2, keepRecent: 2, database: scripted(true, false, false, false, false, false) });
+
+    await copyAt(service, '2026-11-01T15:00:00Z', '2026-11-02T15:00:00Z', '2026-11-03T15:00:00Z', '2026-11-04T15:00:00Z', '2026-11-05T15:00:00Z', '2026-11-06T15:00:00Z');
+
+    expect(await copiesOf()).toEqual(['backup-20261101T150000Z', 'backup-20261105T150000Z', 'backup-20261106T150000Z']);
+    expect(await readFile(join(destination(), 'backup-20261101T150000Z', 'database.dump'), 'utf8')).toBe('PGDMP fake');
+  });
+
+  it('treats a corrupt or unreadable manifest as having no good dump, keeps it when unsure and breaks nothing', async () => {
+    await writeData('members.json', '[]');
+    await mkdir(join(destination(), 'backup-20261103T150000Z'));
+    await writeFile(join(destination(), 'backup-20261103T150000Z', 'manifest.json'), '{ not json');
+    await mkdir(join(destination(), 'backup-20261102T150000Z'));
+    const service = createService({ keep: 2, keepRecent: 1 });
+
+    await copyAt(service, '2026-11-04T15:00:00Z');
+
+    expect(await copiesOf()).toEqual(['backup-20261103T150000Z', 'backup-20261104T150000Z']);
+    expect(await service.status()).toMatchObject({ lastGoodAt: '2026-11-04T15:00:00.000Z' });
+  });
+
+  it('reads an unknown failure code in a manifest as DATABASE_DUMP_FAILED', async () => {
+    await mkdir(join(destination(), 'backup-20261103T150000Z'));
+    await writeFile(join(destination(), 'backup-20261103T150000Z', 'manifest.json'), JSON.stringify({ database: { state: 'failed', code: 'SOMETHING' } }));
+
+    expect((await createService().status()).database.lastCopy).toEqual({ state: 'failed', code: 'DATABASE_DUMP_FAILED' });
   });
 });

@@ -4,14 +4,17 @@ export interface BackupSource {
   path: string;
 }
 
+/** Why a dump failed: it ran and failed (or produced something unusable), or no dump command could be used at all. */
+export type DatabaseFailureCode = 'DATABASE_DUMP_FAILED' | 'DATABASE_DUMP_UNAVAILABLE';
+
 /**
  * The database part of one copy, also stored in its manifest. `failed` carries a short code
- * (`DATABASE_DUMP_FAILED`, `DATABASE_DUMP_UNAVAILABLE`): never a message, a path or any content of the dump.
+ * (see `DatabaseFailureCode`): never a message, a path or any content of the dump.
  */
 export type BackupDatabasePart =
   | { state: 'not_configured' }
   | { state: 'included'; file: 'database.dump'; format: 'pg_dump-custom'; bytes: number }
-  | { state: 'failed'; code: string };
+  | { state: 'failed'; code: DatabaseFailureCode };
 
 /** A finished copy. `files` lists what was copied; a file that does not exist yet is not an error and not listed. */
 export interface BackupResult {
@@ -51,6 +54,11 @@ export interface BackupStatus {
   copies: number;
   /** ISO instant of the newest copy, read from the destination so it survives a restart; null while there is none. */
   lastSuccessAt: string | null;
+  /**
+   * ISO instant of the newest copy whose database part is good (`included` or `not_configured`); null while there is none.
+   * A copy whose dump failed, or whose manifest cannot be read, is not good: it is kept as partial but does not count here.
+   */
+  lastGoodAt: string | null;
   /** The last failed attempt since the server started and since the last good copy, or null. */
   lastFailure: BackupFailure | null;
   running: boolean;

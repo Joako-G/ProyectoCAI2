@@ -5,11 +5,12 @@ import { ConflictError } from '../../shared/errors.js';
 import type { AuditRecorder } from '../audit/audit.service.js';
 import { copyFolderInstant, copyFolderName, isCopyFolder, isPartialFolder, partialFolderName } from './backup.naming.js';
 import { DumpError, type DatabaseDumper } from './backup.dump.js';
-import type { BackupDatabasePart, BackupFailure, BackupRun, BackupSource, BackupStatus, DestinationState } from './backup.types.js';
+import type { BackupDatabasePart, BackupFailure, DatabaseFailureCode, BackupRun, BackupSource, BackupStatus, DestinationState } from './backup.types.js';
 
 const DEFAULT_KEEP = 30;
 const DEFAULT_KEEP_RECENT = 5;
 const MANIFEST = 'manifest.json';
+const FAILURE_CODES: readonly DatabaseFailureCode[] = ['DATABASE_DUMP_FAILED', 'DATABASE_DUMP_UNAVAILABLE'];
 const DUMP_FILE = 'database.dump';
 // The dump is written under this name and renamed when complete, so `database.dump` only ever exists whole.
 const DUMP_TEMP_FILE = 'database.dump.tmp';
@@ -50,12 +51,18 @@ async function exists(path: string): Promise<boolean> {
   }
 }
 
+/** A copy is good when its database is in it or was never expected. A failed dump, or a manifest that cannot be read, is not good. */
+const isGood = (part: BackupDatabasePart | null): boolean => part !== null && part.state !== 'failed';
+
 /** The database part stored in a copy's manifest. A copy from before the dump existed has none: it is "not configured". */
 async function readDatabasePart(copyPath: string): Promise<BackupDatabasePart | null> {
   try {
     const manifest: unknown = JSON.parse(await readFile(join(copyPath, MANIFEST), 'utf8'));
     const part = typeof manifest === 'object' && manifest !== null ? (manifest as { database?: BackupDatabasePart }).database : undefined;
-    return part && typeof part === 'object' && ['included', 'failed', 'not_configured'].includes(part.state) ? part : { state: 'not_configured' };
+    if (part && typeof part === 'object' && part.state === 'failed') {
+      return { state: 'failed', code: (FAILURE_CODES as readonly string[]).includes(part.code) ? part.code : 'DATABASE_DUMP_FAILED' };
+    }
+    return part && typeof part === 'object' && ['included', 'not_configured'].includes(part.state) ? part : { state: 'not_configured' };
   } catch {
     return null;
   }
@@ -86,19 +93,30 @@ export function createBackupService({ sources, database, destination, isDefaultD
     }
   }
 
-  // Keeps the newest copy of each of the `keep` most recent club days that have copies, and the `keepRecent` newest copies
-  // whatever their day. `justMade` is never deleted. A folder that is not a real copy is not listed, so it is never deleted.
+  // Keeps, for each of the `keep` most recent club days that have copies, the newest copy with a good database part (the
+  // newest copy of the day when none has one); the newest copy with a good database part overall, whatever its age, so a run
+  // of failed dumps never removes the last restorable database; and the `keepRecent` newest copies whatever their day.
+  // `justMade` is never deleted. A folder that is not a real copy is not listed, so it is never deleted. A manifest that
+  // cannot be read counts as not good, and such a copy is deleted only when a rule above leaves it out.
   async function applyRetention(justMade: string): Promise<void> {
     const { state, copies } = await readDestination();
     if (state !== 'ready') return;
     const kept = new Set<string>([justMade, ...copies.slice(-keepRecent)]);
-    const days = new Set<string>();
+    const good = new Map<string, boolean>();
+    for (const name of copies) good.set(name, isGood(await readDatabasePart(join(destination, name))));
+    const newestGood = [...copies].reverse().find((name) => good.get(name));
+    if (newestGood) kept.add(newestGood);
+    const chosenOfDay = new Map<string, string>();
     for (const name of [...copies].reverse()) {
       const day = toIsoDate(copyFolderInstant(name)!);
-      if (days.has(day) || days.size >= keep) continue;
-      days.add(day);
-      kept.add(name);
+      const chosen = chosenOfDay.get(day);
+      if (chosen === undefined) {
+        if (chosenOfDay.size < keep) chosenOfDay.set(day, name);
+      } else if (!good.get(chosen) && good.get(name)) {
+        chosenOfDay.set(day, name);
+      }
     }
+    for (const name of chosenOfDay.values()) kept.add(name);
     for (const name of copies) {
       if (!kept.has(name)) await rm(join(destination, name), { recursive: true, force: true });
     }
@@ -186,12 +204,20 @@ export function createBackupService({ sources, database, destination, isDefaultD
     async status(): Promise<BackupStatus> {
       const { state, copies } = await readDestination();
       const newest = copies.at(-1);
+      let lastGood: string | undefined;
+      for (const name of [...copies].reverse()) {
+        if (isGood(await readDatabasePart(join(destination, name)))) {
+          lastGood = name;
+          break;
+        }
+      }
       return {
         destination: { isDefault: isDefaultDestination, state },
         keep,
         keepRecent,
         copies: copies.length,
         lastSuccessAt: newest ? (copyFolderInstant(newest)?.toISOString() ?? null) : null,
+        lastGoodAt: lastGood ? (copyFolderInstant(lastGood)?.toISOString() ?? null) : null,
         lastFailure,
         running,
         database: { lastCopy: newest ? await readDatabasePart(join(destination, newest)) : null, lastFailure: lastDumpFailure },

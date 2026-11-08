@@ -14,6 +14,7 @@ const STATUS: BackupStatus = {
   keepRecent: 5,
   copies: 2,
   lastSuccessAt: '2026-11-04T15:00:00.000Z',
+  lastGoodAt: '2026-11-04T15:00:00.000Z',
   lastFailure: null,
   running: false,
   database: { lastCopy: { state: 'included', file: 'database.dump', format: 'pg_dump-custom', bytes: 1024 }, lastFailure: null },

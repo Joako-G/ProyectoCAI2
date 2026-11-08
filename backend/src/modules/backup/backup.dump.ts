@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { createWriteStream, existsSync } from 'node:fs';
 import { open, rm, stat } from 'node:fs/promises';
 import { pipeline } from 'node:stream/promises';
+import type { DatabaseFailureCode } from './backup.types.js';
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const STDERR_KEEP_CHARS = 2_000;
@@ -15,7 +16,7 @@ export interface DatabaseDumper {
   dump(target: string): Promise<{ bytes: number }>;
 }
 
-export type DumpFailureCode = 'DATABASE_DUMP_FAILED' | 'DATABASE_DUMP_UNAVAILABLE';
+export type DumpFailureCode = DatabaseFailureCode;
 
 /** A dump that did not finish. `code` is stored and shown; `detail` is a short sanitized text for the server log only. */
 export class DumpError extends Error {
@@ -99,7 +100,9 @@ export interface CandidateOptions {
  * 2. `docker compose -f <repo>/docker-compose.yml exec -T db pg_dump ...`, for a database on this computer and when
  *    the compose file exists. This is how the development database runs and this PC has no `pg_dump` of its own.
  * 3. `pg_dump` found on the PATH, connected with the settings of DATABASE_URL.
- * A command is skipped for the next one only when it cannot start (not found); a command that ran and failed is a failure.
+ * A command is skipped for the next one when it cannot start (not found) or when it started but could not reach the
+ * container engine or the db service (see `isEngineUnavailable`). A command that ran against a reachable database and
+ * failed is a real failure and stops the chain.
  */
 export function dumpCandidates({ connectionString, env, composeFile, composeFileExists }: CandidateOptions): DumpCommand[] {
   const connection = parseConnection(connectionString);
@@ -138,7 +141,20 @@ interface DumperOptions {
   secrets?: readonly string[];
 }
 
-type RunOutcome = { kind: 'done'; bytes: number } | { kind: 'not_found' };
+type RunOutcome = { kind: 'done'; bytes: number } | { kind: 'not_found' } | { kind: 'engine_unavailable'; detail: string };
+
+// What `docker compose exec` prints when Docker Desktop is stopped or the db container is not up.
+const ENGINE_UNAVAILABLE = /cannot connect to the docker daemon|error during connect|docker_engine|failed to connect to the docker api|no such service|service "[^"]*" is not running|no configuration file provided/i;
+// A message written by pg_dump itself means the tool ran against the database: that is a real failure, whatever else it mentions.
+const PG_DUMP_MESSAGE = /pg_dump: (?:error|warning)/i;
+
+/**
+ * A command that started and exited non-zero is "engine unavailable" (so the next candidate is tried) only when its
+ * error output shows Docker or the db service could not be reached and pg_dump never reported anything of its own.
+ */
+export function isEngineUnavailable(exitCode: number | null, stderr: string): boolean {
+  return exitCode !== 0 && ENGINE_UNAVAILABLE.test(stderr) && !PG_DUMP_MESSAGE.test(stderr);
+}
 
 async function hasCustomFormatHeader(path: string): Promise<boolean> {
   const handle = await open(path, 'r');
@@ -184,6 +200,7 @@ async function runCommand(command: DumpCommand, target: string, timeoutMs: numbe
 
   if (timedOut) throw new DumpError('DATABASE_DUMP_FAILED', 'timed out');
   if (writeError) throw new DumpError('DATABASE_DUMP_FAILED', 'could not write the dump file');
+  if (isEngineUnavailable(exitCode, stderr)) return { kind: 'engine_unavailable', detail: `exit code ${exitCode}: ${sanitizeTail(stderr, secrets)}` };
   if (exitCode !== 0) throw new DumpError('DATABASE_DUMP_FAILED', `exit code ${exitCode}: ${sanitizeTail(stderr, secrets)}`);
   const { size } = await stat(target);
   if (size === 0) throw new DumpError('DATABASE_DUMP_FAILED', 'empty output');
@@ -191,14 +208,24 @@ async function runCommand(command: DumpCommand, target: string, timeoutMs: numbe
   return { kind: 'done', bytes: size };
 }
 
-/** Tries each command in order and streams the first one that can start into the target file. */
+/**
+ * Tries each command in order and streams the first one that can run into the target file. A command that cannot start,
+ * or whose container engine or db service is not available, is skipped; if every command is skipped the result is
+ * DATABASE_DUMP_UNAVAILABLE, with the last engine message in the detail. A real pg_dump failure stops the chain.
+ */
 export function createDumperFromCommands(commands: readonly DumpCommand[], { timeoutMs = DEFAULT_TIMEOUT_MS, secrets = [] }: DumperOptions = {}): DatabaseDumper {
   return {
     async dump(target) {
+      let detail = 'no dump command could be started';
       for (const command of commands) {
         try {
           const outcome = await runCommand(command, target, timeoutMs, secrets);
           if (outcome.kind === 'not_found') continue;
+          if (outcome.kind === 'engine_unavailable') {
+            detail = outcome.detail;
+            await rm(target, { force: true }).catch(() => undefined);
+            continue;
+          }
           return { bytes: outcome.bytes };
         } catch (error) {
           // A failed dump never leaves a half-written file behind.
@@ -206,7 +233,7 @@ export function createDumperFromCommands(commands: readonly DumpCommand[], { tim
           throw error instanceof DumpError ? error : new DumpError('DATABASE_DUMP_FAILED', 'unexpected error');
         }
       }
-      throw new DumpError('DATABASE_DUMP_UNAVAILABLE', 'no dump command could be started');
+      throw new DumpError('DATABASE_DUMP_UNAVAILABLE', detail);
     },
   };
 }

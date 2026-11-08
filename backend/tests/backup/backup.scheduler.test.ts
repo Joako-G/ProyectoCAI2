@@ -10,8 +10,9 @@ const ok: BackupRun = { ok: true, backup: { name: 'backup-20261104T150000Z', at:
 const hoursAgo = (hours: number) => new Date(NOW.getTime() - hours * HOUR).toISOString();
 
 // Starts the scheduler with its first check at startup still in flight.
-function setup(lastSuccessAt: string | null, run: () => Promise<BackupRun> = async () => ok) {
-  const service = { status: vi.fn(async () => ({ lastSuccessAt })), run: vi.fn(run) };
+function setup(lastSuccessAt: string | null, run: () => Promise<BackupRun> = async () => ok, newestCopyFailedDump = false) {
+  const lastCopy = newestCopyFailedDump ? { state: 'failed' as const, code: 'DATABASE_DUMP_UNAVAILABLE' as const } : null;
+  const service = { status: vi.fn(async () => ({ lastSuccessAt, database: { lastCopy } })), run: vi.fn(run) };
   const log = vi.fn();
   const scheduler = startBackupScheduler({ service, now: () => NOW, log });
   return { service, log, scheduler };
@@ -56,6 +57,22 @@ describe('backup scheduler', () => {
     await vi.advanceTimersByTimeAsync(HOUR);
     expect(service.status).toHaveBeenCalledTimes(2);
     expect(service.run).toHaveBeenCalledTimes(2);
+    scheduler.stop();
+  });
+
+  it('tries again at the next hourly check when the newest copy has no database dump, even if it is under 24 hours old', async () => {
+    const { service, scheduler } = setup(hoursAgo(2), undefined, true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(service.run).toHaveBeenCalledTimes(1);
+    expect(await scheduler.tick()).toBe('ran');
+    scheduler.stop();
+  });
+
+  it('never makes a new copy for a failed dump more than once an hour', async () => {
+    const { service, scheduler } = setup(hoursAgo(0.5), undefined, true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(service.run).not.toHaveBeenCalled();
+    expect(await scheduler.tick()).toBe('fresh');
     scheduler.stop();
   });
 
