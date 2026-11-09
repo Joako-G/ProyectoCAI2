@@ -106,4 +106,84 @@ describe('ExpensesView', () => {
     expect(await screen.findByText('Factura de luz')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Registrar gasto' })).not.toBeInTheDocument();
   });
+
+  it("defaults the date to the club's day, not the browser's", async () => {
+    // 02:00 UTC is still the previous evening in the club's time zone (UTC-3).
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-10-05T02:00:00Z') });
+    try {
+      stubServer();
+      render(<ExpensesView canWrite />);
+      expect(await screen.findByLabelText('Fecha')).toHaveValue('2026-10-04');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe('ExpensesView: failures', () => {
+  it.each([
+    [403, 'No tiene permiso para ver los gastos.'],
+    [500, 'No se pudieron cargar los gastos. Intente de nuevo.'],
+  ])('shows a Spanish message when the list answers %d, and Reintentar loads it again', async (status, message) => {
+    let failing = true;
+    const fetchMock = vi.fn(async () => (failing ? jsonResponse({ error: 'x' }, status) : jsonResponse([lightBill])));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ExpensesView canWrite />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    failing = false;
+    await userEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByText('Factura de luz')).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows the network message when the list cannot be reached', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
+    render(<ExpensesView canWrite />);
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  // A failed save whose outcome is unknown may still have stored the expense, so the list is read again.
+  it.each([
+    ['a 500 answer', () => jsonResponse({ error: 'x' }, 500)],
+    ['a lost connection', () => { throw new TypeError('Failed to fetch'); }],
+  ])('reloads the list after %s on save, so a stored expense still shows', async (_name, failure) => {
+    let stored = false;
+    const created: Expense = { ...lightBill, id: 'e2', description: 'Pintura' };
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        stored = true;
+        return failure();
+      }
+      return jsonResponse(stored ? [created, lightBill] : [lightBill]);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ExpensesView canWrite />);
+    await screen.findByText('Factura de luz');
+
+    await userEvent.type(screen.getByLabelText('Monto'), '3000');
+    await userEvent.type(screen.getByLabelText('Descripción'), 'Pintura');
+    await userEvent.click(screen.getByRole('button', { name: 'Registrar gasto' }));
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(await screen.findByText('Pintura', { selector: 'td' })).toBeInTheDocument();
+    // What was typed stays, so the person decides whether to try again.
+    expect(screen.getByLabelText('Monto')).toHaveValue('3000');
+  });
+
+  it('does not reload the list after a refusal that is known to have stored nothing', async () => {
+    const fetchMock = stubServer([lightBill], 400);
+    render(<ExpensesView canWrite />);
+    await screen.findByText('Factura de luz');
+    const readsBefore = fetchMock.mock.calls.filter(([, init]) => init?.method !== 'POST').length;
+
+    await userEvent.type(screen.getByLabelText('Monto'), '3000');
+    await userEvent.type(screen.getByLabelText('Descripción'), 'Pintura');
+    await userEvent.click(screen.getByRole('button', { name: 'Registrar gasto' }));
+    await screen.findByRole('alert');
+
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method !== 'POST')).toHaveLength(readsBefore);
+  });
 });

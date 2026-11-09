@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EXPENSE_CATEGORIES, type ExpenseCategory, type ExpenseInput } from '../types/expense';
-import { CATEGORY_LABELS, MAX_DESCRIPTION_LENGTH, parseAmount, todayIso } from '../utils/expense-format';
+import { todayInClub } from '../../members/utils/member-format';
+import { CATEGORY_LABELS, MAX_DESCRIPTION_LENGTH, parseAmount } from '../utils/expense-format';
 
 interface ExpenseFormProps {
   saving: boolean;
@@ -11,7 +12,7 @@ interface ExpenseFormProps {
 
 /** The date, amount, category and description of a new expense; it clears itself only after a successful save. */
 export function ExpenseForm({ saving, error, onSave }: ExpenseFormProps) {
-  const [date, setDate] = useState(todayIso());
+  const [date, setDate] = useState(todayInClub());
   const [amountText, setAmountText] = useState('');
   const [category, setCategory] = useState<ExpenseCategory>('other');
   const [description, setDescription] = useState('');
@@ -30,7 +31,7 @@ export function ExpenseForm({ saving, error, onSave }: ExpenseFormProps) {
     <form className="arqueo-form" onSubmit={(event) => { event.preventDefault(); void submit(); }}>
       <div className="form-field">
         <label htmlFor="expense-date" className="form-field__label">Fecha</label>
-        <input id="expense-date" type="date" value={date} max={todayIso()} disabled={saving} onChange={(event) => setDate(event.target.value)} />
+        <input id="expense-date" type="date" value={date} max={todayInClub()} disabled={saving} onChange={(event) => setDate(event.target.value)} />
       </div>
       <div className="form-field">
         <label htmlFor="expense-amount" className="form-field__label">Monto</label>

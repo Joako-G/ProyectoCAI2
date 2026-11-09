@@ -12,13 +12,6 @@ export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   other: 'Otros',
 };
 
-/** Today as YYYY-MM-DD in the browser's local time, the default date of a new expense. */
-export function todayIso(now: Date = new Date()): string {
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${now.getFullYear()}-${month}-${day}`;
-}
-
 /** The amount as a positive whole number of pesos, or null while the text is not one. */
 export function parseAmount(text: string): number | null {
   const value = text.trim();
