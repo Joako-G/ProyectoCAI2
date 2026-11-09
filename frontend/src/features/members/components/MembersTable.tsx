@@ -17,7 +17,7 @@ const STATUS_LABEL = { active: 'Activo', inactive: 'Inactivo' } as const;
 
 export function MembersTable({ members, today, disciplines = [], onOpen }: MembersTableProps) {
   return (
-    <table className="members-table">
+    <table className="members-table members-table--stack">
       <caption className="visually-hidden">Listado de socios</caption>
       <thead>
         <tr className="table-head">
@@ -36,7 +36,7 @@ export function MembersTable({ members, today, disciplines = [], onOpen }: Membe
             className={onOpen ? 'members-table__row--clickable' : undefined}
             onClick={onOpen ? () => onOpen(member) : undefined}
           >
-            <td className="members-table__number">{member.memberNumber}</td>
+            <td className="members-table__number" data-label="N° socio">{member.memberNumber}</td>
             <td>
               <div className="members-table__person">
                 {onOpen ? (
@@ -53,12 +53,12 @@ export function MembersTable({ members, today, disciplines = [], onOpen }: Membe
                 </span>
               </div>
             </td>
-            <td className="members-table__mono">{member.dni}</td>
-            <td className="members-table__disciplines">
+            <td className="members-table__mono" data-label="DNI">{member.dni}</td>
+            <td className="members-table__disciplines" data-label="Disciplinas">
               {disciplineNames(member.disciplineIds, disciplines).join(', ') || '—'}
             </td>
-            <td className="members-table__mono">{formatIsoDate(member.memberSince)}</td>
-            <td>
+            <td className="members-table__mono" data-label="Socio desde">{formatIsoDate(member.memberSince)}</td>
+            <td data-label="Estado">
               <span className={`status-chip status-chip--${member.status}`}>
                 {STATUS_LABEL[member.status]}
               </span>

@@ -17,7 +17,7 @@ export function SettlementResult({ report, issuedBy }: { report: DisciplineSettl
       {report.students.length === 0 ? (
         <p className="members-page__notice">Ningún socio pagó la cuota de esta disciplina en el mes elegido.</p>
       ) : (
-        <table className="members-table report-table">
+        <table className="members-table members-table--stack report-table">
           <caption className="visually-hidden">Socios de {report.discipline.name} con la cuota de {month} paga</caption>
           <thead>
             <tr className="table-head"><th scope="col">Nombre</th><th scope="col">N° de socio</th><th scope="col">Mes</th></tr>
@@ -26,8 +26,8 @@ export function SettlementResult({ report, issuedBy }: { report: DisciplineSettl
             {report.students.map((student) => (
               <tr key={student.memberNumber}>
                 <td><span className="members-table__name">{student.fullName}</span></td>
-                <td className="members-table__number">{student.memberNumber}</td>
-                <td className="members-table__mono">{formatPeriod(student.period)}</td>
+                <td className="members-table__number" data-label="N° de socio">{student.memberNumber}</td>
+                <td className="members-table__mono" data-label="Mes">{formatPeriod(student.period)}</td>
               </tr>
             ))}
           </tbody>

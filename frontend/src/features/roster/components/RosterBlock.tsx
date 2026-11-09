@@ -11,7 +11,7 @@ export function RosterBlock({ roster: { discipline, students } }: { roster: Disc
       {students.length === 0 ? (
         <p className="members-page__notice">Esta disciplina todavía no tiene alumnos.</p>
       ) : (
-        <table className="members-table">
+        <table className="members-table members-table--stack">
           <caption className="visually-hidden">Alumnos de {discipline.name}</caption>
           <thead>
             <tr className="table-head">
@@ -26,10 +26,10 @@ export function RosterBlock({ roster: { discipline, students } }: { roster: Disc
             {students.map((student) => (
               <tr key={`${student.memberId}-${student.startDate}`}>
                 <td><span className="members-table__name">{student.fullName}</span></td>
-                <td className="members-table__number">{student.memberNumber}</td>
-                <td className="members-table__mono">{formatIsoDate(student.startDate)}</td>
-                <td className="members-table__mono">{student.endDate ? formatIsoDate(student.endDate) : '—'}</td>
-                <td>
+                <td className="members-table__number" data-label="N° de socio">{student.memberNumber}</td>
+                <td className="members-table__mono" data-label="Desde">{formatIsoDate(student.startDate)}</td>
+                <td className="members-table__mono" data-label="Hasta">{student.endDate ? formatIsoDate(student.endDate) : '—'}</td>
+                <td data-label="Estado">
                   <span className={`status-chip status-chip--${student.status === 'active' ? 'active' : 'inactive'}`}>
                     {STATUS_LABEL[student.status]}
                   </span>

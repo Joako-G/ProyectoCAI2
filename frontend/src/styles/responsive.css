@@ -132,3 +132,86 @@
     display: none;
   }
 }
+
+/*
+ * Stacked tables: under 640px a table marked `members-table--stack` shows one card per row.
+ * Each labelled cell (`data-label`) prints "label  value"; a cell without label (a name, the actions) takes the full width.
+ */
+@media screen and (max-width: 640px) {
+  /* desk.css sets a 460px minimum on tables inside cards; on a phone that only forces a hidden horizontal scroll. */
+  .desk-card .members-table {
+    min-width: 0;
+  }
+
+  .members-table--stack,
+  .members-table--stack tbody,
+  .members-table--stack tfoot,
+  .members-table--stack tr,
+  .members-table--stack td,
+  .members-table--stack th[scope='row'] {
+    display: block;
+    width: 100%;
+  }
+
+  .members-table--stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .members-table--stack tr {
+    margin-bottom: 10px;
+    padding: 6px 0;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: var(--radius-sm);
+    background: #fff;
+  }
+
+  .members-table--stack td,
+  .members-table--stack th[scope='row'],
+  .members-table--stack td:first-child,
+  .report-frame .members-table--stack td,
+  .report-table.members-table--stack tfoot th,
+  .report-table.members-table--stack tfoot td {
+    padding: 6px 14px;
+    border-top: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .members-table--stack td[data-label] {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    text-align: right;
+  }
+
+  .members-table--stack td[data-label]::before {
+    flex: none;
+    max-width: 45%;
+    color: rgba(0, 0, 0, 0.55);
+    font-family: var(--font-sans);
+    font-weight: 500;
+    text-align: left;
+    content: attr(data-label);
+  }
+
+  .members-table--stack td[data-label] input {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: right;
+  }
+
+  /* Buttons of an unlabelled cell (actions) become comfortable full-width touch targets. */
+  .members-table--stack td:not([data-label]) .button {
+    width: 100%;
+    margin-top: 6px;
+  }
+
+  .members-table--stack .disciplines-table__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

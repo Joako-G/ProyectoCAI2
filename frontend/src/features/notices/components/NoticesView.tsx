@@ -40,7 +40,7 @@ export function NoticesView() {
               <DeskStat label="Deuda total" value={formatPesos(total)} primary />
             </div>
             <div className="desk-card__scroll">
-              <table className="members-table">
+              <table className="members-table members-table--stack">
                 <caption className="visually-hidden">Socios con deuda</caption>
                 <thead>
                   <tr className="table-head">
@@ -51,12 +51,12 @@ export function NoticesView() {
                 <tbody>
                   {rows.map((notice) => (
                     <tr key={notice.memberId}>
-                      <td className="members-table__mono">{notice.memberNumber}</td>
-                      <td>{notice.name}</td>
-                      <td>{standingLabel(notice.standing)}</td>
-                      <td>{notice.unpaidPeriodCount}</td>
-                      <td className="members-table__mono">{formatPesos(notice.total)}</td>
-                      <td>{recipientLabel(notice)}</td>
+                      <td className="members-table__mono" data-label="N° de socio">{notice.memberNumber}</td>
+                      <td data-label="Socio">{notice.name}</td>
+                      <td data-label="Estado">{standingLabel(notice.standing)}</td>
+                      <td data-label="Meses adeudados">{notice.unpaidPeriodCount}</td>
+                      <td className="members-table__mono" data-label="Total">{formatPesos(notice.total)}</td>
+                      <td data-label="Destinatario">{recipientLabel(notice)}</td>
                       <td>
                         {notice.link ? (
                           <a className="button button--secondary notice-send" href={notice.link} target="_blank" rel="noopener noreferrer" aria-label={`Enviar por WhatsApp a ${notice.recipientName}`}>

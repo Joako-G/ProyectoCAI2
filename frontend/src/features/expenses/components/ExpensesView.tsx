@@ -27,7 +27,7 @@ export function ExpensesView({ canWrite }: { canWrite: boolean }) {
             <DeskStat label="Total registrado" value={formatPesos(total)} primary />
           </div>
           <div className="desk-card__scroll">
-            <table className="members-table">
+            <table className="members-table members-table--stack">
               <caption className="visually-hidden">Gastos registrados</caption>
               <thead>
                 <tr className="table-head">
@@ -37,10 +37,10 @@ export function ExpensesView({ canWrite }: { canWrite: boolean }) {
               <tbody>
                 {state.expenses.map((expense) => (
                   <tr key={expense.id}>
-                    <td className="members-table__mono">{formatIsoDate(expense.date)}</td>
-                    <td>{CATEGORY_LABELS[expense.category]}</td>
-                    <td>{expense.description}</td>
-                    <td className="members-table__mono">{formatPesos(expense.amount)}</td>
+                    <td className="members-table__mono" data-label="Fecha">{formatIsoDate(expense.date)}</td>
+                    <td data-label="Categoría">{CATEGORY_LABELS[expense.category]}</td>
+                    <td data-label="Descripción">{expense.description}</td>
+                    <td className="members-table__mono" data-label="Monto">{formatPesos(expense.amount)}</td>
                   </tr>
                 ))}
               </tbody>

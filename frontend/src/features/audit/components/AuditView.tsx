@@ -34,7 +34,7 @@ export function AuditView() {
       {entries.length === 0 ? (
         <p className="members-page__notice">Todavía no hay operaciones registradas.</p>
       ) : (
-        <table className="members-table">
+        <table className="members-table members-table--stack">
           <caption className="visually-hidden">Registro de auditoría</caption>
           <thead>
             <tr className="table-head">
@@ -45,12 +45,12 @@ export function AuditView() {
           <tbody>
             {entries.map((entry) => (
               <tr key={entry.id}>
-                <td className="members-table__mono">{formatInstant(entry.at)}</td>
-                <td>{entry.actor.name}</td>
-                <td>{roleLabel(entry.actor.role)}</td>
-                <td>{actionLabel(entry.action)}</td>
-                <td>{entry.entityLabel}</td>
-                <td>{changedFieldsLabel(entry.changedFields)}</td>
+                <td className="members-table__mono" data-label="Fecha">{formatInstant(entry.at)}</td>
+                <td data-label="Usuario">{entry.actor.name}</td>
+                <td data-label="Rol">{roleLabel(entry.actor.role)}</td>
+                <td data-label="Acción">{actionLabel(entry.action)}</td>
+                <td data-label="Registro">{entry.entityLabel}</td>
+                <td data-label="Campos modificados">{changedFieldsLabel(entry.changedFields)}</td>
               </tr>
             ))}
           </tbody>

@@ -51,7 +51,7 @@ export function ArqueoView() {
       {earlier.length > 0 ? (
         <DeskCard label="Cierres anteriores">
           <div className="desk-card__scroll">
-            <table className="members-table">
+            <table className="members-table members-table--stack">
               <caption className="visually-hidden">Cierres anteriores</caption>
               <thead>
                 <tr className="table-head">
@@ -62,11 +62,11 @@ export function ArqueoView() {
               <tbody>
                 {earlier.map((entry) => (
                   <tr key={entry.id}>
-                    <td className="members-table__mono">{formatIsoDate(entry.businessDate)}</td>
-                    <td className="members-table__mono">{formatPesos(entry.expected.cash)}</td>
-                    <td className="members-table__mono">{formatPesos(entry.countedCash)}</td>
-                    <td>{describeVariance(entry.variance)}</td>
-                    <td>{entry.varianceNote ?? ''}</td>
+                    <td className="members-table__mono" data-label="Fecha">{formatIsoDate(entry.businessDate)}</td>
+                    <td className="members-table__mono" data-label="Efectivo esperado">{formatPesos(entry.expected.cash)}</td>
+                    <td className="members-table__mono" data-label="Efectivo contado">{formatPesos(entry.countedCash)}</td>
+                    <td data-label="Diferencia">{describeVariance(entry.variance)}</td>
+                    <td data-label="Motivo">{entry.varianceNote ?? ''}</td>
                   </tr>
                 ))}
               </tbody>
