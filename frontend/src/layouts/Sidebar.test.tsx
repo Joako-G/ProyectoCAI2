@@ -1,4 +1,5 @@
 import { render as baseRender, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
@@ -42,5 +43,34 @@ describe('Sidebar groups', () => {
     render(<Sidebar sections={['members', 'users', 'pricing']} />);
 
     expect(within(nav()).queryByRole('group')).not.toBeInTheDocument();
+  });
+});
+
+describe('Sidebar menu button', () => {
+  it('opens and closes the sections from the menu button and closes them after choosing one', async () => {
+    const user = userEvent.setup();
+    render(<Sidebar sections={['members', 'users']} />);
+    const aside = screen.getByRole('complementary');
+
+    expect(aside).toHaveAttribute('data-open', 'false');
+    const button = screen.getByRole('button', { name: 'Abrir el menú' });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    expect(button).toHaveAttribute('aria-controls', nav().id);
+
+    await user.click(button);
+    expect(aside).toHaveAttribute('data-open', 'true');
+    expect(screen.getByRole('button', { name: 'Cerrar el menú' })).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(within(nav()).getByRole('link', { name: /Usuarios/ }));
+    expect(aside).toHaveAttribute('data-open', 'false');
+  });
+
+  it('closes the menu with Escape', async () => {
+    const user = userEvent.setup();
+    render(<Sidebar sections={['members']} />);
+
+    await user.click(screen.getByRole('button', { name: 'Abrir el menú' }));
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('complementary')).toHaveAttribute('data-open', 'false');
   });
 });

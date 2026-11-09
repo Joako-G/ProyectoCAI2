@@ -4,6 +4,9 @@ import { MEMBER_CATEGORIES, type Guardian, type MemberCategory, type MemberInput
 
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// The member form stops typing at the same lengths (frontend/src/features/members/utils/member-validation.ts).
+export const MAX_NAME_LENGTH = 60;
+export const MAX_EMAIL_LENGTH = 120;
 
 function isRealDate(value: string): boolean {
   const match = ISO_DATE.exec(value);
@@ -40,6 +43,7 @@ export function validateMemberInput(raw: unknown, today: string): MemberInput {
   const requiredName = (field: 'firstName' | 'lastName', label: string) => {
     const value = text(input[field]);
     if (!value) errors[field] = `${label} is required`;
+    else if (value.length > MAX_NAME_LENGTH) errors[field] = `${label} must be at most ${MAX_NAME_LENGTH} characters`;
     return value ?? '';
   };
   const firstName = requiredName('firstName', 'First name');
@@ -66,7 +70,7 @@ export function validateMemberInput(raw: unknown, today: string): MemberInput {
   else if (birthDateValid && memberSince < birthDate) errors.memberSince = 'Member since cannot be before the birth date';
 
   const emailRaw = text(input.email) ?? '';
-  if (emailRaw && !EMAIL.test(emailRaw)) errors.email = 'Email is not valid';
+  if (emailRaw && (emailRaw.length > MAX_EMAIL_LENGTH || !EMAIL.test(emailRaw))) errors.email = 'Email is not valid';
 
   const disciplineIds = validateDisciplineIds(input.disciplineIds, errors);
 
@@ -95,9 +99,10 @@ function validateGuardian(raw: unknown, required: boolean, errors: Record<string
   if (!required && !name && !contactRaw) return undefined;
 
   if (!name) errors['guardian.name'] = 'Guardian name is required';
+  else if (name.length > MAX_NAME_LENGTH) errors['guardian.name'] = `Guardian name must be at most ${MAX_NAME_LENGTH} characters`;
   const contact = phone(contactRaw);
   if (!contact) errors['guardian.contact'] = 'Guardian contact must be a valid phone number';
-  return name && contact ? { name, contact } : undefined;
+  return name && name.length <= MAX_NAME_LENGTH && contact ? { name, contact } : undefined;
 }
 
 function validateDisciplineIds(raw: unknown, errors: Record<string, string>): string[] {

@@ -9,6 +9,8 @@ export interface DebtNotice {
   total: number;
   recipient: 'member' | 'guardian';
   recipientName: string;
+  /** The number as stored for the recipient (the guardian's contact for a minor). */
+  recipientContact: string;
   /** Null when the server could not derive a usable WhatsApp number. */
   link: string | null;
   numberIssue: boolean;
@@ -17,4 +19,14 @@ export interface DebtNotice {
 export interface DebtNoticeList {
   asOf: string;
   rows: DebtNotice[];
+}
+
+/** Mirrors `WelcomeNotice` in backend/src/modules/notices/notice.types.ts. */
+export interface WelcomeNotice {
+  memberId: string;
+  recipient: 'member' | 'guardian';
+  recipientName: string;
+  /** Null when the server could not derive a usable WhatsApp number. */
+  link: string | null;
+  numberIssue: boolean;
 }

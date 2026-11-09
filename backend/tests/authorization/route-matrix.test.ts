@@ -3,6 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { createTestContext as createCashCount } from '../cashcount/helpers.js';
+import { createTestContext as createExpenses } from '../expenses/helpers.js';
 import { createTestContext as createDisciplines } from '../disciplines/helpers.js';
 import { createTestContext as createMembers } from '../members/helpers.js';
 import { createTestContext as createMemberships } from '../memberships/helpers.js';
@@ -29,7 +30,8 @@ beforeAll(async () => {
   const payments = await createPayments();
   const cashCount = await createCashCount();
   const audit = await createAudit();
-  cleanups.push(audit.cleanup, users.cleanup, members.cleanup, disciplines.cleanup, memberships.cleanup, pricing.cleanup, payments.cleanup, cashCount.cleanup);
+  const expenses = await createExpenses();
+  cleanups.push(expenses.cleanup, audit.cleanup, users.cleanup, members.cleanup, disciplines.cleanup, memberships.cleanup, pricing.cleanup, payments.cleanup, cashCount.cleanup);
   server = createApp({
     storePath: users.storePath,
     memberService: members.service,
@@ -39,9 +41,13 @@ beforeAll(async () => {
     paymentService: payments.service,
     reportService: cashCount.reports,
     cashCountService: cashCount.cashCount,
+    expenseService: expenses.service,
     auditService: audit.service,
     backupService: { status: async () => ({ destination: { isDefault: true, state: 'ready' }, keep: 30, keepRecent: 5, copies: 0, lastSuccessAt: null, lastGoodAt: null, lastFailure: null, running: false, database: { lastCopy: null, lastFailure: null } }), run: async () => ({ ok: true, backup: { name: 'backup-20261101T150000Z', at: '2026-11-01T15:00:00.000Z', files: [], database: { state: 'not_configured' }, partial: false } }) },
-    noticeService: { debtNotices: async () => ({ asOf: '2026-11-01', rows: [] }) },
+    noticeService: {
+      debtNotices: async () => ({ asOf: '2026-11-01', rows: [] }),
+      welcomeNotice: async () => ({ memberId: 'm1', recipient: 'member', recipientName: 'A B', link: null, numberIssue: true }),
+    },
     accessService: { check: async () => ({ result: 'red', reason: 'not_found' }) },
     greetings: createGreetingBus(),
     faceService: { enroll: async () => undefined, remove: async () => undefined, discardForDeactivatedMember: async () => undefined, status: async () => ({ enrolled: false }), summary: async () => ({ enrolled: 0 }), recognize: async () => ({ result: 'red', reason: 'not_recognized' }) },

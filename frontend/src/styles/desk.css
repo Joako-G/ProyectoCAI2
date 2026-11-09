@@ -1,0 +1,373 @@
+/*
+ * The desk screens (Arqueo, Gastos) share the look of the Ingreso desk: white cards with a mono caption, a
+ * 46px field and a full-width blue action. They sit inside forms, and the login styles in app.css reach every bare
+ * form, input and button, so each rule here is specific enough to undo them.
+ */
+
+.desk {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.desk__grid {
+  display: grid;
+  grid-template-columns: 400px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.desk__stack {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .desk__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.desk-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 22px 24px;
+}
+
+.desk-card__head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.desk-card__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.desk-card__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 16px;
+}
+
+.desk-card__scroll {
+  overflow-x: auto;
+}
+
+.desk-note {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+/* Figures */
+
+.desk-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.desk-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 12px 14px;
+  background: #f7f6f3;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.desk-stat__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.desk-stat__value {
+  font: 600 20px var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.desk-stat--primary {
+  background: #eff4fa;
+  border-color: rgba(31, 78, 140, 0.25);
+}
+
+.desk-stat--primary .desk-stat__value {
+  color: var(--color-accent);
+}
+
+/* Variance verdict: the words say shortage or surplus; the color only reinforces them. */
+
+.desk-verdict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #f7f6f3;
+  font-size: 13px;
+}
+
+.desk-verdict strong {
+  font: 600 14px var(--font-mono);
+}
+
+.desk-verdict--ok {
+  background: #e3f1ea;
+  border-color: rgba(45, 125, 90, 0.35);
+}
+
+.desk-verdict--ok strong {
+  color: var(--color-success);
+}
+
+.desk-verdict--short {
+  background: #fbeceb;
+  border-color: rgba(168, 50, 31, 0.35);
+}
+
+.desk-verdict--short strong {
+  color: var(--color-error);
+}
+
+.desk-verdict--over {
+  background: #fbf3df;
+  border-color: rgba(138, 106, 28, 0.35);
+}
+
+.desk-verdict--over strong {
+  color: var(--color-warning);
+}
+
+/* Form */
+
+.desk-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+  margin: 0;
+}
+
+.desk-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.desk-form .desk-field__label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.desk-form .desk-input {
+  width: 100%;
+  height: 46px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-md);
+  background: #fff;
+  color: var(--color-text);
+  font: 600 18px var(--font-mono);
+  letter-spacing: 1px;
+}
+
+.desk-form .desk-input::placeholder {
+  font: 400 13px var(--font-sans);
+  letter-spacing: 0;
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.desk-form select.desk-input,
+.desk-form input[type='date'].desk-input,
+.desk-form .desk-input--text {
+  font: 400 14px var(--font-sans);
+  letter-spacing: 0;
+}
+
+.desk-form textarea.desk-input {
+  height: auto;
+  padding: 10px 14px;
+  font: 400 14px var(--font-sans);
+  letter-spacing: 0;
+  resize: vertical;
+}
+
+.desk-form .desk-input:focus {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 1px;
+}
+
+.desk-form .desk-input[aria-invalid='true'] {
+  border-color: var(--color-error);
+}
+
+.desk-form .desk-input:disabled {
+  background: #f7f8fa;
+}
+
+.desk-field__hint,
+.desk-field__error,
+.desk-field__count {
+  margin: 0;
+  font-size: 12px;
+}
+
+.desk-field__hint,
+.desk-field__count {
+  color: var(--color-text-muted);
+}
+
+.desk-field__count {
+  align-self: flex-end;
+}
+
+.desk-field__error {
+  color: var(--color-error);
+}
+
+.desk-form .desk-primary {
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 13px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: #fff;
+  font: 600 13px var(--font-sans);
+  cursor: pointer;
+  transition: none;
+}
+
+.desk-form .desk-primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  transform: none;
+}
+
+.desk-form .desk-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.desk-form .desk-primary:focus-visible,
+.desk-form .desk-secondary:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.desk-form .desk-secondary {
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 11px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+  background: #f3f2ef;
+  color: var(--color-text);
+  font: 500 13px var(--font-sans);
+  cursor: pointer;
+  transition: none;
+}
+
+.desk-form .desk-secondary:hover:not(:disabled) {
+  background: #e9e7e2;
+  color: var(--color-text);
+  transform: none;
+}
+
+.desk-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #faf9f7;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+}
+
+.desk-confirm p {
+  margin: 0;
+}
+
+/* Cards laid side by side with the same width (Respaldo), and the action button outside a form. */
+
+.desk__grid--even {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 1100px) {
+  .desk__grid--even {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.desk-card__line {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.desk-card > .desk-primary--auto {
+  align-self: flex-start;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: #fff;
+  font: 600 13px var(--font-sans);
+  cursor: pointer;
+}
+
+.desk-card > .desk-primary--auto:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+}
+
+.desk-card > .desk-primary--auto:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.desk-card > .desk-primary--auto:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 520px) {
+  .desk-card {
+    padding: 16px 14px;
+  }
+
+  .desk-card > .desk-primary--auto {
+    align-self: stretch;
+  }
+}
+
+/* Tables inside a desk card scroll sideways on a narrow screen instead of squeezing their columns. */
+
+.desk-card .members-table {
+  min-width: 460px;
+}

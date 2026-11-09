@@ -50,11 +50,11 @@ describe('NoticesView', () => {
   });
 
   it('names the guardian as the recipient of a minor', async () => {
-    stubList(buildNoticeList([buildNotice({ name: 'Tomás Prueba', recipient: 'guardian', recipientName: 'Ana Prueba' })]));
+    stubList(buildNoticeList([buildNotice({ name: 'Tomás Prueba', recipient: 'guardian', recipientName: 'Ana Prueba', recipientContact: '1155552222' })]));
     render(<NoticesView />);
 
     const row = (await screen.findAllByRole('row'))[1]!;
-    expect(row).toHaveTextContent('Responsable: Ana Prueba');
+    expect(row).toHaveTextContent('Responsable: Ana Prueba · 1155552222');
   });
 
   it('shows a correction notice and no link when the number cannot be used', async () => {

@@ -637,4 +637,16 @@ describe('PaymentsView history and annulment', () => {
 
     expect(await screen.findByRole('region', { name: 'Comprobante' })).toHaveTextContent('Comprobante N° 7');
   });
+
+  it('shows the receipt in a pop-up that closes with Escape', async () => {
+    stubApi();
+    const user = await openMember();
+    await user.click(await screen.findByRole('button', { name: 'Ver comprobante 7' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Comprobante de pago' });
+    expect(within(dialog).getByRole('region', { name: 'Comprobante' })).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 });

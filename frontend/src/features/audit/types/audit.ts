@@ -9,6 +9,7 @@ export type AuditEntityType =
   | 'proration_rule'
   | 'payment'
   | 'cash_count'
+  | 'expense'
   | 'backup'
   | 'face_profile';
 

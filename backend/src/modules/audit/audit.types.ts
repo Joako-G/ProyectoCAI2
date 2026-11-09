@@ -10,6 +10,7 @@ export const AUDIT_ENTITY_TYPES = [
   'proration_rule',
   'payment',
   'cash_count',
+  'expense',
   'backup',
   'face_profile',
 ] as const;

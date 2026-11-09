@@ -1,4 +1,4 @@
-import type { ClubDate } from '../payments/charge.types.js';
+import type { ChargeLine, ClubDate } from '../payments/charge.types.js';
 import type { Period } from '../payments/pricing.types.js';
 
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -27,6 +27,47 @@ function joinList(items: readonly string[]): string {
 function dayLabel(date: ClubDate): string {
   const [year, month, day] = date.split('-');
   return `${day}/${month}/${year}`;
+}
+
+/** A receipt line worded for a message, e.g. "Cuota de Básquet octubre de 2026". */
+export function describeReceiptLine(line: ChargeLine, disciplineName: (id: string) => string): string {
+  const activity = disciplineName(line.disciplineId ?? '');
+  switch (line.kind) {
+    case 'enrollment':
+      return 'Inscripción';
+    case 'socialFee':
+      return `Cuota social ${monthLabel(line.period)}`;
+    case 'activityFee':
+      return `Cuota de ${activity} ${monthLabel(line.period)}${line.prorated ? ' (prorrateada)' : ''}`;
+    case 'activitySurcharge':
+      return `Recargo por pago tardío de ${activity} ${monthLabel(line.period)}`;
+    case 'carnetReplacement':
+      return 'Reposición de carnet';
+  }
+}
+
+export interface WelcomeMessageInput {
+  clubName: string;
+  memberName: string;
+  /** Who reads the message: the member, or the guardian of a minor. */
+  addressee: { kind: 'member' | 'guardian'; name: string };
+  receiptNumber: number;
+  paymentDate: ClubDate;
+  /** What the receipt charged, already worded in Spanish. */
+  concepts: readonly string[];
+  total: number;
+}
+
+/** Plain Spanish welcome that carries the enrollment receipt. Pure. */
+export function buildWelcomeMessage({ clubName, memberName, addressee, receiptNumber, paymentDate, concepts, total }: WelcomeMessageInput): string {
+  const enrollment = addressee.kind === 'guardian' ? `la inscripción de ${memberName}` : 'su inscripción';
+  return [
+    `Hola ${addressee.name}, le damos la bienvenida a ${clubName}.`,
+    `Registramos ${enrollment}.`,
+    `Comprobante N° ${receiptNumber} del ${dayLabel(paymentDate)}: ${joinList(concepts)}.`,
+    `Total: $ ${pesos.format(total)}.`,
+    'Quedamos a disposición para cualquier consulta.',
+  ].join(' ');
 }
 
 /** Plain Spanish text of a debt notice. Pure; it says nothing about the consequences of the debt. */

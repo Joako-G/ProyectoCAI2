@@ -14,6 +14,8 @@ export type Capability =
   | 'access:check'
   | 'faces:manage'
   | 'cashcount:run'
+  | 'expenses:read'
+  | 'expenses:write'
   | 'reports:read'
   | 'config:read'
   | 'config:manage'

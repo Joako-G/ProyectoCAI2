@@ -1,8 +1,11 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import type { Discipline } from '../../disciplines/types/discipline';
 import { disciplineOptionLabel } from '../../disciplines/utils/discipline-labels';
+import { DNI_INPUT_MAX_LENGTH, dniChars, phoneChars } from '../../../utils/input-limits';
 import { MEMBER_CATEGORIES, type MemberInput } from '../types/member';
 import {
+  MAX_EMAIL_LENGTH,
+  MAX_NAME_LENGTH,
   isMinorOn,
   validateMemberForm,
   type FieldErrors,
@@ -49,6 +52,13 @@ function errorsForSections(errors: FieldErrors, sections: readonly FormSection[]
 const VALUE_KEY_BY_FIELD: Record<string, keyof MemberFormValues> = {
   'guardian.name': 'guardianName',
   'guardian.contact': 'guardianContact',
+};
+
+const MAX_PHONE_LENGTH = 20;
+const SANITIZE_BY_FIELD: Record<string, (value: string) => string> = {
+  dni: dniChars,
+  whatsapp: (value) => phoneChars(value, MAX_PHONE_LENGTH),
+  'guardian.contact': (value) => phoneChars(value, MAX_PHONE_LENGTH),
 };
 
 interface FieldProps {
@@ -156,7 +166,9 @@ export function MemberForm({
   }
 
   function handleChange(event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
-    const { name, value } = event.target;
+    const { name } = event.target;
+    // Phone and DNI fields drop characters they can never hold, and every text field has a length cap.
+    const value = SANITIZE_BY_FIELD[name]?.(event.target.value) ?? event.target.value;
     setValues((current) => ({ ...current, [VALUE_KEY_BY_FIELD[name] ?? name]: value }));
     setErrors((current) => {
       if (!(name in current)) return current;
@@ -196,13 +208,13 @@ export function MemberForm({
         <legend className="member-form__legend">Datos personales</legend>
         <div className="member-form__grid">
           <Field name="firstName" label="Nombre" error={errors.firstName}>
-            {(props) => <input type="text" autoComplete="off" {...props} {...text('firstName')} />}
+            {(props) => <input type="text" autoComplete="off" maxLength={MAX_NAME_LENGTH} {...props} {...text('firstName')} />}
           </Field>
           <Field name="lastName" label="Apellido" error={errors.lastName}>
-            {(props) => <input type="text" autoComplete="off" {...props} {...text('lastName')} />}
+            {(props) => <input type="text" autoComplete="off" maxLength={MAX_NAME_LENGTH} {...props} {...text('lastName')} />}
           </Field>
           <Field name="dni" label="DNI" error={errors.dni}>
-            {(props) => <input type="text" inputMode="numeric" autoComplete="off" {...props} {...text('dni')} />}
+            {(props) => <input type="text" inputMode="numeric" autoComplete="off" maxLength={DNI_INPUT_MAX_LENGTH} {...props} {...text('dni')} />}
           </Field>
           <Field name="birthDate" label="Fecha de nacimiento" error={errors.birthDate}>
             {(props) => <input type="date" max={today} {...props} {...text('birthDate')} />}
@@ -229,10 +241,10 @@ export function MemberForm({
         <legend className="member-form__legend">Contacto</legend>
         <div className="member-form__grid">
           <Field name="whatsapp" label="WhatsApp" error={errors.whatsapp}>
-            {(props) => <input type="tel" autoComplete="off" {...props} {...text('whatsapp')} />}
+            {(props) => <input type="tel" autoComplete="off" maxLength={MAX_PHONE_LENGTH} {...props} {...text('whatsapp')} />}
           </Field>
           <Field name="email" label="Email (opcional)" required={false} error={errors.email}>
-            {(props) => <input type="email" autoComplete="off" {...props} {...text('email')} />}
+            {(props) => <input type="email" autoComplete="off" maxLength={MAX_EMAIL_LENGTH} {...props} {...text('email')} />}
           </Field>
         </div>
       </fieldset>
@@ -276,10 +288,10 @@ export function MemberForm({
           <p className="member-form__hint">El socio es menor de 18 años: el tutor es obligatorio.</p>
           <div className="member-form__grid">
             <Field name="guardian.name" label="Nombre del tutor" error={errors['guardian.name']}>
-              {(props) => <input type="text" autoComplete="off" {...props} {...text('guardianName', 'guardian.name')} />}
+              {(props) => <input type="text" autoComplete="off" maxLength={MAX_NAME_LENGTH} {...props} {...text('guardianName', 'guardian.name')} />}
             </Field>
             <Field name="guardian.contact" label="Contacto del tutor" error={errors['guardian.contact']}>
-              {(props) => <input type="tel" autoComplete="off" {...props} {...text('guardianContact', 'guardian.contact')} />}
+              {(props) => <input type="tel" autoComplete="off" maxLength={MAX_PHONE_LENGTH} {...props} {...text('guardianContact', 'guardian.contact')} />}
             </Field>
           </div>
         </fieldset>

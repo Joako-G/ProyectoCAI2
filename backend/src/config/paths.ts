@@ -49,6 +49,10 @@ export function auditFilePath(env: NodeJS.ProcessEnv = process.env): string {
   return dataFilePath(env, 'AUDIT_FILE', 'audit.json');
 }
 
+export function expensesFilePath(env: NodeJS.ProcessEnv = process.env): string {
+  return dataFilePath(env, 'EXPENSES_FILE', 'expenses.json');
+}
+
 export function cashCountsFilePath(env: NodeJS.ProcessEnv = process.env): string {
   return dataFilePath(env, 'CASHCOUNTS_FILE', 'cashcounts.json');
 }

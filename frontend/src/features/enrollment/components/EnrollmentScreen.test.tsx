@@ -36,6 +36,8 @@ function stubApi(overrides: Record<string, Handler> = {}) {
     'POST /api/payments/enrollment-preview': () => jsonResponse(CHARGE),
     'POST /api/members': () => jsonResponse(buildMember({ id: 'member-9', memberNumber: '0009' }), 201),
     'POST /api/payments': () => jsonResponse(buildPayment({ id: 'pay-9' }), 201),
+    'GET /api/notices/welcome/pay-9': () =>
+      jsonResponse({ memberId: 'member-9', recipient: 'member', recipientName: 'Lucía Ríos', link: 'https://wa.me/5491155551234?text=hola', numberIssue: false }),
     ...overrides,
   };
   const fetchMock = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
@@ -189,7 +191,10 @@ describe('EnrollmentScreen: collecting and creating', () => {
     await user.click(screen.getByRole('radio', { name: 'Efectivo' }));
     await user.click(screen.getByRole('button', { name: 'Crear socio' }));
 
-    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+    await screen.findByRole('heading', { name: 'Socio dado de alta' });
+    expect(onSaved).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Finalizar' }));
+    expect(onSaved).toHaveBeenCalledTimes(1);
     expect(onSaved.mock.calls[0]![0]).toMatchObject({ id: 'member-9' });
 
     const writes = keysOf(fetchMock).filter((key) => key.startsWith('POST /api/members') || key === 'POST /api/payments');
@@ -205,6 +210,36 @@ describe('EnrollmentScreen: collecting and creating', () => {
       concepts: [{ kind: 'enrollment' }, { kind: 'socialFee', period: '2026-10' }, { kind: 'activityFee', period: '2026-10', disciplineId: 'disc-1' }],
     });
     expect(payment.requestId).toEqual(expect.any(String));
+  });
+
+  it('offers the welcome with the receipt once the enrollment is collected', async () => {
+    const fetchMock = stubApi();
+    const { user } = setup();
+    await reachPayment(user);
+    await user.click(screen.getByRole('radio', { name: 'Efectivo' }));
+    await user.click(screen.getByRole('button', { name: 'Crear socio' }));
+
+    const send = await screen.findByRole('link', { name: 'Enviar bienvenida por WhatsApp a Lucía Ríos' });
+    expect(send).toHaveAttribute('href', 'https://wa.me/5491155551234?text=hola');
+    expect(send).toHaveAttribute('target', '_blank');
+    expect(callsTo(fetchMock, 'GET /api/notices/welcome/pay-9')).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: 'Ver comprobante' }));
+    expect(within(screen.getByRole('dialog', { name: 'Comprobante de pago' })).getByRole('region', { name: 'Comprobante' })).toBeInTheDocument();
+  });
+
+  it('tells the secretary to fix the number when the welcome cannot be sent', async () => {
+    stubApi({
+      'GET /api/notices/welcome/pay-9': () =>
+        jsonResponse({ memberId: 'member-9', recipient: 'guardian', recipientName: 'Ana Ríos', link: null, numberIssue: true }),
+    });
+    const { user } = setup();
+    await reachPayment(user);
+    await user.click(screen.getByRole('radio', { name: 'Efectivo' }));
+    await user.click(screen.getByRole('button', { name: 'Crear socio' }));
+
+    expect(await screen.findByText(/Corrija el contacto del responsable/)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Enviar bienvenida/ })).not.toBeInTheDocument();
   });
 
   it('does not collect anything when the member cannot be created, and goes back to the DNI', async () => {
@@ -238,7 +273,8 @@ describe('EnrollmentScreen: collecting and creating', () => {
     expect(onSaved).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: 'Reintentar cobro' }));
-    await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1));
+    await user.click(await screen.findByRole('button', { name: 'Finalizar' }));
+    expect(onSaved).toHaveBeenCalledTimes(1);
 
     expect(callsTo(fetchMock, 'POST /api/members')).toHaveLength(1);
     const [first, second] = callsTo(fetchMock, 'POST /api/payments').map(([, init]) => JSON.parse(String(init!.body)));
