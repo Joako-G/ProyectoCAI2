@@ -1,7 +1,9 @@
+import { Pagination } from '../../../components/Pagination';
+import { usePagination } from '../../../hooks/usePagination';
 import { DisciplineCatalogNotice } from '../../disciplines/components/DisciplineCatalogNotice';
 import { catalogDisciplines, type DisciplineCatalog } from '../../disciplines/hooks/useDisciplineCatalog';
 import { useMembersList } from '../hooks/useMembersList';
-import type { MemberListQuery } from '../types/member';
+import type { Member, MemberListQuery } from '../types/member';
 import { todayInClub } from '../utils/member-format';
 import { MembersTable } from './MembersTable';
 import { MembersToolbar } from './MembersToolbar';
@@ -21,6 +23,8 @@ interface MembersPageProps {
   onOpen?: (id: string) => void;
 }
 
+const NO_MEMBERS: Member[] = [];
+
 const STATUS_FILTER_LABEL = { all: 'Todos', active: 'Activos', inactive: 'Inactivos' } as const;
 
 function resultsLabel(count: number): string {
@@ -39,6 +43,8 @@ export function MembersPage({
 }: MembersPageProps) {
   const { search, status, disciplineId = '' } = query;
   const { state, retry } = useMembersList(query);
+  // A new search or filter starts again from the first page.
+  const pager = usePagination(state.phase === 'ready' ? state.members : NO_MEMBERS, JSON.stringify(query));
   const disciplines = catalog ? catalogDisciplines(catalog) : [];
 
   // Submitting the same text again acts as a refresh: the unchanged query alone would not refetch.
@@ -98,12 +104,15 @@ export function MembersPage({
       ) : null}
 
       {state.phase === 'ready' && state.members.length > 0 ? (
-        <MembersTable
-          members={state.members}
-          today={today}
-          disciplines={disciplines}
-          onOpen={onOpen ? (member) => onOpen(member.id) : undefined}
-        />
+        <>
+          <MembersTable
+            members={pager.pageItems}
+            today={today}
+            disciplines={disciplines}
+            onOpen={onOpen ? (member) => onOpen(member.id) : undefined}
+          />
+          <Pagination page={pager.page} pageCount={pager.pageCount} total={pager.total} onPageChange={pager.setPage} label="Paginación de socios" />
+        </>
       ) : null}
     </section>
   );

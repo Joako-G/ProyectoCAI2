@@ -1,3 +1,5 @@
+import { Pagination } from '../../../components/Pagination';
+import { usePagination } from '../../../hooks/usePagination';
 import { DeskCard } from '../../../components/desk/DeskCard';
 import { DeskStat } from '../../../components/desk/DeskStat';
 import { formatIsoDate } from '../../members/utils/member-format';
@@ -8,6 +10,7 @@ import { numberIssueLabel, recipientLabel, standingLabel } from '../utils/notice
 /** Container of the debt notices: who owes, as of today, and one WhatsApp link per member to send by hand. */
 export function NoticesView() {
   const { state, reload } = useDebtNotices();
+  const pager = usePagination(state.phase === 'ready' ? state.list.rows : []);
 
   if (state.phase === 'loading') {
     return <section className="card members-page" aria-label="Avisos"><p className="members-page__notice" role="status">Cargando los avisos…</p></section>;
@@ -40,7 +43,7 @@ export function NoticesView() {
               <DeskStat label="Deuda total" value={formatPesos(total)} primary />
             </div>
             <div className="desk-card__scroll">
-              <table className="members-table">
+              <table className="members-table members-table--stack">
                 <caption className="visually-hidden">Socios con deuda</caption>
                 <thead>
                   <tr className="table-head">
@@ -49,14 +52,14 @@ export function NoticesView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((notice) => (
+                  {pager.pageItems.map((notice) => (
                     <tr key={notice.memberId}>
-                      <td className="members-table__mono">{notice.memberNumber}</td>
-                      <td>{notice.name}</td>
-                      <td>{standingLabel(notice.standing)}</td>
-                      <td>{notice.unpaidPeriodCount}</td>
-                      <td className="members-table__mono">{formatPesos(notice.total)}</td>
-                      <td>{recipientLabel(notice)}</td>
+                      <td className="members-table__mono" data-label="N° de socio">{notice.memberNumber}</td>
+                      <td data-label="Socio">{notice.name}</td>
+                      <td data-label="Estado">{standingLabel(notice.standing)}</td>
+                      <td data-label="Meses adeudados">{notice.unpaidPeriodCount}</td>
+                      <td className="members-table__mono" data-label="Total">{formatPesos(notice.total)}</td>
+                      <td data-label="Destinatario">{recipientLabel(notice)}</td>
                       <td>
                         {notice.link ? (
                           <a className="button button--secondary notice-send" href={notice.link} target="_blank" rel="noopener noreferrer" aria-label={`Enviar por WhatsApp a ${notice.recipientName}`}>
@@ -71,6 +74,7 @@ export function NoticesView() {
                 </tbody>
               </table>
             </div>
+            <Pagination page={pager.page} pageCount={pager.pageCount} total={pager.total} onPageChange={pager.setPage} label="Paginación de avisos" />
           </>
         )}
       </DeskCard>

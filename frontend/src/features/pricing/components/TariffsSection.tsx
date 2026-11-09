@@ -54,7 +54,7 @@ export function TariffsSection({ tariffs, month, canWrite, onAdd, onReplace, onD
       {sorted.length === 0 ? (
         <p className="members-page__notice">Todavía no hay tarifas cargadas.</p>
       ) : (
-        <table className="members-table">
+        <table className="members-table members-table--stack">
           <caption className="visually-hidden">Tarifas</caption>
           <thead>
             <tr className="table-head">
@@ -73,12 +73,12 @@ export function TariffsSection({ tariffs, month, canWrite, onAdd, onReplace, onD
               const period = formatPeriod(tariff.effectiveFrom);
               return (
                 <tr key={tariff.effectiveFrom}>
-                  <td className="members-table__mono">{period}</td>
-                  <td>{formatPesos(tariff.enrollment)}</td>
-                  <td>{formatPesos(tariff.socialFee)}</td>
-                  <td>{formatPesos(tariff.activityFee)}</td>
-                  <td>{formatPesos(tariff.carnetReplacement)}</td>
-                  <td>
+                  <td className="members-table__mono" data-label="Vigente desde">{period}</td>
+                  <td data-label="Matrícula">{formatPesos(tariff.enrollment)}</td>
+                  <td data-label="Cuota social">{formatPesos(tariff.socialFee)}</td>
+                  <td data-label="Cuota por actividad">{formatPesos(tariff.activityFee)}</td>
+                  <td data-label="Reposición de carnet">{formatPesos(tariff.carnetReplacement)}</td>
+                  <td data-label="Estado">
                     <span className={`status-chip status-chip--${status === 'Vigente' ? 'active' : 'inactive'}`}>{status}</span>
                   </td>
                   {canWrite ? (
