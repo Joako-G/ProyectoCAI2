@@ -10,5 +10,8 @@ backend/data/*
 !backend/data/members.seed.json
 !backend/data/disciplines.seed.json
 backend/backups/
+# Database dumps hold real member data and must never be committed
+*.dump
+*.backup
 # face-api models copied from node_modules by frontend/scripts/copy-face-models.mjs (about 7 MB)
 frontend/public/models/
