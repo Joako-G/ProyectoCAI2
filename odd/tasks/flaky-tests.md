@@ -49,7 +49,7 @@ One work-unit commit per task, on `manu`.
   - Replace every raw `listen(0)` in the tests.
   - A guard test fails if a test file uses a raw `listen(0)` again.
   - Acceptance: a deterministic test of the helper with a fake that returns blocked ports first, and a stress run that starts and calls thousands of servers through the helper without one failure.
-- [ ] T2 — Frontend: reproduce and fix the `App.navigation.test.tsx` failures.
+- [x] T2 — Frontend: reproduce and fix the `App.navigation.test.tsx` failures.
   - Reproduce under CPU load, record the exact failure text, and fix the cause.
   - Acceptance: repeated runs under load with no failure.
 - [ ] T3 — Proof. Run the backend and frontend suites repeatedly and record the results in this document.
@@ -68,6 +68,11 @@ One work-unit commit per task, on `manu`.
   - No `listen(0` exists in `backend/src` or `scripts`; `src/server.ts` listens on the configured port and was not touched.
   - Evidence per route: direct inline was not used; one writer did the whole task (trigger: 20 non-trivial test files).
   - Backend run after T1: `node --test` suites pass; Vitest non-database part 72 files / 1183 tests pass. The database suites could not run because Docker Desktop was not running (ECONNREFUSED 127.0.0.1:5432); they do not use the helper.
+- 2026-11-08 (T2): reproduced and fixed. Load: 16 busy node loops on 12 logical cores while running `pnpm exec vitest run src/App.navigation.test.tsx src/App.routing.test.tsx` (26 tests). Unloaded baseline: 26 passed. **Before the fix, 4 of 8 loaded runs failed** (one test each), with two different causes:
+  - Cause 1, a real race in the test (2 runs): `shows a teacher only Mis disciplinas...` failed after 121-126 ms with `expected "vi.fn()" to be called with arguments: [ '/api/roster', Anything ]` (the only call so far was `/auth/me`). The h1 "Mis disciplinas" is drawn by the shell, so it can be found before `RosterView`'s effect has requested the data; the test asserted the call synchronously. Fix: `await waitFor(...)` on the call. No product change.
+  - Cause 2, Testing Library's 1 s `asyncUtilTimeout` (2 runs): `shows the head secretary the three sections...` failed with `Unable to find role="heading" and name "Socios"` after 1.2 s and 2.1 s; the DOM dump shows the shell still on `/` with the title "Club Independiente", i.e. the redirect to Socios and the first render of the app had not finished in 1 s under load (not a missing route or a lazy load: every screen is imported statically). Fix: `configure({ asyncUtilTimeout: 5000 })` once in `frontend/src/test/setup.ts` (`ASYNC_UTIL_TIMEOUT_MS`), 5x the default, still far below the 20 s `testTimeout`, which is not changed. Regression test: `src/test/setup.test.ts` asserts the configured value (RED first: it was 1000).
+  - **After the fix, 0 of 10 loaded runs failed** (27 tests each, 17-25 s per run). Raw outputs of both series were kept under the scratchpad temp dir (`t2/load-N.log`, `t2/after-N.log`).
+  - Frontend full suite after T2: 73 files, 734 tests passed (1 m 36 s); typecheck clean.
 
 ## Next step
-T2.
+T3.

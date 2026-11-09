@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderApp } from './test/renderApp';
@@ -80,7 +80,8 @@ describe('role-based navigation', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Mis disciplinas' })).toBeInTheDocument();
     expect(navLinks().map((link) => link.textContent)).toEqual(['01Mis disciplinas']);
-    expect(fetch).toHaveBeenCalledWith('/api/roster', expect.anything());
+    // The heading comes from the shell, so it can show before the roster screen's effect has asked for the data.
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/roster', expect.anything()));
     expect(fetch).not.toHaveBeenCalledWith('/api/members', expect.anything());
   });
 
