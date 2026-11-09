@@ -111,7 +111,9 @@ describe('PricingView', () => {
 
     const form = within(screen.getByRole('group', { name: 'Nueva tarifa' }));
     fireEvent.change(form.getByLabelText('Vigente desde'), { target: { value: '2026-09' } });
-    await user.type(form.getByLabelText('Matrícula'), '1.5');
+    // A decimal separator stays in the field and is refused, never dropped: 1,5 must not turn into 15.
+    await user.type(form.getByLabelText('Matrícula'), '1,5');
+    expect(form.getByLabelText('Matrícula')).toHaveValue('1,5');
     await user.click(form.getByRole('button', { name: 'Agregar tarifa' }));
 
     expect(form.getByText('Elija el mes actual o uno posterior.')).toBeInTheDocument();

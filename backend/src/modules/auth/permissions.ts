@@ -18,6 +18,9 @@ export const permissions = {
   'payments:collect': ['secretary', 'head_secretary'],
   'payments:annul': ['head_secretary'],
   'cashcount:run': ['head_secretary'],
+  // Club expenses. PROVISIONAL(E4): the club has yet to confirm who may read and record them; both secretary roles for now.
+  'expenses:read': ['secretary', 'head_secretary'],
+  'expenses:write': ['secretary', 'head_secretary'],
   'reports:read': ['secretary', 'head_secretary'],
   'notices:read': ['secretary', 'head_secretary'],
   // The entrance check (RF-08): a DNI tells staff whether the member may enter. Provisional: there is no doorkeeper role yet.

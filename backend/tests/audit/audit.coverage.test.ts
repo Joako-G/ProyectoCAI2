@@ -11,6 +11,8 @@ import type { AuditEntry } from '../../src/modules/audit/audit.types.js';
 import { createBackupService } from '../../src/modules/backup/backup.service.js';
 import { createJsonAuditRepository } from '../../src/modules/audit/json-audit.repository.js';
 import { createCashCountService } from '../../src/modules/cashcount/cashcount.service.js';
+import { createExpenseService } from '../../src/modules/expenses/expense.service.js';
+import { createJsonExpenseRepository } from '../../src/modules/expenses/json-expense.repository.js';
 import { createFaceService } from '../../src/modules/faces/face.service.js';
 import { createJsonCashCountRepository } from '../../src/modules/cashcount/json-cashcount.repository.js';
 import { createJsonDisciplineRepository } from '../../src/modules/disciplines/json-discipline.repository.js';
@@ -214,6 +216,10 @@ const scenarios: Record<string, (api: Api) => Promise<Prepared>> = {
     send: () => api.call('POST', '/api/cashcount', { countedCash: 0, varianceNote: 'Faltó vuelto' }),
     expected: (response) => ({ action: 'close', entityType: 'cash_count', entityId: response.body.id!, changedFields: [] }),
   }),
+  'POST /api/expenses': async (api) => ({
+    send: () => api.call('POST', '/api/expenses', { date: '2026-10-05', amount: 3000, category: 'other', description: 'Compra de librería' }),
+    expected: (response) => ({ action: 'create', entityType: 'expense', entityId: response.body.id!, changedFields: [] }),
+  }),
   'POST /api/backups': async (api) => ({
     send: () => api.call('POST', '/api/backups'),
     expected: (response) => ({ action: 'create', entityType: 'backup', entityId: response.body.name as string, changedFields: [] }),
@@ -268,6 +274,7 @@ async function startApp(failingAudit = false) {
   const paymentService = createPaymentService({ repository: paymentRepository, members: memberService, memberships: membershipService, pricing: pricingConfigService, audit: auditService, now });
   const reportService = createReportService({ income: createPaymentIncomeSource(paymentRepository), members: memberService, disciplines: disciplineService });
   const cashCountService = createCashCountService({ repository: createJsonCashCountRepository(join(dir, 'cashcounts.json')), revenue: reportService, audit: auditService, now });
+  const expenseService = createExpenseService({ repository: createJsonExpenseRepository(join(dir, 'expenses.json')), audit: auditService, now });
   // One real source file; the clock is fixed, so a second copy in the same second is refused.
   await writeFile(join(dir, 'sample.json'), '[]');
   // A configured destination must exist before a copy.
@@ -296,6 +303,7 @@ async function startApp(failingAudit = false) {
     paymentService,
     reportService,
     cashCountService,
+    expenseService,
     backupService,
     faceService,
     auditService,

@@ -1,7 +1,10 @@
 import { useState } from 'react';
+import { MoneyField } from '../../../components/desk/MoneyField';
 import { formatPesos } from '../../pricing/utils/pricing-format';
 import type { CloseDayInput } from '../types/cashcount';
-import { describeVariance, parseCountedCash } from '../utils/cashcount-format';
+import { describeVariance, parseCountedCash, varianceTone } from '../utils/cashcount-format';
+
+const MAX_NOTE_LENGTH = 500;
 
 interface CloseDayFormProps {
   expectedCash: number;
@@ -26,34 +29,34 @@ export function CloseDayForm({ expectedCash, saving, error, onClose }: CloseDayF
   }
 
   return (
-    <form className="arqueo-form" onSubmit={(event) => { event.preventDefault(); if (amount !== null) setConfirming(true); }}>
-      <div className="form-field">
-        <label htmlFor="arqueo-counted" className="form-field__label">Efectivo contado</label>
-        <input id="arqueo-counted" type="text" inputMode="numeric" autoComplete="off" value={counted} disabled={confirming || saving}
-          onChange={(event) => setCounted(event.target.value)} />
-      </div>
+    <form className="desk-form" onSubmit={(event) => { event.preventDefault(); if (amount !== null) setConfirming(true); }}>
+      <MoneyField label="Efectivo contado" value={counted} disabled={confirming || saving} onChange={setCounted} />
 
       {variance !== null ? (
-        <p className="report-result__total"><span>Diferencia</span> <strong data-testid="variance">{describeVariance(variance)}</strong></p>
+        <p className={`desk-verdict desk-verdict--${varianceTone(variance)}`}>
+          <span>Diferencia</span> <strong data-testid="variance">{describeVariance(variance)}</strong>
+        </p>
       ) : null}
 
       {variance !== null && variance !== 0 ? (
-        <div className="form-field">
-          <label htmlFor="arqueo-note" className="form-field__label">Motivo de la diferencia (opcional)</label>
-          <textarea id="arqueo-note" rows={2} maxLength={500} value={note} disabled={confirming || saving} onChange={(event) => setNote(event.target.value)} />
+        <div className="desk-field">
+          <label htmlFor="arqueo-note" className="desk-field__label">Motivo de la diferencia (opcional)</label>
+          <textarea id="arqueo-note" className="desk-input" rows={3} maxLength={MAX_NOTE_LENGTH} value={note} disabled={confirming || saving}
+            onChange={(event) => setNote(event.target.value)} />
+          <p className="desk-field__count" aria-hidden="true">{note.length}/{MAX_NOTE_LENGTH}</p>
         </div>
       ) : null}
 
-      {error ? <p className="form-field__error" role="alert">{error}</p> : null}
+      {error ? <p className="desk-field__error" role="alert">{error}</p> : null}
 
       {confirming && amount !== null ? (
-        <div className="arqueo-confirm" role="alertdialog" aria-label="Confirmar cierre">
+        <div className="desk-confirm" role="alertdialog" aria-label="Confirmar cierre">
           <p>El cierre no se puede modificar después. ¿Cerrar el día con {formatPesos(amount)} contados?</p>
-          <button type="button" className="button button--primary" onClick={confirm}>Confirmar cierre</button>
-          <button type="button" className="button button--secondary" onClick={() => setConfirming(false)}>Cancelar</button>
+          <button type="button" className="desk-primary" onClick={confirm}>Confirmar cierre</button>
+          <button type="button" className="desk-secondary" onClick={() => setConfirming(false)}>Cancelar</button>
         </div>
       ) : (
-        <button type="submit" className="button button--primary" disabled={amount === null || saving}>Cerrar el día</button>
+        <button type="submit" className="desk-primary" disabled={amount === null || saving}>Cerrar el día</button>
       )}
     </form>
   );

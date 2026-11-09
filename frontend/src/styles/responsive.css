@@ -1,0 +1,134 @@
+/* Responsive layout: under 860px the sidebar becomes a top bar whose sections open from a hamburger button. */
+
+.sidebar__toggle {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    max-height: 100vh;
+    overflow-y: auto;
+  }
+
+  .sidebar__brand {
+    padding: 4px 6px;
+    border-bottom: 0;
+  }
+
+  .sidebar__toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid var(--color-sidebar-border);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .sidebar__toggle:hover {
+    background: var(--color-sidebar-hover);
+  }
+
+  .sidebar__toggle:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+
+  /* Three bars that turn into a cross while the menu is open. */
+  .sidebar__toggle-bars,
+  .sidebar__toggle-bars::before,
+  .sidebar__toggle-bars::after {
+    display: block;
+    width: 20px;
+    height: 2px;
+    border-radius: 1px;
+    background: #fff;
+    content: '';
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+
+  .sidebar__toggle-bars {
+    position: relative;
+  }
+
+  .sidebar__toggle-bars::before {
+    position: absolute;
+    top: -6px;
+  }
+
+  .sidebar__toggle-bars::after {
+    position: absolute;
+    top: 6px;
+  }
+
+  .sidebar[data-open='true'] .sidebar__toggle-bars {
+    background: transparent;
+  }
+
+  .sidebar[data-open='true'] .sidebar__toggle-bars::before {
+    transform: translateY(6px) rotate(45deg);
+  }
+
+  .sidebar[data-open='true'] .sidebar__toggle-bars::after {
+    transform: translateY(-6px) rotate(-45deg);
+  }
+
+  /* Closed: only the brand and the button. Open: the sections and the session stack below them. */
+  .sidebar[data-open='false'] .sidebar__nav,
+  .sidebar[data-open='false'] .sidebar__session {
+    display: none;
+  }
+
+  .sidebar__nav {
+    flex: 1 1 100%;
+    padding: 6px 0;
+  }
+
+  .sidebar__link {
+    padding: 12px;
+  }
+
+  .sidebar__session {
+    flex: 1 1 100%;
+    margin: 0;
+    padding: 12px 6px 6px;
+  }
+
+  .app-shell__content {
+    padding: 18px 14px 32px;
+    gap: 16px;
+  }
+
+  .page-header {
+    padding: 14px;
+  }
+
+  .members-page {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .app-shell__content {
+    padding: 14px 10px 28px;
+  }
+
+  .sidebar__brand-tagline {
+    display: none;
+  }
+}

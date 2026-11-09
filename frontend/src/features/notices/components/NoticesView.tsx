@@ -1,3 +1,5 @@
+import { DeskCard } from '../../../components/desk/DeskCard';
+import { DeskStat } from '../../../components/desk/DeskStat';
 import { formatIsoDate } from '../../members/utils/member-format';
 import { formatPesos } from '../../pricing/utils/pricing-format';
 import { useDebtNotices } from '../hooks/useDebtNotices';
@@ -22,46 +24,56 @@ export function NoticesView() {
   }
 
   const { asOf, rows } = state.list;
+  const total = rows.reduce((sum, notice) => sum + notice.total, 0);
   return (
-    <section className="card members-page" aria-label="Avisos">
-      <h2 className="report-title">Avisos de deuda al {formatIsoDate(asOf)}</h2>
-      <p className="members-page__summary">
-        El total se calcula con la fecha de hoy y puede cambiar según la fecha de pago. Cada aviso se envía a mano desde WhatsApp.
-      </p>
-      {rows.length === 0 ? (
-        <p className="members-page__notice">No hay socios con deuda para avisar.</p>
-      ) : (
-        <table className="members-table">
-          <caption className="visually-hidden">Socios con deuda</caption>
-          <thead>
-            <tr className="table-head">
-              <th scope="col">N° de socio</th><th scope="col">Socio</th><th scope="col">Estado</th>
-              <th scope="col">Meses adeudados</th><th scope="col">Total</th><th scope="col">Destinatario</th><th scope="col">Aviso</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((notice) => (
-              <tr key={notice.memberId}>
-                <td className="members-table__mono">{notice.memberNumber}</td>
-                <td>{notice.name}</td>
-                <td>{standingLabel(notice.standing)}</td>
-                <td>{notice.unpaidPeriodCount}</td>
-                <td className="members-table__mono">{formatPesos(notice.total)}</td>
-                <td>{recipientLabel(notice)}</td>
-                <td>
-                  {notice.link ? (
-                    <a className="button button--secondary notice-send" href={notice.link} target="_blank" rel="noopener noreferrer" aria-label={`Enviar por WhatsApp a ${notice.recipientName}`}>
-                      Enviar por WhatsApp
-                    </a>
-                  ) : (
-                    <span className="notice-issue">{numberIssueLabel(notice)}</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </section>
+    <div className="desk" role="region" aria-label="Avisos">
+      <DeskCard label="Deuda" title={`Avisos de deuda al ${formatIsoDate(asOf)}`} ariaLabel="Socios con deuda">
+        <p className="desk-note">
+          El total se calcula con la fecha de hoy y puede cambiar según la fecha de pago. Cada aviso se envía a mano desde WhatsApp.
+        </p>
+        {rows.length === 0 ? (
+          <p className="members-page__notice">No hay socios con deuda para avisar.</p>
+        ) : (
+          <>
+            <div className="desk-stats">
+              <DeskStat label="Socios con deuda" value={String(rows.length)} />
+              <DeskStat label="Deuda total" value={formatPesos(total)} primary />
+            </div>
+            <div className="desk-card__scroll">
+              <table className="members-table">
+                <caption className="visually-hidden">Socios con deuda</caption>
+                <thead>
+                  <tr className="table-head">
+                    <th scope="col">N° de socio</th><th scope="col">Socio</th><th scope="col">Estado</th>
+                    <th scope="col">Meses adeudados</th><th scope="col">Total</th><th scope="col">Destinatario</th><th scope="col">Aviso</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((notice) => (
+                    <tr key={notice.memberId}>
+                      <td className="members-table__mono">{notice.memberNumber}</td>
+                      <td>{notice.name}</td>
+                      <td>{standingLabel(notice.standing)}</td>
+                      <td>{notice.unpaidPeriodCount}</td>
+                      <td className="members-table__mono">{formatPesos(notice.total)}</td>
+                      <td>{recipientLabel(notice)}</td>
+                      <td>
+                        {notice.link ? (
+                          <a className="button button--secondary notice-send" href={notice.link} target="_blank" rel="noopener noreferrer" aria-label={`Enviar por WhatsApp a ${notice.recipientName}`}>
+                            Enviar por WhatsApp
+                          </a>
+                        ) : (
+                          <span className="notice-issue">{numberIssueLabel(notice)}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </DeskCard>
+    </div>
   );
 }

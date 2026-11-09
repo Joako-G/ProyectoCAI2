@@ -903,6 +903,12 @@ a:hover {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
 }
 
+.modal--wide {
+  width: min(640px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
 .modal__title {
   margin: 0;
   font-family: var(--font-serif);
@@ -1140,6 +1146,19 @@ a:hover {
 
   .receipt__actions {
     display: none;
+  }
+
+  /* The receipt opens inside a modal; flatten it so the printed page holds only the receipt. */
+  .modal-backdrop,
+  .modal {
+    position: static;
+    display: block;
+    width: auto;
+    max-height: none;
+    padding: 0;
+    overflow: visible;
+    background: none;
+    box-shadow: none;
   }
 }
 

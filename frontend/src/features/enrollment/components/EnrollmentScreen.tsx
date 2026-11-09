@@ -6,8 +6,9 @@ import { ApiError, createMember, fetchMembers } from '../../members/services/mem
 import type { Member } from '../../members/types/member';
 import { emptyMemberForm, validateMemberForm, type FieldErrors, type MemberFormValues } from '../../members/utils/member-validation';
 import { registerPayment } from '../../payments/services/payments-api';
-import type { Charge, ChargeConcept, PaymentMethod } from '../../payments/types/payment';
+import type { Charge, ChargeConcept, Payment, PaymentMethod } from '../../payments/types/payment';
 import { describePaymentError, newRequestId } from '../../payments/utils/payment-format';
+import { EnrollmentDone } from './EnrollmentDone';
 import { EnrollmentPaymentStep } from './EnrollmentPaymentStep';
 
 interface EnrollmentScreenProps {
@@ -56,6 +57,8 @@ export function EnrollmentScreen({ today, catalog, onSaved, onCancel }: Enrollme
   const [checking, setChecking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<Member>();
+  // Set once the enrollment was collected: the receipt and the welcome are offered before leaving.
+  const [done, setDone] = useState<{ member: Member; payment: Payment }>();
   const [paymentError, setPaymentError] = useState<string>();
   // One key for the collection of this enrollment: a retry after a failure can never charge twice.
   const requestId = useRef(newRequestId());
@@ -83,6 +86,8 @@ export function EnrollmentScreen({ today, catalog, onSaved, onCancel }: Enrollme
   }
 
   const disciplines = catalogDisciplines(catalog);
+
+  if (done) return <EnrollmentDone member={done.member} payment={done.payment} disciplines={disciplines} onFinish={() => onSaved(done.member)} />;
 
   // The DNI is checked here, before any money is taken; the server checks it again when the member is created.
   async function continueFromData(values: MemberFormValues) {
@@ -132,8 +137,8 @@ export function EnrollmentScreen({ today, catalog, onSaved, onCancel }: Enrollme
       }
     }
     try {
-      await registerPayment({ memberId: member.id, concepts: conceptsFrom(charge), registration: {}, method, requestId: requestId.current });
-      onSaved(member);
+      const payment = await registerPayment({ memberId: member.id, concepts: conceptsFrom(charge), registration: {}, method, requestId: requestId.current });
+      setDone({ member, payment });
     } catch (error) {
       setPaymentError(describePaymentError(error));
       setSaving(false);

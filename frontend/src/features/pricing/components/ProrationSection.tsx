@@ -1,4 +1,5 @@
 import { useId, useState, type FormEvent } from 'react';
+import { digitsOnly } from '../../../utils/input-limits';
 import { useSaveAction } from '../hooks/useSaveAction';
 import type { ProrationRule } from '../types/pricing';
 import { validateProration, type ProrationValues } from '../utils/pricing-validation';
@@ -9,6 +10,9 @@ interface ProrationSectionProps {
   canWrite: boolean;
   onSave: (rule: ProrationRule) => Promise<void>;
 }
+
+/** A day of the month has two digits and a percentage at most three. */
+const MAX_DIGITS: Record<keyof ProrationValues, number> = { afterDay: 2, activityPercent: 3 };
 
 /** Proration of the activity fee for members who join late in the month; the social fee is never reduced. */
 export function ProrationSection({ rule, canWrite, onSave }: ProrationSectionProps) {
@@ -39,7 +43,7 @@ export function ProrationSection({ rule, canWrite, onSave }: ProrationSectionPro
     return (
       <div className="form-field">
         <label htmlFor={id} className="form-field__label">{label}</label>
-        <input id={id} type="text" inputMode="numeric" autoComplete="off" value={values[name]} aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-error` : undefined} onChange={(event) => change(name, event.target.value)} />
+        <input id={id} type="text" inputMode="numeric" autoComplete="off" value={values[name]} aria-invalid={error ? true : undefined} aria-describedby={error ? `${id}-error` : undefined} maxLength={MAX_DIGITS[name]} onChange={(event) => change(name, digitsOnly(event.target.value, MAX_DIGITS[name]))} />
         {error ? <p id={`${id}-error`} className="form-field__error">{error}</p> : null}
       </div>
     );

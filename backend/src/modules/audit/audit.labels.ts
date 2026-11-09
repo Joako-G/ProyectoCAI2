@@ -27,6 +27,7 @@ const kindLabels: Record<AuditEntityType, string> = {
   proration_rule: 'Prorrateo',
   payment: 'Pago',
   cash_count: 'Arqueo',
+  expense: 'Gasto',
   backup: 'Respaldo',
   face_profile: 'Perfil facial',
 };

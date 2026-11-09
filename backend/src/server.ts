@@ -5,6 +5,7 @@ import {
   cashCountsFilePath,
   COMPOSE_FILE,
   disciplinesFilePath,
+  expensesFilePath,
   membershipsFilePath,
   membersFilePath,
   paymentsFilePath,
@@ -14,6 +15,8 @@ import { databaseUrl } from './config/database.js';
 import { runMigrations } from './database/migrate.js';
 import { createPool } from './database/pool.js';
 import { startFaces } from './modules/faces/faces.startup.js';
+import { createExpenseService } from './modules/expenses/expense.service.js';
+import { createJsonExpenseRepository } from './modules/expenses/json-expense.repository.js';
 import { createFaceService } from './modules/faces/face.service.js';
 import { createPgFaceRepository } from './modules/faces/pg-face.repository.js';
 import { createEntriesService } from './modules/access/access.entries.js';
@@ -118,12 +121,14 @@ const cashCountService = createCashCountService({
   revenue: reportService,
   audit: auditService,
 });
+const expenseService = createExpenseService({ repository: createJsonExpenseRepository(expensesFilePath()), audit: auditService });
 // Debt notices read the four sources once per request and prepare wa.me links; a Business API sender can replace the sender later.
 const noticeService = createNoticeService({
   members: memberService,
   memberships: membershipService,
   payments: paymentRepository,
   pricing: pricingConfigService,
+  disciplines: disciplineService,
   sender: createWaMeSender(),
 });
 // Identified checks are logged in PostgreSQL. The repository exists only once the database is ready, so the recorder
@@ -164,7 +169,7 @@ facesReady.then((available) => {
     entryRepository = createPgEntryRepository(pool);
   }
   const accessEntries = entryRepository ? createEntriesService({ entries: entryRepository, members: memberService }) : undefined;
-  const app = createApp({ faceService, facesUnavailable: !faceService, memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, rosterService, noticeService, accessService, accessEntries, greetings, auditService, backupService, userRepository });
+  const app = createApp({ faceService, facesUnavailable: !faceService, memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, expenseService, rosterService, noticeService, accessService, accessEntries, greetings, auditService, backupService, userRepository });
   return bootstrap({
     memberService,
     membershipService,
