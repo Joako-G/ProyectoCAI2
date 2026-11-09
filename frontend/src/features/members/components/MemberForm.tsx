@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from 'react';
 import type { Discipline } from '../../disciplines/types/discipline';
 import { disciplineOptionLabel } from '../../disciplines/utils/discipline-labels';
-import { dniChars, phoneChars } from '../../../utils/input-limits';
+import { DNI_INPUT_MAX_LENGTH, dniChars, phoneChars } from '../../../utils/input-limits';
 import { MEMBER_CATEGORIES, type MemberInput } from '../types/member';
 import {
   MAX_EMAIL_LENGTH,
@@ -54,10 +54,9 @@ const VALUE_KEY_BY_FIELD: Record<string, keyof MemberFormValues> = {
   'guardian.contact': 'guardianContact',
 };
 
-const MAX_DNI_LENGTH = 10;
 const MAX_PHONE_LENGTH = 20;
 const SANITIZE_BY_FIELD: Record<string, (value: string) => string> = {
-  dni: (value) => dniChars(value, MAX_DNI_LENGTH),
+  dni: dniChars,
   whatsapp: (value) => phoneChars(value, MAX_PHONE_LENGTH),
   'guardian.contact': (value) => phoneChars(value, MAX_PHONE_LENGTH),
 };
@@ -215,7 +214,7 @@ export function MemberForm({
             {(props) => <input type="text" autoComplete="off" maxLength={MAX_NAME_LENGTH} {...props} {...text('lastName')} />}
           </Field>
           <Field name="dni" label="DNI" error={errors.dni}>
-            {(props) => <input type="text" inputMode="numeric" autoComplete="off" maxLength={MAX_DNI_LENGTH} {...props} {...text('dni')} />}
+            {(props) => <input type="text" inputMode="numeric" autoComplete="off" maxLength={DNI_INPUT_MAX_LENGTH} {...props} {...text('dni')} />}
           </Field>
           <Field name="birthDate" label="Fecha de nacimiento" error={errors.birthDate}>
             {(props) => <input type="date" max={today} {...props} {...text('birthDate')} />}

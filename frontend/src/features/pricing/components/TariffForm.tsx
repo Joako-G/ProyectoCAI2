@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from 'react';
-import { digitsOnly, MAX_MONEY_DIGITS } from '../../../utils/input-limits';
+import { MONEY_INPUT_MAX_LENGTH, moneyChars } from '../../../utils/input-limits';
 import type { Tariff } from '../types/pricing';
 import { formatPeriod } from '../utils/pricing-format';
 import { MONEY_FIELDS, validateTariffForm, type TariffFormValues } from '../utils/pricing-validation';
@@ -58,8 +58,8 @@ export function TariffForm({ tariff, month, saving, onSubmit, onCancel }: Tariff
           value={values[name]}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${id}-error` : undefined}
-          maxLength={name === 'effectiveFrom' ? undefined : MAX_MONEY_DIGITS}
-          onChange={(event) => change(name, name === 'effectiveFrom' ? event.target.value : digitsOnly(event.target.value, MAX_MONEY_DIGITS))}
+          maxLength={name === 'effectiveFrom' ? undefined : MONEY_INPUT_MAX_LENGTH}
+          onChange={(event) => change(name, name === 'effectiveFrom' ? event.target.value : moneyChars(event.target.value))}
         />
         {error ? <p id={`${id}-error`} className="form-field__error">{error}</p> : null}
       </div>

@@ -86,13 +86,29 @@ describe('ArqueoView: the open day', () => {
     expect(close).toBeEnabled();
   });
 
-  it('keeps only digits and stops at ten of them so the field cannot grow without end', async () => {
+  it('flags a comma instead of dropping it, so 1500,50 can never close the day as 150050', async () => {
     stubServer();
     const user = userEvent.setup();
     render(<ArqueoView />);
     const counted = await screen.findByLabelText('Efectivo contado');
 
-    await user.type(counted, '12.5a');
+    await user.type(counted, '1500,50');
+    expect(counted).toHaveValue('1500,50');
+    expect(screen.getByText('Ingresá solo pesos enteros, sin puntos ni comas.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cerrar el día' })).toBeDisabled();
+
+    await user.clear(counted);
+    await user.type(counted, '1.500');
+    expect(counted).toHaveValue('1500');
+  });
+
+  it('stops at ten digits so the field cannot grow without end', async () => {
+    stubServer();
+    const user = userEvent.setup();
+    render(<ArqueoView />);
+    const counted = await screen.findByLabelText('Efectivo contado');
+
+    await user.type(counted, '12a5');
     expect(counted).toHaveValue('125');
     await user.clear(counted);
     await user.type(counted, '123456789012345');

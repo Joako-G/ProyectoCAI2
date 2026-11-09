@@ -1,5 +1,5 @@
 import { useId } from 'react';
-import { digitsOnly, MAX_MONEY_DIGITS } from '../../utils/input-limits';
+import { hasMoneySeparator, MONEY_INPUT_MAX_LENGTH, MONEY_SEPARATOR_MESSAGE, moneyChars } from '../../utils/input-limits';
 
 interface MoneyFieldProps {
   label: string;
@@ -13,11 +13,13 @@ interface MoneyFieldProps {
 const pesos = new Intl.NumberFormat('es-AR');
 
 /**
- * A whole-peso amount. It accepts digits only and stops at ten of them, so it can never be filled without bound,
- * and it echoes the amount formatted so a misplaced zero is easy to see.
+ * A whole-peso amount. It stops at ten digits, so it can never be filled without bound, and it echoes the
+ * amount formatted so a misplaced zero is easy to see. A comma or a lone dot stays in the field and is flagged
+ * instead of being dropped, because dropping it would silently multiply the amount by a hundred.
  */
-export function MoneyField({ label, value, disabled = false, error, onChange }: MoneyFieldProps) {
+export function MoneyField({ label, value, disabled = false, error: externalError, onChange }: MoneyFieldProps) {
   const id = useId();
+  const error = hasMoneySeparator(value) ? MONEY_SEPARATOR_MESSAGE : externalError;
   const errorId = `${id}-error`;
   const hintId = `${id}-hint`;
   return (
@@ -29,13 +31,13 @@ export function MoneyField({ label, value, disabled = false, error, onChange }: 
         type="text"
         inputMode="numeric"
         autoComplete="off"
-        maxLength={MAX_MONEY_DIGITS}
+        maxLength={MONEY_INPUT_MAX_LENGTH}
         placeholder="0"
         value={value}
         disabled={disabled}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : value ? hintId : undefined}
-        onChange={(event) => onChange(digitsOnly(event.target.value, MAX_MONEY_DIGITS))}
+        onChange={(event) => onChange(moneyChars(event.target.value))}
       />
       {error ? (
         <p id={errorId} className="desk-field__error">{error}</p>

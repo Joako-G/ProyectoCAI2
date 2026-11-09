@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router';
 import { SessionPanel } from '../features/auth/components/SessionPanel';
 import type { AuthUser } from '../features/auth/types/auth';
@@ -19,6 +20,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ sections, current, layout = NAVIGATION, user, onLogout }: SidebarProps) {
+  const [open, setOpen] = useState(false);
   const entries = navigationFor(sections ?? SECTIONS.map(({ id }) => id), layout);
   let position = 0;
   const renderLink = (id: Section) => {
@@ -39,12 +41,28 @@ export function Sidebar({ sections, current, layout = NAVIGATION, user, onLogout
     );
   };
   return (
-    <aside className="sidebar">
+    <aside
+      className="sidebar"
+      data-open={open}
+      onKeyDown={(event) => { if (event.key === 'Escape') setOpen(false); }}
+      onClick={(event) => { if ((event.target as HTMLElement).closest('a, .sidebar__logout')) setOpen(false); }}
+    >
       <div className="sidebar__brand">
         <div className="sidebar__brand-name">Club Independiente</div>
         <div className="sidebar__brand-tagline">Sistema de gestión</div>
       </div>
-      <nav className="sidebar__nav" aria-label="Navegación principal">
+      {/* Only shown on small screens, where the sections collapse behind it. */}
+      <button
+        type="button"
+        className="sidebar__toggle"
+        aria-expanded={open}
+        aria-controls="sidebar-navigation"
+        aria-label={open ? 'Cerrar el menú' : 'Abrir el menú'}
+        onClick={() => setOpen((current) => !current)}
+      >
+        <span className="sidebar__toggle-bars" aria-hidden="true" />
+      </button>
+      <nav id="sidebar-navigation" className="sidebar__nav" aria-label="Navegación principal">
         {entries.map((entry) =>
           entry.kind === 'link' ? (
             renderLink(entry.section)

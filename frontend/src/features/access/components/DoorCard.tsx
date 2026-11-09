@@ -1,6 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
-import { dniChars } from '../../../utils/input-limits';
+import { DNI_INPUT_MAX_LENGTH, dniChars } from '../../../utils/input-limits';
 import type { AccessState } from '../hooks/useAccessCheck';
 
 interface DoorCardProps {
@@ -62,7 +62,7 @@ export function DoorCard({ connected, check, onCheck }: DoorCardProps) {
             autoComplete="off"
             autoFocus
             placeholder="DNI del socio"
-            maxLength={10}
+            maxLength={DNI_INPUT_MAX_LENGTH}
             value={dni}
             onChange={(event) => setDni(dniChars(event.target.value))}
           />

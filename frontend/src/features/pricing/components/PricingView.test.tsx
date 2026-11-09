@@ -111,13 +111,13 @@ describe('PricingView', () => {
 
     const form = within(screen.getByRole('group', { name: 'Nueva tarifa' }));
     fireEvent.change(form.getByLabelText('Vigente desde'), { target: { value: '2026-09' } });
-    // Only digits get in, so a decimal point is dropped instead of reaching the validation.
-    await user.type(form.getByLabelText('Matrícula'), '1.5');
-    expect(form.getByLabelText('Matrícula')).toHaveValue('15');
+    // A decimal separator stays in the field and is refused, never dropped: 1,5 must not turn into 15.
+    await user.type(form.getByLabelText('Matrícula'), '1,5');
+    expect(form.getByLabelText('Matrícula')).toHaveValue('1,5');
     await user.click(form.getByRole('button', { name: 'Agregar tarifa' }));
 
     expect(form.getByText('Elija el mes actual o uno posterior.')).toBeInTheDocument();
-    expect(form.getAllByText('Ingrese un monto entero en pesos.')).toHaveLength(3);
+    expect(form.getAllByText('Ingrese un monto entero en pesos.')).toHaveLength(4);
     expect(writesMade(fetchMock)).toHaveLength(0);
   });
 

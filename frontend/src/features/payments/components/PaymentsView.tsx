@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { dniChars } from '../../../utils/input-limits';
+import { DNI_INPUT_MAX_LENGTH, dniChars } from '../../../utils/input-limits';
 import { fetchMembers } from '../../members/services/members-api';
 import type { Member } from '../../members/types/member';
 import { describeReadError } from '../utils/payment-format';
@@ -59,7 +59,7 @@ export function PaymentsView({ canCollect, canAnnul, initialDni = '' }: Payments
         <form className="members-toolbar__search" role="search" onSubmit={handleSubmit}>
           <label className="members-toolbar__search-field">
             <span className="members-toolbar__search-label table-head">DNI del socio</span>
-            <input type="search" inputMode="numeric" autoComplete="off" placeholder="DNI del socio…" maxLength={10} value={dni} onChange={(event) => setDni(dniChars(event.target.value))} />
+            <input type="search" inputMode="numeric" autoComplete="off" placeholder="DNI del socio…" maxLength={DNI_INPUT_MAX_LENGTH} value={dni} onChange={(event) => setDni(dniChars(event.target.value))} />
           </label>
           <button type="submit" className="button button--secondary" disabled={dni.trim() === '' || search.phase === 'searching'}>Buscar</button>
         </form>

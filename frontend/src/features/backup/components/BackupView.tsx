@@ -1,3 +1,5 @@
+import { DeskCard } from '../../../components/desk/DeskCard';
+import { DeskStat } from '../../../components/desk/DeskStat';
 import { formatInstant } from '../../audit/utils/audit-format';
 import { useBackups } from '../hooks/useBackups';
 import {
@@ -33,7 +35,7 @@ export function BackupView() {
   const { state: destinationState } = status.destination;
   const lastCopyDatabase = status.database.lastCopy;
   return (
-    <section className="card members-page" aria-label="Respaldo">
+    <div className="desk" role="region" aria-label="Respaldo">
       {destinationState !== 'ready' && (
         <div className="members-page__notice members-page__notice--error" role="alert">
           <p>{destinationProblemMessage(destinationState)}</p>
@@ -49,24 +51,32 @@ export function BackupView() {
           <p>{DATABASE_MISSING_WARNING}</p>
         </div>
       )}
-      <p className="members-page__summary">
-        El sistema copia todos sus datos una vez por día, mientras está encendido. Cada copia queda en su propia carpeta con la fecha.
-      </p>
-      {status.lastSuccessAt ? (
-        <p>Último respaldo correcto: <strong>{formatInstant(status.lastSuccessAt)}</strong></p>
-      ) : (
-        destinationState === 'ready' && <p className="members-page__notice">Todavía no hay ningún respaldo.</p>
-      )}
-      {lastCopyDatabase && <p>{databaseLine(lastCopyDatabase)}</p>}
-      {destinationState === 'ready' && <p>{copiesMessage(status.copies, status.keep, status.keepRecent)}</p>}
-      <p>{destinationMessage(status.destination.isDefault)}</p>
-      {run.phase === 'error' && (
-        <div className="members-page__notice members-page__notice--error" role="alert"><p>{run.message}</p></div>
-      )}
-      {run.phase === 'done' && <p className="members-page__notice" role="status">{run.partial ? PARTIAL_RUN_MESSAGE : 'Respaldo realizado.'}</p>}
-      <button type="button" className="button" disabled={running} onClick={() => void makeCopy()}>
-        {running ? 'Haciendo el respaldo…' : 'Hacer un respaldo ahora'}
-      </button>
-    </section>
+      <div className="desk__grid desk__grid--even">
+        <DeskCard label="Estado" title="Último respaldo" ariaLabel="Estado del respaldo">
+          {status.lastSuccessAt ? (
+            <div className="desk-stats">
+              <DeskStat label="Último respaldo correcto" value={formatInstant(status.lastSuccessAt)} primary />
+            </div>
+          ) : (
+            destinationState === 'ready' && <p className="members-page__notice">Todavía no hay ningún respaldo.</p>
+          )}
+          {lastCopyDatabase && <p className="desk-card__line">{databaseLine(lastCopyDatabase)}</p>}
+          {destinationState === 'ready' && <p className="desk-card__line">{copiesMessage(status.copies, status.keep, status.keepRecent)}</p>}
+        </DeskCard>
+        <DeskCard label="Destino" title="Dónde se guardan" ariaLabel="Destino del respaldo">
+          <p className="desk-card__line">
+            El sistema copia todos sus datos una vez por día, mientras está encendido. Cada copia queda en su propia carpeta con la fecha.
+          </p>
+          <p className="desk-card__line">{destinationMessage(status.destination.isDefault)}</p>
+          {run.phase === 'error' && (
+            <div className="members-page__notice members-page__notice--error" role="alert"><p>{run.message}</p></div>
+          )}
+          {run.phase === 'done' && <p className="members-page__notice" role="status">{run.partial ? PARTIAL_RUN_MESSAGE : 'Respaldo realizado.'}</p>}
+          <button type="button" className="desk-primary desk-primary--auto" disabled={running} onClick={() => void makeCopy()}>
+            {running ? 'Haciendo el respaldo…' : 'Hacer un respaldo ahora'}
+          </button>
+        </DeskCard>
+      </div>
+    </div>
   );
 }

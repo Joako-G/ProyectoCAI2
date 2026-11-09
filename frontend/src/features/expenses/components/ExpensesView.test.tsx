@@ -71,13 +71,16 @@ describe('ExpensesView', () => {
     expect(screen.queryByText('Ingresá un monto entero mayor a cero.')).not.toBeInTheDocument();
   });
 
-  it('keeps only digits in the amount and stops at ten of them', async () => {
+  it('flags a decimal separator instead of dropping it, and stops at ten digits', async () => {
     stubServer();
     render(<ExpensesView canWrite />);
     const amount = await screen.findByLabelText('Monto');
+    await userEvent.type(screen.getByLabelText('Descripción'), 'Pintura');
 
-    await userEvent.type(amount, '1.5e3');
-    expect(amount).toHaveValue('153');
+    await userEvent.type(amount, '1500,50');
+    expect(amount).toHaveValue('1500,50');
+    expect(screen.getByText('Ingresá solo pesos enteros, sin puntos ni comas.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Registrar gasto' })).toBeDisabled();
     await userEvent.clear(amount);
     await userEvent.type(amount, '123456789012345');
     expect(amount).toHaveValue('1234567890');

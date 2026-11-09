@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { digitsOnly, dniChars, MAX_MONEY, MAX_MONEY_DIGITS, phoneChars } from './input-limits';
+import { digitsOnly, dniChars, hasMoneySeparator, MAX_MONEY, MAX_MONEY_DIGITS, moneyChars, phoneChars } from './input-limits';
 
 describe('input limits', () => {
   it('keeps the largest amount within the digits the fields allow', () => {
@@ -17,8 +17,37 @@ describe('input limits', () => {
     expect(phoneChars('1'.repeat(40))).toHaveLength(20);
   });
 
-  it('dniChars keeps digits, dots and spaces and caps the length', () => {
-    expect(dniChars('30.123.456abc')).toBe('30.123.456');
-    expect(dniChars('1'.repeat(30))).toHaveLength(10);
+  it('dniChars keeps the digits only, so dots and spaces never use up the eight digits', () => {
+    expect(dniChars('30.123.456abc')).toBe('30123456');
+    expect(dniChars(' 30 123 456 ')).toBe('30123456');
+    expect(dniChars('1'.repeat(30))).toHaveLength(8);
+  });
+});
+
+describe('moneyChars', () => {
+  it('drops letters and caps the digits at ten', () => {
+    expect(moneyChars('12ab34')).toBe('1234');
+    expect(moneyChars('123456789012345')).toBe('1234567890');
+  });
+
+  it('reads dots placed as thousands separators', () => {
+    expect(moneyChars('1.500')).toBe('1500');
+    expect(moneyChars('9.999.999.999')).toBe('9999999999');
+  });
+
+  it('keeps a comma or a lone dot so the field can flag it instead of multiplying the amount', () => {
+    expect(moneyChars('1500,50')).toBe('1500,50');
+    expect(moneyChars('1.5')).toBe('1.5');
+    expect(moneyChars('1500.')).toBe('1500.');
+  });
+
+  it('still caps the digits when a separator is present', () => {
+    expect(moneyChars('12345678901,5')).toBe('1234567890,');
+  });
+
+  it('hasMoneySeparator tells a whole amount from one with a comma or a dot', () => {
+    expect(hasMoneySeparator('1500')).toBe(false);
+    expect(hasMoneySeparator('1500,50')).toBe(true);
+    expect(hasMoneySeparator('1.5')).toBe(true);
   });
 });
