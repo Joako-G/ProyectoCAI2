@@ -15,6 +15,8 @@ import { createBackupRouter } from './modules/backup/backup.routes.js';
 import type { BackupService } from './modules/backup/backup.service.js';
 import { createCashCountRouter } from './modules/cashcount/cashcount.routes.js';
 import type { CashCountService } from './modules/cashcount/cashcount.service.js';
+import { createExpenseRouter } from './modules/expenses/expense.routes.js';
+import type { ExpenseService } from './modules/expenses/expense.service.js';
 import { createFaceRouter, createFacesUnavailableRouter } from './modules/faces/face.routes.js';
 import type { FaceService } from './modules/faces/face.service.js';
 import { createDisciplinesRouter } from './modules/disciplines/discipline.routes.js';
@@ -47,6 +49,7 @@ export interface AppDependencies {
   paymentService?: PaymentService;
   reportService?: Pick<ReportService, 'revenue' | 'disciplineSettlement'>;
   cashCountService?: CashCountService;
+  expenseService?: ExpenseService;
   rosterService?: RosterService;
   noticeService?: Pick<NoticeService, 'debtNotices'>;
   accessService?: Pick<AccessService, 'check'>;
@@ -116,6 +119,10 @@ if (options.reportService) {
 if (options.cashCountService) {
   // The daily close is the head secretary's alone; the secretary reaches reports but never the cash count.
   app.use('/api/cashcount', requireCapability(authenticate, 'cashcount:run'), createCashCountRouter(options.cashCountService, authenticate));
+}
+if (options.expenseService) {
+  // Reading needs expenses:read; the write route adds expenses:write itself.
+  app.use('/api/expenses', requireCapability(authenticate, 'expenses:read'), createExpenseRouter(options.expenseService, authenticate));
 }
 if (options.rosterService) {
   app.use('/api/roster', requireCapability(authenticate, 'roster:read'), createRosterRouter(options.rosterService, authenticate));

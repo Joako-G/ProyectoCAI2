@@ -1,7 +1,7 @@
 import type { AuthUser, Capability } from '../features/auth/types/auth';
 import { can } from '../features/auth/utils/can';
 
-export type Section = 'members' | 'disciplines' | 'payments' | 'notices' | 'access' | 'cashcount' | 'reports' | 'users' | 'roster' | 'pricing' | 'audit' | 'backup';
+export type Section = 'members' | 'disciplines' | 'payments' | 'notices' | 'access' | 'cashcount' | 'reports' | 'expenses' | 'users' | 'roster' | 'pricing' | 'audit' | 'backup';
 
 /**
  * Navigation order; each section lives at its own URL and needs one capability to be reachable.
@@ -15,6 +15,7 @@ export const SECTIONS: ReadonlyArray<{ id: Section; label: string; subtitle: str
   { id: 'access', label: 'Ingreso', subtitle: 'Control de ingreso por DNI: verde, amarillo o rojo', path: '/ingreso', capability: 'access:check' },
   { id: 'cashcount', label: 'Arqueo', subtitle: 'Cierre diario de caja: efectivo contado y diferencia', path: '/caja/arqueo', capability: 'cashcount:run' },
   { id: 'reports', label: 'Reportes', subtitle: 'Recaudación por período y liquidación por disciplina', path: '/reportes', capability: 'reports:read' },
+  { id: 'expenses', label: 'Gastos', subtitle: 'Registro de los gastos del club', path: '/gastos', capability: 'expenses:read' },
   { id: 'users', label: 'Usuarios', subtitle: 'Administración de cuentas de demostración', path: '/usuarios', capability: 'users:manage' },
   { id: 'roster', label: 'Mis disciplinas', subtitle: 'Alumnos actuales y anteriores de sus disciplinas', path: '/mis-disciplinas', capability: 'roster:read' },
   { id: 'pricing', label: 'Precios', subtitle: 'Tarifas, recargos por pago tardío y prorrateo', path: '/precios', capability: 'config:read' },

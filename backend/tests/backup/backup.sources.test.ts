@@ -24,7 +24,7 @@ describe('backupSources', () => {
   it('names every data file, the users file and the two seed files, and nothing else', () => {
     const sources = backupSources({}, usersFile);
     expect(sources.map(({ name }) => name).sort()).toEqual([
-      'audit.json', 'cashcounts.json', 'disciplines.json', 'disciplines.seed.json', 'members.json', 'members.seed.json',
+      'audit.json', 'cashcounts.json', 'disciplines.json', 'disciplines.seed.json', 'expenses.json', 'members.json', 'members.seed.json',
       'memberships.json', 'payments.json', 'pricing-config.json', 'users.json',
     ]);
     expect(sources.find(({ name }) => name === 'users.json')?.path).toBe(usersFile);
