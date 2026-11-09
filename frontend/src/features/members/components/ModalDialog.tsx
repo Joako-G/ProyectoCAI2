@@ -6,6 +6,8 @@ interface ModalDialogProps {
   description: string;
   /** Escape closes the dialog unless this is true (e.g. while a request is in flight). */
   busy?: boolean;
+  /** `wide` fits content such as a table; the default suits short forms and confirmations. */
+  size?: 'default' | 'wide';
   onClose: () => void;
   children: ReactNode;
 }
@@ -16,7 +18,7 @@ const FOCUSABLE = 'button:not(:disabled), input:not(:disabled), textarea:not(:di
  * Accessible modal: labelled and described, moves focus in on open, traps Tab, closes on Escape and
  * returns focus to the element that opened it.
  */
-export function ModalDialog({ role = 'dialog', title, description, busy = false, onClose, children }: ModalDialogProps) {
+export function ModalDialog({ role = 'dialog', title, description, busy = false, size = 'default', onClose, children }: ModalDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -80,7 +82,7 @@ export function ModalDialog({ role = 'dialog', title, description, busy = false,
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         tabIndex={-1}
-        className="modal"
+        className={size === 'wide' ? 'modal modal--wide' : 'modal'}
         onKeyDown={handleKeyDown}
       >
         <h2 id={titleId} className="modal__title">
