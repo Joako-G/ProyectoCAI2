@@ -1,3 +1,5 @@
+import { Pagination } from '../../../components/Pagination';
+import { usePagination } from '../../../hooks/usePagination';
 import { DeskCard } from '../../../components/desk/DeskCard';
 import { DeskStat } from '../../../components/desk/DeskStat';
 import { formatIsoDate } from '../../members/utils/member-format';
@@ -8,6 +10,7 @@ import { numberIssueLabel, recipientLabel, standingLabel } from '../utils/notice
 /** Container of the debt notices: who owes, as of today, and one WhatsApp link per member to send by hand. */
 export function NoticesView() {
   const { state, reload } = useDebtNotices();
+  const pager = usePagination(state.phase === 'ready' ? state.list.rows : []);
 
   if (state.phase === 'loading') {
     return <section className="card members-page" aria-label="Avisos"><p className="members-page__notice" role="status">Cargando los avisos…</p></section>;
@@ -49,7 +52,7 @@ export function NoticesView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((notice) => (
+                  {pager.pageItems.map((notice) => (
                     <tr key={notice.memberId}>
                       <td className="members-table__mono" data-label="N° de socio">{notice.memberNumber}</td>
                       <td data-label="Socio">{notice.name}</td>
@@ -71,6 +74,7 @@ export function NoticesView() {
                 </tbody>
               </table>
             </div>
+            <Pagination page={pager.page} pageCount={pager.pageCount} total={pager.total} onPageChange={pager.setPage} label="Paginación de avisos" />
           </>
         )}
       </DeskCard>

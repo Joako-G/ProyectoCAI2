@@ -1,3 +1,5 @@
+import { Pagination } from '../../../components/Pagination';
+import { usePagination } from '../../../hooks/usePagination';
 import { DeskCard } from '../../../components/desk/DeskCard';
 import { DeskStat } from '../../../components/desk/DeskStat';
 import { formatIsoDate } from '../../members/utils/member-format';
@@ -9,6 +11,7 @@ import { ExpenseForm } from './ExpenseForm';
 /** Container of the club expenses: a form to record one and the list of those already recorded. */
 export function ExpensesView({ canWrite }: { canWrite: boolean }) {
   const { state, saving, reload, save } = useExpenses();
+  const pager = usePagination(state.phase === 'ready' ? state.expenses : []);
   const total = state.phase === 'ready' ? state.expenses.reduce((sum, expense) => sum + expense.amount, 0) : 0;
 
   const list = (
@@ -35,7 +38,7 @@ export function ExpensesView({ canWrite }: { canWrite: boolean }) {
                 </tr>
               </thead>
               <tbody>
-                {state.expenses.map((expense) => (
+                {pager.pageItems.map((expense) => (
                   <tr key={expense.id}>
                     <td className="members-table__mono" data-label="Fecha">{formatIsoDate(expense.date)}</td>
                     <td data-label="Categoría">{CATEGORY_LABELS[expense.category]}</td>
@@ -46,6 +49,7 @@ export function ExpensesView({ canWrite }: { canWrite: boolean }) {
               </tbody>
             </table>
           </div>
+          <Pagination page={pager.page} pageCount={pager.pageCount} total={pager.total} onPageChange={pager.setPage} label="Paginación de gastos" />
         </>
       ) : null}
     </DeskCard>

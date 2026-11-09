@@ -1,3 +1,5 @@
+import { Pagination } from '../../../components/Pagination';
+import { usePagination } from '../../../hooks/usePagination';
 import { DeskCard } from '../../../components/desk/DeskCard';
 import { formatIsoDate } from '../../members/utils/member-format';
 import { formatPesos } from '../../pricing/utils/pricing-format';
@@ -10,6 +12,9 @@ import { ExpectedTotals } from './ExpectedTotals';
 /** Container of the cash count: today's expected totals, the close of the day and the days already closed. */
 export function ArqueoView() {
   const { state, closing, alreadyClosed, reload, close } = useArqueo();
+  const loaded = state.phase === 'loading' || state.phase === 'error' ? undefined : state;
+  const earlier = loaded ? loaded.history.filter((entry) => entry.businessDate !== loaded.preview.businessDate) : [];
+  const pager = usePagination(earlier);
 
   if (state.phase === 'loading') {
     return <DeskCard label="Arqueo" ariaLabel="Arqueo"><p className="members-page__notice" role="status">Cargando el arqueo…</p></DeskCard>;
@@ -25,8 +30,7 @@ export function ArqueoView() {
     );
   }
 
-  const { preview, history } = state;
-  const earlier = history.filter((entry) => entry.businessDate !== preview.businessDate);
+  const { preview } = state;
   return (
     <div className="desk" role="region" aria-label="Arqueo">
       <div className="desk__grid">
@@ -60,7 +64,7 @@ export function ArqueoView() {
                 </tr>
               </thead>
               <tbody>
-                {earlier.map((entry) => (
+                {pager.pageItems.map((entry) => (
                   <tr key={entry.id}>
                     <td className="members-table__mono" data-label="Fecha">{formatIsoDate(entry.businessDate)}</td>
                     <td className="members-table__mono" data-label="Efectivo esperado">{formatPesos(entry.expected.cash)}</td>
@@ -72,6 +76,7 @@ export function ArqueoView() {
               </tbody>
             </table>
           </div>
+          <Pagination page={pager.page} pageCount={pager.pageCount} total={pager.total} onPageChange={pager.setPage} label="Paginación de cierres anteriores" />
         </DeskCard>
       ) : null}
     </div>
