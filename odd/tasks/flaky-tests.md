@@ -81,5 +81,7 @@ One work-unit commit per task, on `manu`.
   - Before / after: port sampling, raw `listen(0)` 4, 1, 4 of 3,000 on the fetch block list (earlier sample: 3 of 3,000) vs the helper 0, 0, 0 of 3,000. Frontend reproduction, `App.navigation` + `App.routing` under CPU load: 4 of 8 runs failed before, 0 of 10 after.
   - Not proven: the backend runs above did not include the database suites; and a failure that happens about once in 1,000 server starts cannot be excluded by 13 runs, which is why the guard and the helper test exist.
 
+- 2026-11-08 (database suites): with Docker running (`proyectocai2-db-1` healthy), the full backend test command exited 0: `node --test` suites pass, Vitest non-database 72 files / 1183 tests, database suites 5 files / 24 tests. Backend and frontend typechecks clean. The gap left in T3 is closed.
+
 ## Next step
-Run the backend `tests/database` suites once with Docker running (they could not run in T3), then push when the part 5 pull request is merged.
+Push when the part 5 pull request is merged.
