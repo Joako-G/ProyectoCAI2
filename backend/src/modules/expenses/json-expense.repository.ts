@@ -1,5 +1,6 @@
 import { createJsonStore } from '../../database/json-store.js';
 import type { ExpenseRepository } from './expense.repository.js';
+import { isRealDate } from './expense.validation.js';
 import { EXPENSE_CATEGORIES, type Expense } from './expense.types.js';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -10,6 +11,9 @@ function isWellShaped(value: unknown): value is Expense {
   return (
     isRecord(value) &&
     ['id', 'date', 'description', 'createdBy', 'createdAt'].every((field) => typeof value[field] === 'string') &&
+    // The list filters and sorts by comparing these as text, so a malformed date would silently misplace a row.
+    isRealDate(value.date as string) &&
+    !Number.isNaN(Date.parse(value.createdAt as string)) &&
     Number.isSafeInteger(value.amount) &&
     (value.amount as number) > 0 &&
     EXPENSE_CATEGORIES.includes(value.category as never)

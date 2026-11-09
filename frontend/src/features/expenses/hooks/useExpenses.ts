@@ -4,6 +4,8 @@ import { createExpense, fetchExpenses } from '../services/expenses-api';
 import type { Expense, ExpenseInput } from '../types/expense';
 import { describeLoadError, describeSaveError } from '../utils/expense-format';
 
+const SAVED_BUT_NOT_LISTED = 'El gasto sí quedó guardado; reintente para ver la lista actualizada.';
+
 export type ExpensesState = { phase: 'loading' } | { phase: 'error'; message: string } | { phase: 'ready'; expenses: Expense[] };
 export type SaveState = { phase: 'idle' } | { phase: 'saving' } | { phase: 'error'; message: string };
 
@@ -13,7 +15,8 @@ export function useExpenses() {
   const [saving, setSaving] = useState<SaveState>({ phase: 'idle' });
   const controller = useRef<AbortController | null>(null);
 
-  const load = useCallback(async () => {
+  // After a save that worked, a failed read must not look like a failed save.
+  const load = useCallback(async (afterSave = false) => {
     controller.current?.abort();
     const current = new AbortController();
     controller.current = current;
@@ -21,7 +24,7 @@ export function useExpenses() {
       const expenses = await fetchExpenses(current.signal);
       if (!current.signal.aborted) setState({ phase: 'ready', expenses });
     } catch (error: unknown) {
-      if (!current.signal.aborted) setState({ phase: 'error', message: describeLoadError(error) });
+      if (!current.signal.aborted) setState({ phase: 'error', message: afterSave ? SAVED_BUT_NOT_LISTED : describeLoadError(error) });
     }
   }, []);
 
@@ -41,7 +44,7 @@ export function useExpenses() {
     try {
       await createExpense(input);
       setSaving({ phase: 'idle' });
-      await load();
+      await load(true);
       return true;
     } catch (error: unknown) {
       setSaving({ phase: 'error', message: describeSaveError(error) });

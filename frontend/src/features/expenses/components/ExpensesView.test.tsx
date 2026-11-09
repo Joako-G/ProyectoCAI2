@@ -173,6 +173,25 @@ describe('ExpensesView: failures', () => {
     expect(screen.getByLabelText('Monto')).toHaveValue('3000');
   });
 
+  it('says the expense was saved when only the list refresh fails afterwards, and clears the form', async () => {
+    let reads = 0;
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') return jsonResponse({ ...lightBill, id: 'e2' }, 201);
+      reads += 1;
+      return reads === 1 ? jsonResponse([lightBill]) : jsonResponse({ error: 'x' }, 500);
+    }));
+    render(<ExpensesView canWrite />);
+    await screen.findByText('Factura de luz');
+
+    await userEvent.type(screen.getByLabelText('Monto'), '3000');
+    await userEvent.type(screen.getByLabelText('Descripción'), 'Pintura');
+    await userEvent.click(screen.getByRole('button', { name: 'Registrar gasto' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('El gasto sí quedó guardado');
+    expect(screen.getByLabelText('Monto')).toHaveValue('');
+    expect(screen.getByLabelText('Descripción')).toHaveValue('');
+  });
+
   it('does not reload the list after a refusal that is known to have stored nothing', async () => {
     const fetchMock = stubServer([lightBill], 400);
     render(<ExpensesView canWrite />);

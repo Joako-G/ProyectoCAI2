@@ -37,6 +37,9 @@ describe('json expense repository', () => {
     ['a row with a negative amount', JSON.stringify([{ ...expense, amount: -5 }])],
     ['a row with a fractional amount', JSON.stringify([{ ...expense, amount: 1.5 }])],
     ['a row with an unknown category', JSON.stringify([{ ...expense, category: 'food' }])],
+    ['a row with a date that is not a calendar day', JSON.stringify([{ ...expense, date: '2026-02-30' }])],
+    ['a row with a date in another format', JSON.stringify([{ ...expense, date: '01/10/2026' }])],
+    ['a row with an unreadable creation time', JSON.stringify([{ ...expense, createdAt: 'yesterday' }])],
     ['a row without a description', JSON.stringify([{ ...expense, description: undefined }])],
   ])('refuses to read %s', async (_name, content) => {
     const repository = createJsonExpenseRepository(await fileWith(content));
