@@ -1,0 +1,104 @@
+/* Page controls under a paginated list. The component renders nothing while everything fits on one page. */
+
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--color-border);
+}
+
+.pagination__summary,
+.pagination__position {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+
+.pagination__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination__pages {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pagination__page {
+  min-width: 36px;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.pagination__page:hover {
+  background: #f3f2ef;
+}
+
+.pagination__page--current,
+.pagination__page--current:hover {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.pagination__gap {
+  min-width: 20px;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.pagination__step:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* The page position text is for phones, where the row of numbers does not fit. */
+.pagination__position {
+  display: none;
+}
+
+@media screen and (max-width: 640px) {
+  .pagination {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 14px;
+    text-align: center;
+  }
+
+  .pagination__controls {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+
+  .pagination__pages {
+    display: none;
+  }
+
+  .pagination__position {
+    display: block;
+    color: var(--color-text);
+    font-weight: 600;
+  }
+
+  .pagination__step {
+    min-height: 44px;
+  }
+}
+
+@media print {
+  .pagination {
+    display: none;
+  }
+}

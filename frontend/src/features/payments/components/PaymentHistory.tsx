@@ -47,7 +47,7 @@ export function PaymentHistory({ payments, canAnnul, error, onOpenReceipt, onAnn
       <h2 className="payments-section__title">Historial de pagos</h2>
       {error ? <p className="form-alert" role="alert">{error}</p> : null}
       {payments.length === 0 ? <p className="members-page__notice">Todavía no hay pagos registrados.</p> : (
-        <table className="members-table">
+        <table className="members-table members-table--stack">
           <caption className="visually-hidden">Pagos del socio</caption>
           <thead>
             <tr className="table-head">
@@ -62,11 +62,11 @@ export function PaymentHistory({ payments, canAnnul, error, onOpenReceipt, onAnn
           <tbody>
             {payments.map((payment) => (
               <tr key={payment.id}>
-                <td className="members-table__mono">{payment.receiptNumber}</td>
-                <td className="members-table__mono">{formatIsoDate(payment.paymentDate)}</td>
-                <td>{formatPesos(payment.total)}</td>
-                <td>{methodLabel(payment.method)}</td>
-                <td>{payment.annulment ? 'Anulado' : 'Vigente'}</td>
+                <td className="members-table__mono" data-label="Comprobante">{payment.receiptNumber}</td>
+                <td className="members-table__mono" data-label="Fecha">{formatIsoDate(payment.paymentDate)}</td>
+                <td data-label="Total">{formatPesos(payment.total)}</td>
+                <td data-label="Medio">{methodLabel(payment.method)}</td>
+                <td data-label="Estado">{payment.annulment ? 'Anulado' : 'Vigente'}</td>
                 <td>
                   <button type="button" className="button button--secondary" aria-label={`Ver comprobante ${payment.receiptNumber}`} onClick={() => onOpenReceipt(payment)}>
                     Ver comprobante

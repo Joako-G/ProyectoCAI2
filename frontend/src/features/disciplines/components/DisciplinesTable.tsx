@@ -18,7 +18,7 @@ function otherTeachers(discipline: Discipline): string[] {
 
 export function DisciplinesTable({ disciplines, canWrite, onEdit, onDeactivate, onReactivate }: DisciplinesTableProps) {
   return (
-    <table className="members-table">
+    <table className="members-table members-table--stack">
       <caption className="visually-hidden">Listado de disciplinas</caption>
       <thead>
         <tr className="table-head">
@@ -34,13 +34,15 @@ export function DisciplinesTable({ disciplines, canWrite, onEdit, onDeactivate, 
             <td>
               <span className="members-table__name">{discipline.name}</span>
             </td>
-            <td>
-              <span>{discipline.leadTeacher}</span>
-              {otherTeachers(discipline).length > 0 ? (
-                <span className="disciplines-table__others">Otros: {otherTeachers(discipline).join(', ')}</span>
-              ) : null}
+            <td data-label="Profesores">
+              <div>
+                <span>{discipline.leadTeacher}</span>
+                {otherTeachers(discipline).length > 0 ? (
+                  <span className="disciplines-table__others">Otros: {otherTeachers(discipline).join(', ')}</span>
+                ) : null}
+              </div>
             </td>
-            <td>
+            <td data-label="Estado">
               <span className={`status-chip status-chip--${discipline.status}`}>
                 {STATUS_LABEL[discipline.status]}
               </span>

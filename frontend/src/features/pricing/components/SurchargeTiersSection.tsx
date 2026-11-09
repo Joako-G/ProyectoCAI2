@@ -38,7 +38,7 @@ export function SurchargeTiersSection({ tiers, canWrite, onSave }: SurchargeTier
 
       {canWrite ? (
         <form className="member-form" noValidate onSubmit={handleSubmit}>
-          <table className="members-table">
+          <table className="members-table members-table--stack">
             <caption className="visually-hidden">Tramos de recargo</caption>
             <thead>
               <tr className="table-head">
@@ -51,8 +51,8 @@ export function SurchargeTiersSection({ tiers, canWrite, onSave }: SurchargeTier
               {rows.map((row, index) => (
                 // Rows have no identity besides their position, so the index is the key.
                 <tr key={index}>
-                  <td><input type="text" inputMode="numeric" autoComplete="off" aria-label={`Desde el día, tramo ${index + 1}`} maxLength={2} value={row.fromDay} onChange={(event) => changeRow(index, { fromDay: digitsOnly(event.target.value, 2) })} /></td>
-                  <td><input type="text" inputMode="numeric" autoComplete="off" aria-label={`Recargo, tramo ${index + 1}`} maxLength={MONEY_INPUT_MAX_LENGTH} value={row.amount} onChange={(event) => changeRow(index, { amount: moneyChars(event.target.value) })} /></td>
+                  <td data-label="Desde el día"><input type="text" inputMode="numeric" autoComplete="off" aria-label={`Desde el día, tramo ${index + 1}`} maxLength={2} value={row.fromDay} onChange={(event) => changeRow(index, { fromDay: digitsOnly(event.target.value, 2) })} /></td>
+                  <td data-label="Recargo por actividad"><input type="text" inputMode="numeric" autoComplete="off" aria-label={`Recargo, tramo ${index + 1}`} maxLength={MONEY_INPUT_MAX_LENGTH} value={row.amount} onChange={(event) => changeRow(index, { amount: moneyChars(event.target.value) })} /></td>
                   <td>
                     <button type="button" className="button button--secondary" aria-label={`Quitar tramo ${index + 1}`} disabled={rows.length === 1 || save.saving} onClick={() => setRows((current) => current.filter((_row, position) => position !== index))}>
                       Quitar
@@ -69,7 +69,7 @@ export function SurchargeTiersSection({ tiers, canWrite, onSave }: SurchargeTier
           </div>
         </form>
       ) : (
-        <table className="members-table">
+        <table className="members-table members-table--stack">
           <caption className="visually-hidden">Tramos de recargo</caption>
           <thead>
             <tr className="table-head">
@@ -80,8 +80,8 @@ export function SurchargeTiersSection({ tiers, canWrite, onSave }: SurchargeTier
           <tbody>
             {tiers.map((tier) => (
               <tr key={tier.fromDay}>
-                <td className="members-table__mono">{tier.fromDay}</td>
-                <td>{formatPesos(tier.amount)}</td>
+                <td className="members-table__mono" data-label="Desde el día">{tier.fromDay}</td>
+                <td data-label="Recargo por actividad">{formatPesos(tier.amount)}</td>
               </tr>
             ))}
           </tbody>

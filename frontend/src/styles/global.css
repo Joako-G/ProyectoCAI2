@@ -1114,6 +1114,23 @@ a:hover {
   font-weight: 700;
 }
 
+/* Amounts (receipt and charge previews) stay on one line and aligned to the right edge, Total row included, so a narrow screen never splits "$" from the figure. */
+.receipt .members-table th:last-child,
+.receipt .members-table td:last-child,
+.payments-preview th:last-child,
+.payments-preview td:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.receipt .members-table th[scope='row'],
+.payments-preview th[scope='row'] {
+  padding: 12px;
+  padding-left: 20px;
+  text-align: left;
+  font-size: 12px;
+}
+
 .receipt__annulled {
   color: var(--color-danger, #b3261e);
   font-weight: 600;
