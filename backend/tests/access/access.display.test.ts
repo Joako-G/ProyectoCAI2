@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { createGreetingBus, type GreetingEvent } from '../../src/modules/access/greeting.bus.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 
 let server: Server;
 let baseUrl: string;
@@ -15,8 +16,7 @@ beforeAll(async () => {
   const users = await createUsersFile();
   cleanup = users.cleanup;
   // No entries service: the stream must work without a database.
-  server = createApp({ storePath: users.storePath, accessService: { check }, greetings, displayHeartbeatMs: 40 }).listen(0);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  server = await listenOnFetchSafePort(createApp({ storePath: users.storePath, accessService: { check }, greetings, displayHeartbeatMs: 40 }));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 

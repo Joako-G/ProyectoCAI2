@@ -3,6 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 
 let server: Server;
 let withoutEntries: Server;
@@ -17,9 +18,10 @@ const check = vi.fn(async (_dni: string, _entry?: { method: 'dni' | 'face'; acto
 beforeAll(async () => {
   const users = await createUsersFile();
   cleanup = users.cleanup;
-  server = createApp({ storePath: users.storePath, accessService: { check }, accessEntries: { list: listEntries } }).listen(0);
-  withoutEntries = createApp({ storePath: users.storePath, accessService: { check } }).listen(0);
-  await Promise.all([server, withoutEntries].map((listening) => new Promise<void>((resolve) => listening.once('listening', resolve))));
+  [server, withoutEntries] = await Promise.all([
+    listenOnFetchSafePort(createApp({ storePath: users.storePath, accessService: { check }, accessEntries: { list: listEntries } })),
+    listenOnFetchSafePort(createApp({ storePath: users.storePath, accessService: { check } })),
+  ]);
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   withoutEntriesUrl = `http://127.0.0.1:${(withoutEntries.address() as AddressInfo).port}`;
 });

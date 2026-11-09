@@ -6,6 +6,7 @@ import type { AccessCheck } from '../../src/modules/access/access.types.js';
 import type { FaceService } from '../../src/modules/faces/face.service.js';
 import { NotFoundError } from '../../src/shared/errors.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 import { descriptor } from './helpers.js';
 
 const service = {
@@ -23,17 +24,18 @@ let enabledUrl: string;
 let disabledUrl: string;
 let cleanup: () => Promise<void>;
 
-async function listen(server: Server): Promise<string> {
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+function urlOf(server: Server): string {
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
 
 beforeAll(async () => {
   const users = await createUsersFile();
   cleanup = users.cleanup;
-  enabled = createApp({ storePath: users.storePath, faceService: service }).listen(0);
-  disabled = createApp({ storePath: users.storePath, facesUnavailable: true }).listen(0);
-  [enabledUrl, disabledUrl] = await Promise.all([listen(enabled), listen(disabled)]);
+  [enabled, disabled] = await Promise.all([
+    listenOnFetchSafePort(createApp({ storePath: users.storePath, faceService: service })),
+    listenOnFetchSafePort(createApp({ storePath: users.storePath, facesUnavailable: true })),
+  ]);
+  [enabledUrl, disabledUrl] = [urlOf(enabled), urlOf(disabled)];
 });
 
 afterAll(async () => {

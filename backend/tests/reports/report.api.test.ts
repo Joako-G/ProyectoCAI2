@@ -5,6 +5,7 @@ import { createApp } from '../../src/app.js';
 import type { ReportService } from '../../src/modules/reports/report.service.js';
 import type { Role } from '../../src/modules/users/user.types.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 import { createTestContext, incomeEntry } from '../cashcount/helpers.js';
 
 let baseUrl: string;
@@ -24,8 +25,7 @@ beforeEach(async () => {
   // Spies over the real service prove a rejected request never reaches it.
   revenue = vi.fn(context.reports.revenue);
   disciplineSettlement = vi.fn(context.reports.disciplineSettlement);
-  server = createApp({ storePath: users.storePath, reportService: { revenue, disciplineSettlement } }).listen(0);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  server = await listenOnFetchSafePort(createApp({ storePath: users.storePath, reportService: { revenue, disciplineSettlement } }));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   for (const role of ['head_secretary', 'secretary', 'teacher'] as const) cookies[role] = await signIn(baseUrl, role);
 });

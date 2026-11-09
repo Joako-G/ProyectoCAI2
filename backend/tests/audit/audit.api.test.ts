@@ -6,6 +6,7 @@ import { createApp } from '../../src/app.js';
 import { createAuditService } from '../../src/modules/audit/audit.service.js';
 import type { Role } from '../../src/modules/users/user.types.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 import { actors, createTestContext } from './helpers.js';
 
 let baseUrl: string;
@@ -18,8 +19,7 @@ beforeEach(async () => {
   const users = await createUsersFile();
   context = await createTestContext();
   cleanups.push(users.cleanup, context.cleanup);
-  server = createApp({ storePath: users.storePath, auditService: context.service }).listen(0);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  server = await listenOnFetchSafePort(createApp({ storePath: users.storePath, auditService: context.service }));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   for (const role of ['head_secretary', 'secretary', 'teacher'] as const) cookies[role] = await signIn(baseUrl, role);
 });
@@ -63,8 +63,7 @@ describe('audit API', () => {
       now: () => new Date('2026-11-01T15:00:00Z'),
     });
     await failing.record({ actorId: 'user-head', action: 'create', entityType: 'member', entityId: 'm1' });
-    const other = createApp({ storePath: (await createUsersFile()).storePath, auditService: failing }).listen(0);
-    await new Promise<void>((resolve) => other.once('listening', resolve));
+    const other = await listenOnFetchSafePort(createApp({ storePath: (await createUsersFile()).storePath, auditService: failing }));
     try {
       const url = `http://127.0.0.1:${(other.address() as AddressInfo).port}`;
       const response = await fetch(`${url}/api/audit`, { headers: { cookie: await signIn(url, 'head_secretary') } });

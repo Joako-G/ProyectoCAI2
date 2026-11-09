@@ -4,6 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { readFile } from 'node:fs/promises';
+import { listenOnFetchSafePort } from './helpers/listen.mjs';
 
 let server;
 let baseUrl;
@@ -13,8 +14,7 @@ before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'club-socios-auth-'));
   const { createApp } = await import('../dist/app.js');
   const app = createApp({ storePath: join(directory, 'users.json') });
-  server = app.listen(0);
-  await new Promise((resolve) => server.once('listening', resolve));
+  server = await listenOnFetchSafePort(app);
   baseUrl = `http://127.0.0.1:${server.address().port}`;
 });
 

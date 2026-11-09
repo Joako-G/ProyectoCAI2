@@ -12,6 +12,7 @@ import { createGreetingBus } from '../../src/modules/access/greeting.bus.js';
 import { createRosterService } from '../../src/modules/roster/roster.service.js';
 import { roles, type Role as RoleName } from '../../src/modules/users/user.types.js';
 import { createTestContext as createAudit } from '../audit/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 import { createUsersFile, signIn } from './helpers.js';
 import { routes } from './routes.js';
 
@@ -30,7 +31,7 @@ beforeAll(async () => {
   const cashCount = await createCashCount();
   const audit = await createAudit();
   cleanups.push(audit.cleanup, users.cleanup, members.cleanup, disciplines.cleanup, memberships.cleanup, pricing.cleanup, payments.cleanup, cashCount.cleanup);
-  server = createApp({
+  server = await listenOnFetchSafePort(createApp({
     storePath: users.storePath,
     memberService: members.service,
     disciplineService: disciplines.service,
@@ -46,8 +47,7 @@ beforeAll(async () => {
     greetings: createGreetingBus(),
     faceService: { enroll: async () => undefined, remove: async () => undefined, discardForDeactivatedMember: async () => undefined, status: async () => ({ enrolled: false }), summary: async () => ({ enrolled: 0 }), recognize: async () => ({ result: 'red', reason: 'not_recognized' }) },
     rosterService: createRosterService({ memberships: memberships.service, members: members.service, disciplines: disciplines.service }),
-  }).listen(0);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  }));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   for (const role of roles) cookies[role] = await signIn(baseUrl, role);
 });

@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { createRosterService } from '../../src/modules/roster/roster.service.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 import { createTestContext as createDisciplines } from '../disciplines/helpers.js';
 import { adultInput, createTestContext as createMembers } from '../members/helpers.js';
 import { createTestContext as createMemberships } from '../memberships/helpers.js';
@@ -29,11 +30,10 @@ beforeAll(async () => {
   const stored = JSON.parse(await readFile(users.storePath, 'utf8')) as Array<Record<string, unknown>>;
   for (const user of stored) if (user.role === 'teacher') user.disciplineIds = [mine.id, 'removed'];
   await writeFile(users.storePath, JSON.stringify(stored));
-  server = createApp({
+  server = await listenOnFetchSafePort(createApp({
     storePath: users.storePath,
     rosterService: createRosterService({ memberships: memberships.service, members: members.service, disciplines: disciplines.service }),
-  }).listen(0);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  }));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 

@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import type { DebtNotice } from '../../src/modules/notices/notice.types.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 
 let server: Server;
 let baseUrl: string;
@@ -26,11 +27,10 @@ const rows: DebtNotice[] = [
 beforeAll(async () => {
   const users = await createUsersFile();
   cleanup = users.cleanup;
-  server = createApp({
+  server = await listenOnFetchSafePort(createApp({
     storePath: users.storePath,
     noticeService: { debtNotices: async () => ({ asOf: '2026-11-01', rows }) },
-  }).listen(0);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  }));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 

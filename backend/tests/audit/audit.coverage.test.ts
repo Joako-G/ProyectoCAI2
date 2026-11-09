@@ -28,6 +28,7 @@ import { createReportService } from '../../src/modules/reports/report.service.js
 import { createFakeFaceRepository, descriptor } from '../faces/helpers.js';
 import { UserRepository } from '../../src/modules/users/user.repository.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 import { routes } from '../authorization/routes.js';
 
 const TODAY = new Date('2026-10-05T15:00:00Z');
@@ -285,7 +286,7 @@ async function startApp(failingAudit = false) {
     audit: auditService,
     now,
   });
-  const server = createApp({
+  const server = await listenOnFetchSafePort(createApp({
     storePath: users.storePath,
     userRepository,
     memberService,
@@ -298,9 +299,8 @@ async function startApp(failingAudit = false) {
     backupService,
     faceService,
     auditService,
-  }).listen(0);
+  }));
   servers.push(server);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
   const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const cookie = await signIn(baseUrl, 'head_secretary');
   const call: Api['call'] = async (method, path, body) => {
