@@ -52,7 +52,7 @@ One work-unit commit per task, on `manu`.
 - [x] T2 — Frontend: reproduce and fix the `App.navigation.test.tsx` failures.
   - Reproduce under CPU load, record the exact failure text, and fix the cause.
   - Acceptance: repeated runs under load with no failure.
-- [ ] T3 — Proof. Run the backend and frontend suites repeatedly and record the results in this document.
+- [x] T3 — Proof. Run the backend and frontend suites repeatedly and record the results in this document.
 
 ## Checks
 - Backend and frontend tests and typechecks. Repeated runs for the proof.
@@ -73,6 +73,13 @@ One work-unit commit per task, on `manu`.
   - Cause 2, Testing Library's 1 s `asyncUtilTimeout` (2 runs): `shows the head secretary the three sections...` failed with `Unable to find role="heading" and name "Socios"` after 1.2 s and 2.1 s; the DOM dump shows the shell still on `/` with the title "Club Independiente", i.e. the redirect to Socios and the first render of the app had not finished in 1 s under load (not a missing route or a lazy load: every screen is imported statically). Fix: `configure({ asyncUtilTimeout: 5000 })` once in `frontend/src/test/setup.ts` (`ASYNC_UTIL_TIMEOUT_MS`), 5x the default, still far below the 20 s `testTimeout`, which is not changed. Regression test: `src/test/setup.test.ts` asserts the configured value (RED first: it was 1000).
   - **After the fix, 0 of 10 loaded runs failed** (27 tests each, 17-25 s per run). Raw outputs of both series were kept under the scratchpad temp dir (`t2/load-N.log`, `t2/after-N.log`).
   - Frontend full suite after T2: 73 files, 734 tests passed (1 m 36 s); typecheck clean.
+- 2026-11-08 (T3): proof runs, normal conditions (no artificial load), raw logs in the scratchpad temp dir (`t3/`).
+  - Backend, `TEST_DATABASE_URL=postgres://club:...@127.0.0.1:5432/club_socios_test pnpm --filter @club-socios/backend test`, 3 runs (32 s, 29 s, 29 s): in each, `node --test` suites pass and Vitest non-database part passes (72 files, 1183 tests). Each run then exits 1 because **Docker Desktop was not running** (`docker ps`: engine pipe not found; `ECONNREFUSED 127.0.0.1:5432`), so the `tests/database` suites could not connect: the same 5 tests failed identically in the 3 runs (`backup-dump.test.ts`; `migrate.test.ts` "applies every migration once, in order, and records them", "applies nothing the second time", "applies each file once when two runs start together"; plus the pg repository suites). This is an environment failure, not a flaky test: those suites do not use the port helper. They must be run once with the database up; I did not start Docker.
+  - Backend, `cd backend && pnpm exec vitest run tests/access tests/audit tests/payments tests/reports`, 10 runs in a loop (12-18 s each): **10 of 10 passed, 0 failures** (24 files, 428 tests each).
+  - Frontend, `pnpm --filter @club-socios/frontend test`, 3 runs (97 s, 93 s, 109 s): **3 of 3 passed** (73 files, 734 tests each).
+  - Typechecks: backend and frontend clean.
+  - Before / after: port sampling, raw `listen(0)` 4, 1, 4 of 3,000 on the fetch block list (earlier sample: 3 of 3,000) vs the helper 0, 0, 0 of 3,000. Frontend reproduction, `App.navigation` + `App.routing` under CPU load: 4 of 8 runs failed before, 0 of 10 after.
+  - Not proven: the backend runs above did not include the database suites; and a failure that happens about once in 1,000 server starts cannot be excluded by 13 runs, which is why the guard and the helper test exist.
 
 ## Next step
-T3.
+Run the backend `tests/database` suites once with Docker running (they could not run in T3), then push when the part 5 pull request is merged.
