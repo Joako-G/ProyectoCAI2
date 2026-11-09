@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { digitsOnly, MAX_MONEY_DIGITS } from '../../../utils/input-limits';
 import { useSaveAction } from '../hooks/useSaveAction';
 import type { SurchargeTier } from '../types/pricing';
 import { formatPesos } from '../utils/pricing-format';
@@ -50,8 +51,8 @@ export function SurchargeTiersSection({ tiers, canWrite, onSave }: SurchargeTier
               {rows.map((row, index) => (
                 // Rows have no identity besides their position, so the index is the key.
                 <tr key={index}>
-                  <td><input type="text" inputMode="numeric" autoComplete="off" aria-label={`Desde el día, tramo ${index + 1}`} value={row.fromDay} onChange={(event) => changeRow(index, { fromDay: event.target.value })} /></td>
-                  <td><input type="text" inputMode="numeric" autoComplete="off" aria-label={`Recargo, tramo ${index + 1}`} value={row.amount} onChange={(event) => changeRow(index, { amount: event.target.value })} /></td>
+                  <td><input type="text" inputMode="numeric" autoComplete="off" aria-label={`Desde el día, tramo ${index + 1}`} maxLength={2} value={row.fromDay} onChange={(event) => changeRow(index, { fromDay: digitsOnly(event.target.value, 2) })} /></td>
+                  <td><input type="text" inputMode="numeric" autoComplete="off" aria-label={`Recargo, tramo ${index + 1}`} maxLength={MAX_MONEY_DIGITS} value={row.amount} onChange={(event) => changeRow(index, { amount: digitsOnly(event.target.value, MAX_MONEY_DIGITS) })} /></td>
                   <td>
                     <button type="button" className="button button--secondary" aria-label={`Quitar tramo ${index + 1}`} disabled={rows.length === 1 || save.saving} onClick={() => setRows((current) => current.filter((_row, position) => position !== index))}>
                       Quitar

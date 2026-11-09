@@ -98,7 +98,7 @@ describe('closing the day', () => {
     expect('varianceNote' in (await none.service.close({ countedCash: 1000 }, ACTOR))).toBe(false);
   });
 
-  it.each([[-1], [1.5], ['1000'], [Number.NaN], [undefined], [null], [Number.MAX_SAFE_INTEGER + 1]])(
+  it.each([[-1], [1.5], ['1000'], [Number.NaN], [undefined], [null], [Number.MAX_SAFE_INTEGER + 1], [10_000_000_000]])(
     'rejects a counted cash of %j and writes nothing',
     async (counted) => {
       const { service, repository } = await setup();

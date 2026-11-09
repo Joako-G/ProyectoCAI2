@@ -1,0 +1,78 @@
+/* Responsive layout: the sidebar becomes a top bar and wide tables scroll instead of being clipped. */
+
+@media (max-width: 860px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+  }
+
+  .sidebar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    padding: 8px 12px;
+  }
+
+  .sidebar__brand {
+    padding: 4px 6px;
+    border-bottom: 0;
+  }
+
+  .sidebar__nav {
+    order: 3;
+    flex: 1 1 100%;
+    flex-direction: row;
+    gap: 4px;
+    padding: 4px 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sidebar__group {
+    flex-direction: row;
+    align-items: center;
+    margin-top: 0;
+  }
+
+  .sidebar__group-label {
+    display: none;
+  }
+
+  .sidebar__link {
+    flex: none;
+    white-space: nowrap;
+    padding: 9px 12px;
+  }
+
+  .sidebar__session {
+    flex-direction: row;
+    align-items: center;
+    margin: 0 0 0 auto;
+    padding: 0;
+    border-top: 0;
+  }
+
+  .sidebar__session-details {
+    display: none;
+  }
+
+  .app-shell__content {
+    padding: 18px 14px 32px;
+    gap: 16px;
+  }
+
+  .members-page {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .app-shell__content {
+    padding: 14px 10px 28px;
+  }
+
+  .sidebar__brand-tagline {
+    display: none;
+  }
+}

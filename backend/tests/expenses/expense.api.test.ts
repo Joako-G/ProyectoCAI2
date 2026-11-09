@@ -68,6 +68,7 @@ describe('expenses API', () => {
   it.each([
     [{ ...validBody, amount: 0 }, 'amount'],
     [{ ...validBody, amount: 10.5 }, 'amount'],
+    [{ ...validBody, amount: 10_000_000_000 }, 'amount'],
     [{ ...validBody, amount: '100' }, 'amount'],
     [{ ...validBody, category: 'food' }, 'category'],
     [{ ...validBody, description: '   ' }, 'description'],

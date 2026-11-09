@@ -1,5 +1,6 @@
 import { NETWORK_ERROR_MESSAGE } from '../../disciplines/hooks/useDisciplinesList';
 import { ApiError } from '../../members/services/members-api';
+import { MAX_MONEY_DIGITS } from '../../../utils/input-limits';
 import type { ExpenseCategory } from '../types/expense';
 
 export const MAX_DESCRIPTION_LENGTH = 200;
@@ -15,7 +16,7 @@ export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
 /** The amount as a positive whole number of pesos, or null while the text is not one. */
 export function parseAmount(text: string): number | null {
   const value = text.trim();
-  if (!/^\d{1,12}$/.test(value)) return null;
+  if (!new RegExp(`^\\d{1,${MAX_MONEY_DIGITS}}$`).test(value)) return null;
   const amount = Number(value);
   return amount > 0 ? amount : null;
 }

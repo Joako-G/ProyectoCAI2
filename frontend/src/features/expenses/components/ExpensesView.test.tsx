@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jsonResponse } from '../../members/test/fixtures';
@@ -60,13 +60,38 @@ describe('ExpensesView', () => {
     const button = await screen.findByRole('button', { name: 'Registrar gasto' });
     expect(button).toBeDisabled();
 
-    await userEvent.type(screen.getByLabelText('Monto'), '1.5');
+    await userEvent.type(screen.getByLabelText('Monto'), '0');
     await userEvent.type(screen.getByLabelText('Descripción'), 'Pintura');
     expect(button).toBeDisabled();
+    expect(screen.getByText('Ingresá un monto entero mayor a cero.')).toBeInTheDocument();
 
     await userEvent.clear(screen.getByLabelText('Monto'));
     await userEvent.type(screen.getByLabelText('Monto'), '1500');
     expect(button).toBeEnabled();
+    expect(screen.queryByText('Ingresá un monto entero mayor a cero.')).not.toBeInTheDocument();
+  });
+
+  it('keeps only digits in the amount and stops at ten of them', async () => {
+    stubServer();
+    render(<ExpensesView canWrite />);
+    const amount = await screen.findByLabelText('Monto');
+
+    await userEvent.type(amount, '1.5e3');
+    expect(amount).toHaveValue('153');
+    await userEvent.clear(amount);
+    await userEvent.type(amount, '123456789012345');
+    expect(amount).toHaveValue('1234567890');
+  });
+
+  it('refuses a date in the future typed by hand', async () => {
+    stubServer();
+    render(<ExpensesView canWrite />);
+    await userEvent.type(await screen.findByLabelText('Monto'), '1500');
+    await userEvent.type(screen.getByLabelText('Descripción'), 'Pintura');
+    fireEvent.change(screen.getByLabelText('Fecha'), { target: { value: '2999-01-01' } });
+
+    expect(screen.getByText('La fecha no puede ser futura.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Registrar gasto' })).toBeDisabled();
   });
 
   it('sends the expense, clears the form and shows the new row', async () => {

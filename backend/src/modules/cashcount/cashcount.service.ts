@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { toIsoDate } from '../../shared/date.js';
 import { ConflictError, ValidationError } from '../../shared/errors.js';
+import { MAX_AMOUNT } from '../../shared/limits.js';
 import type { AuditRecorder } from '../audit/audit.service.js';
 import type { RevenueQuery, RevenueReport } from '../reports/report.types.js';
 import type { CashCountRepository } from './cashcount.repository.js';
@@ -17,8 +18,8 @@ export interface CashCountServiceDeps {
 }
 
 function requireCountedCash(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
-    throw new ValidationError({ countedCash: 'Must be a non-negative whole number' });
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0 || value > MAX_AMOUNT) {
+    throw new ValidationError({ countedCash: `Must be a non-negative whole number of at most ${MAX_AMOUNT}` });
   }
   return value;
 }

@@ -79,11 +79,24 @@ describe('ArqueoView: the open day', () => {
     const close = screen.getByRole('button', { name: 'Cerrar el día' });
 
     expect(close).toBeDisabled();
-    await user.type(counted, '12a');
+    await user.type(counted, 'abc');
+    expect(counted).toHaveValue('');
     expect(close).toBeDisabled();
-    await user.clear(counted);
     await user.type(counted, '0');
     expect(close).toBeEnabled();
+  });
+
+  it('keeps only digits and stops at ten of them so the field cannot grow without end', async () => {
+    stubServer();
+    const user = userEvent.setup();
+    render(<ArqueoView />);
+    const counted = await screen.findByLabelText('Efectivo contado');
+
+    await user.type(counted, '12.5a');
+    expect(counted).toHaveValue('125');
+    await user.clear(counted);
+    await user.type(counted, '123456789012345');
+    expect(counted).toHaveValue('1234567890');
   });
 
   it('asks to confirm before closing, and sends nothing when cancelled', async () => {

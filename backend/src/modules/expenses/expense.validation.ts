@@ -1,4 +1,5 @@
 import { ValidationError } from '../../shared/errors.js';
+import { MAX_AMOUNT } from '../../shared/limits.js';
 import { EXPENSE_CATEGORIES, type CreateExpenseInput, type ExpenseCategory, type ExpenseQuery } from './expense.types.js';
 
 export const MAX_DESCRIPTION_LENGTH = 200;
@@ -25,7 +26,9 @@ export function parseCreateBody(body: unknown): CreateExpenseInput {
   const errors: Record<string, string> = {};
 
   if (typeof date !== 'string' || !isRealDate(date)) errors.date = 'Must be a date as YYYY-MM-DD';
-  if (typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount <= 0) errors.amount = 'Must be a positive whole number';
+  if (typeof amount !== 'number' || !Number.isSafeInteger(amount) || amount <= 0 || amount > MAX_AMOUNT) {
+    errors.amount = `Must be a positive whole number of at most ${MAX_AMOUNT}`;
+  }
   if (typeof category !== 'string' || !EXPENSE_CATEGORIES.includes(category as ExpenseCategory)) {
     errors.category = `Must be one of: ${EXPENSE_CATEGORIES.join(', ')}`;
   }

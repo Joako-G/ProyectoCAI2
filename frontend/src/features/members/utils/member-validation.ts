@@ -4,6 +4,9 @@ import { calculateAge } from './member-format';
 // Mirrors backend/src/modules/members/member.validation.ts. Keep both in sync: the backend stays the
 // source of truth, this only gives early feedback. Messages are UI copy (Spanish).
 
+export const MAX_NAME_LENGTH = 60;
+export const MAX_EMAIL_LENGTH = 120;
+
 /** Form state: every input is a string; `category` is empty until the user picks one. */
 export interface MemberFormValues {
   firstName: string;
@@ -92,8 +95,10 @@ export function validateMemberForm(values: MemberFormValues, today: string): Val
 
   const firstName = values.firstName.trim();
   if (!firstName) errors.firstName = 'Ingresá el nombre.';
+  else if (firstName.length > MAX_NAME_LENGTH) errors.firstName = `El nombre admite hasta ${MAX_NAME_LENGTH} caracteres.`;
   const lastName = values.lastName.trim();
   if (!lastName) errors.lastName = 'Ingresá el apellido.';
+  else if (lastName.length > MAX_NAME_LENGTH) errors.lastName = `El apellido admite hasta ${MAX_NAME_LENGTH} caracteres.`;
 
   const dni = normalizeDni(values.dni.trim());
   if (!dni) errors.dni = 'El DNI debe tener 7 u 8 dígitos.';
@@ -117,7 +122,7 @@ export function validateMemberForm(values: MemberFormValues, today: string): Val
   }
 
   const email = values.email.trim();
-  if (email && !EMAIL.test(email)) errors.email = 'Ingresá un email válido.';
+  if (email && (email.length > MAX_EMAIL_LENGTH || !EMAIL.test(email))) errors.email = 'Ingresá un email válido.';
 
   const { disciplineIds } = values;
   if (disciplineIds.length === 0) errors.disciplineIds = 'Elegí al menos una disciplina.';
@@ -128,9 +133,10 @@ export function validateMemberForm(values: MemberFormValues, today: string): Val
   if (birthDateValid && isMinorOn(birthDate, today)) {
     const name = values.guardianName.trim();
     if (!name) errors['guardian.name'] = 'Ingresá el nombre del tutor.';
+    else if (name.length > MAX_NAME_LENGTH) errors['guardian.name'] = `El nombre del tutor admite hasta ${MAX_NAME_LENGTH} caracteres.`;
     const contact = normalizePhone(values.guardianContact.trim());
     if (!contact) errors['guardian.contact'] = 'Ingresá un contacto válido para el tutor.';
-    if (name && contact) guardian = { name, contact };
+    if (name && name.length <= MAX_NAME_LENGTH && contact) guardian = { name, contact };
   }
 
   if (Object.keys(errors).length > 0) return { errors };
