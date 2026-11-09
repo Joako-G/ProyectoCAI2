@@ -10,6 +10,7 @@ export function buildNotice(overrides: Partial<DebtNotice> = {}): DebtNotice {
     total: 80000,
     recipient: 'member',
     recipientName: 'Lucía Prueba',
+    recipientContact: '3815550101',
     link: 'https://wa.me/5493815550101?text=Hola',
     numberIssue: false,
     ...overrides,

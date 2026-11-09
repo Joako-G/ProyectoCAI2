@@ -44,7 +44,10 @@ beforeAll(async () => {
     expenseService: expenses.service,
     auditService: audit.service,
     backupService: { status: async () => ({ destination: { isDefault: true, state: 'ready' }, keep: 30, keepRecent: 5, copies: 0, lastSuccessAt: null, lastGoodAt: null, lastFailure: null, running: false, database: { lastCopy: null, lastFailure: null } }), run: async () => ({ ok: true, backup: { name: 'backup-20261101T150000Z', at: '2026-11-01T15:00:00.000Z', files: [], database: { state: 'not_configured' }, partial: false } }) },
-    noticeService: { debtNotices: async () => ({ asOf: '2026-11-01', rows: [] }) },
+    noticeService: {
+      debtNotices: async () => ({ asOf: '2026-11-01', rows: [] }),
+      welcomeNotice: async () => ({ memberId: 'm1', recipient: 'member', recipientName: 'A B', link: null, numberIssue: true }),
+    },
     accessService: { check: async () => ({ result: 'red', reason: 'not_found' }) },
     greetings: createGreetingBus(),
     faceService: { enroll: async () => undefined, remove: async () => undefined, discardForDeactivatedMember: async () => undefined, status: async () => ({ enrolled: false }), summary: async () => ({ enrolled: 0 }), recognize: async () => ({ result: 'red', reason: 'not_recognized' }) },

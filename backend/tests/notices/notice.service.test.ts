@@ -64,7 +64,7 @@ function setup(members: NoticeMember[], memberships: Membership[], payments: Pay
     payments: { list: vi.fn(async () => payments) },
     pricing: { get: vi.fn(async () => config) },
   };
-  const service = createNoticeService({ ...ports, sender: createWaMeSender(), now: () => TODAY });
+  const service = createNoticeService({ ...ports, disciplines: { findByIds: async () => [] }, sender: createWaMeSender(), now: () => TODAY });
   return { service, ports };
 }
 
@@ -111,6 +111,8 @@ describe('debtNotices', () => {
     const { service } = setup([child], [membership('kid', '2026-10-01')]);
     const [row] = (await service.debtNotices()).rows;
     expect(row).toMatchObject({ recipient: 'guardian', recipientName: 'Ana Prueba', numberIssue: false });
+    // The number shown is the guardian's, not the minor's own.
+    expect(row!.recipientContact).toBe('1155552222');
     expect(row!.link).toContain('https://wa.me/5491155552222?text=');
     expect(new URL(row!.link!).searchParams.get('text')).toContain('Hola Ana Prueba');
   });

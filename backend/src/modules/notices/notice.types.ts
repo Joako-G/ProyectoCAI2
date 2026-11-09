@@ -27,6 +27,18 @@ export interface DebtNotice {
   total: number;
   recipient: NoticeRecipient;
   recipientName: string;
+  /** The number as stored for the recipient (the guardian's contact for a minor), so a secretary sees where it goes. */
+  recipientContact: string;
+  /** Null when no usable WhatsApp number could be derived. */
+  link: string | null;
+  numberIssue: boolean;
+}
+
+/** The welcome sent after an enrollment payment: a minor's goes to the guardian, anyone else's to the member. */
+export interface WelcomeNotice {
+  memberId: string;
+  recipient: NoticeRecipient;
+  recipientName: string;
   /** Null when no usable WhatsApp number could be derived. */
   link: string | null;
   numberIssue: boolean;

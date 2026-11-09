@@ -11,11 +11,12 @@ export function describeLoadError(error: unknown): string {
 
 export const standingLabel = (standing: DebtNotice['standing']) => (standing === 'deregistered' ? 'Dado de baja' : 'Deudor');
 
-/** Who the message goes to: the member, or the guardian of a minor. */
-export const recipientLabel = (notice: DebtNotice) => (notice.recipient === 'guardian' ? `Responsable: ${notice.recipientName}` : 'El propio socio');
+/** Who the message goes to and at which number: the member, or the guardian of a minor. */
+export const recipientLabel = (notice: DebtNotice) =>
+  `${notice.recipient === 'guardian' ? `Responsable: ${notice.recipientName}` : 'El propio socio'} · ${notice.recipientContact}`;
 
 /** What to fix when no WhatsApp number could be used. */
-export const numberIssueLabel = (notice: DebtNotice) =>
+export const numberIssueLabel = (notice: Pick<DebtNotice, 'recipient'>) =>
   notice.recipient === 'guardian'
     ? 'Número de WhatsApp no válido. Corrija el contacto del responsable en la ficha del socio.'
     : 'Número de WhatsApp no válido. Corríjalo en la ficha del socio.';

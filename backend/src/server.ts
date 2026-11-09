@@ -128,6 +128,7 @@ const noticeService = createNoticeService({
   memberships: membershipService,
   payments: paymentRepository,
   pricing: pricingConfigService,
+  disciplines: disciplineService,
   sender: createWaMeSender(),
 });
 // Identified checks are logged in PostgreSQL. The repository exists only once the database is ready, so the recorder

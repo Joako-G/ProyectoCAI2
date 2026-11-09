@@ -2,7 +2,8 @@ import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
-import type { DebtNotice } from '../../src/modules/notices/notice.types.js';
+import type { DebtNotice, WelcomeNotice } from '../../src/modules/notices/notice.types.js';
+import { NotFoundError } from '../../src/shared/errors.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
 
 let server: Server;
@@ -18,17 +19,26 @@ const rows: DebtNotice[] = [
     total: 40000,
     recipient: 'member',
     recipientName: 'A B',
+    recipientContact: '12345',
     link: null,
     numberIssue: true,
   },
 ];
+
+const welcome: WelcomeNotice = { memberId: 'm1', recipient: 'member', recipientName: 'A B', link: 'https://wa.me/5493815550101?text=hola', numberIssue: false };
 
 beforeAll(async () => {
   const users = await createUsersFile();
   cleanup = users.cleanup;
   server = createApp({
     storePath: users.storePath,
-    noticeService: { debtNotices: async () => ({ asOf: '2026-11-01', rows }) },
+    noticeService: {
+      debtNotices: async () => ({ asOf: '2026-11-01', rows }),
+      welcomeNotice: async (paymentId: string) => {
+        if (paymentId === 'missing') throw new NotFoundError('Payment not found');
+        return welcome;
+      },
+    },
   }).listen(0);
   await new Promise<void>((resolve) => server.once('listening', resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
@@ -51,5 +61,20 @@ describe('GET /api/notices/debt', () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({ asOf: '2026-11-01', rows });
     }
+  });
+});
+
+describe('GET /api/notices/welcome/:paymentId', () => {
+  it('answers 401 without a session and 403 to a teacher', async () => {
+    expect((await fetch(`${baseUrl}/api/notices/welcome/pay-1`)).status).toBe(401);
+    expect((await fetch(`${baseUrl}/api/notices/welcome/pay-1`, { headers: { cookie: await signIn(baseUrl, 'teacher') } })).status).toBe(403);
+  });
+
+  it('returns the prepared welcome to the secretary and 404 for an unknown payment', async () => {
+    const cookie = await signIn(baseUrl, 'secretary');
+    const found = await fetch(`${baseUrl}/api/notices/welcome/pay-1`, { headers: { cookie } });
+    expect(found.status).toBe(200);
+    expect(await found.json()).toEqual(welcome);
+    expect((await fetch(`${baseUrl}/api/notices/welcome/missing`, { headers: { cookie } })).status).toBe(404);
   });
 });

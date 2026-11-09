@@ -51,7 +51,7 @@ export interface AppDependencies {
   cashCountService?: CashCountService;
   expenseService?: ExpenseService;
   rosterService?: RosterService;
-  noticeService?: Pick<NoticeService, 'debtNotices'>;
+  noticeService?: Pick<NoticeService, 'debtNotices' | 'welcomeNotice'>;
   accessService?: Pick<AccessService, 'check'>;
   // Set when there is a database: without it GET /api/access/entries answers 503 entries_unavailable.
   accessEntries?: Pick<EntriesService, 'list'>;
