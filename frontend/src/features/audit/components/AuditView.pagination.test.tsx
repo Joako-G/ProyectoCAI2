@@ -1,9 +1,9 @@
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jsonResponse } from '../../members/test/fixtures';
 import { buildEntry } from '../test/fixtures';
-import { AuditView } from './AuditView';
+import { renderAuditView } from '../test/render';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -20,7 +20,7 @@ function shownRecords() {
 describe('AuditView pagination', () => {
   it('shows no pagination when the log fits on one page', async () => {
     stubEntries(10);
-    render(<AuditView />);
+    renderAuditView();
 
     await screen.findByRole('table');
     expect(shownRecords()).toHaveLength(10);
@@ -30,7 +30,7 @@ describe('AuditView pagination', () => {
   it('shows ten entries per page and moves between pages when there are more', async () => {
     stubEntries(23);
     const user = userEvent.setup();
-    render(<AuditView />);
+    renderAuditView();
 
     await screen.findByRole('table');
     expect(shownRecords()).toHaveLength(10);
