@@ -9,6 +9,7 @@ import { createTestContext as createMembers } from '../members/helpers.js';
 import { createTestContext as createMemberships } from '../memberships/helpers.js';
 import { createTestContext as createPricing } from '../payments/pricing-config.helpers.js';
 import { createTestContext as createPayments } from '../payments/payment.helpers.js';
+import { createFaceEnrollmentService } from '../../src/modules/faces/face-enrollment.service.js';
 import { createGreetingBus } from '../../src/modules/access/greeting.bus.js';
 import { createMemberSummaryService } from '../../src/modules/members/member-summary.service.js';
 import { createRosterService } from '../../src/modules/roster/roster.service.js';
@@ -58,6 +59,7 @@ beforeAll(async () => {
     accessService: { check: async () => ({ result: 'red', reason: 'not_found' }) },
     greetings: createGreetingBus(),
     faceService: { enroll: async () => undefined, remove: async () => undefined, discardForDeactivatedMember: async () => undefined, status: async () => ({ enrolled: false }), summary: async () => ({ enrolled: 0 }), recognize: async () => ({ result: 'red', reason: 'not_recognized' }) },
+    faceEnrollment: createFaceEnrollmentService({ members: { getById: async () => { throw new NotFoundError('Member not found'); } }, faces: { enroll: async () => undefined }, display: { publish: () => undefined, publicScreenCount: () => 0 } }),
     rosterService: createRosterService({ memberships: memberships.service, members: members.service, disciplines: disciplines.service }),
   }));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;

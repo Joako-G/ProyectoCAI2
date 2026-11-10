@@ -36,7 +36,7 @@ Today "Registrar cara" (`faces/components/FaceEnrollment.tsx` in the member reco
 
 ## Tasks
 
-- [ ] T1 (S1, S2): backend enrollment session and display events. Route: delegated (writer trigger: 2+ non-trivial files).
+- [x] T1 (S1, S2): backend enrollment session and display events. Route: delegated (writer trigger: 2+ non-trivial files).
 - [ ] T2 (S3): public screen enrollment mode. Route: delegated (same writer).
 - [ ] T3 (S4): secretary screen flow and fallback. Route: delegated (same writer).
 
@@ -44,6 +44,10 @@ Today "Registrar cara" (`faces/components/FaceEnrollment.tsx` in the member reco
 
 - L1 (user, 2026-11-09): request quoted in Problem. Plan approved with the order stats, audit, receipt PDF, this feature.
 
+- T1 done (route: delegated writer). New in `backend/src/modules/faces`: `face-enrollment.service.ts` (one in-memory session at a time, 120 s expiry by timer and on access, first-name-only start/end events, finished sessions kept 5 min for readers), `face-enrollment.routes.ts` mounted at `/api/faces/enrollments` before the member routes (capability `faces:manage`): `POST /` (needs `consent: true`, refuses with 409 when another session is active, the member is inactive or no public screen is connected), `GET /display` (`{ connected }`), `GET /active` (`{ session }`, so a reloaded screen can recover), `GET /:id`, `POST /:id/progress`, `POST /:id/complete` (descriptor only, saves through `faceService.enroll` as the staff member who opened the session, with that consent time, audited as `create`/`update` of `face_profile`), `POST /:id/cancel`. The greeting bus gained an enrollment channel (`subscribeEnrollment`, `publishEnrollment`, `publicScreenCount`); `GET /api/access/display-events` also sends `event: enrollment`, and only a connection opened with `?screen=public` counts as a public screen (the secretary Ingreso page uses the same stream and must not count). Secretary follows by polling `GET /:id` (decision for T3: the stream is display-only and has no per-user channel; polling a small in-memory state every second is simple and survives reconnects). Audit coverage: open, progress and cancel are in the writes-nothing list (memory only); complete has its own scenario.
+  - Verification: `cd backend && pnpm typecheck`: clean. `cd backend && pnpm test`: 87 files, 1376 tests passed; database tests skipped (no `TEST_DATABASE_URL`).
+  - Commit: see git log.
+
 ## Next step
 
-T1.
+T2.

@@ -14,6 +14,7 @@ import {
 import { databaseUrl } from './config/database.js';
 import { runMigrations } from './database/migrate.js';
 import { createPool } from './database/pool.js';
+import { createFaceEnrollmentService } from './modules/faces/face-enrollment.service.js';
 import { startFaces } from './modules/faces/faces.startup.js';
 import { createExpenseService } from './modules/expenses/expense.service.js';
 import { createJsonExpenseRepository } from './modules/expenses/json-expense.repository.js';
@@ -190,7 +191,8 @@ facesReady.then((available) => {
     entryRepository = createPgEntryRepository(pool);
   }
   const accessEntries = entryRepository ? createEntriesService({ entries: entryRepository, members: memberService }) : undefined;
-  const app = createApp({ faceService, facesUnavailable: !faceService, memberService, memberSummaryService, disciplineService, membershipService, pricingConfigService, paymentService, receiptPdfService, reportService, cashCountService, expenseService, rosterService, noticeService, accessService, accessEntries, greetings, auditService, backupService, userRepository });
+  const faceEnrollment = faceService ? createFaceEnrollmentService({ members: memberService, faces: faceService, display: { publish: (event) => greetings.publishEnrollment(event), publicScreenCount: () => greetings.publicScreenCount() } }) : undefined;
+  const app = createApp({ faceService, faceEnrollment, facesUnavailable: !faceService, memberService, memberSummaryService, disciplineService, membershipService, pricingConfigService, paymentService, receiptPdfService, reportService, cashCountService, expenseService, rosterService, noticeService, accessService, accessEntries, greetings, auditService, backupService, userRepository });
   return bootstrap({
     memberService,
     membershipService,

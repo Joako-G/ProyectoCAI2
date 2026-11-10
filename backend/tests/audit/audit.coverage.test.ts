@@ -13,6 +13,7 @@ import { createJsonAuditRepository } from '../../src/modules/audit/json-audit.re
 import { createCashCountService } from '../../src/modules/cashcount/cashcount.service.js';
 import { createExpenseService } from '../../src/modules/expenses/expense.service.js';
 import { createJsonExpenseRepository } from '../../src/modules/expenses/json-expense.repository.js';
+import { createFaceEnrollmentService } from '../../src/modules/faces/face-enrollment.service.js';
 import { createFaceService } from '../../src/modules/faces/face.service.js';
 import { createJsonCashCountRepository } from '../../src/modules/cashcount/json-cashcount.repository.js';
 import { createJsonDisciplineRepository } from '../../src/modules/disciplines/json-discipline.repository.js';
@@ -37,7 +38,16 @@ const TODAY = new Date('2026-10-05T15:00:00Z');
 
 // Routes that are not reads but write nothing: they only compute a preview, or send an email and store nothing
 // (no audit action fits a send; see docs/welcome-email.md).
-const WRITES_NOTHING = ['POST /api/payments/preview', 'POST /api/payments/enrollment-preview', 'POST /api/notices/welcome/missing/email'];
+// The face enrollment session routes hold a short-lived, in-memory session and store nothing: the face is saved, and audited,
+// by the complete route, which has its own scenario.
+const WRITES_NOTHING = [
+  'POST /api/payments/preview',
+  'POST /api/payments/enrollment-preview',
+  'POST /api/notices/welcome/missing/email',
+  'POST /api/faces/enrollments',
+  'POST /api/faces/enrollments/missing/progress',
+  'POST /api/faces/enrollments/missing/cancel',
+];
 
 // Routes that write, but into their own record instead of the audit log. An entrance check is written to the
 // entry log (access_entries) with who passed, how, the result and the staff member: that log is the record, and
@@ -237,6 +247,16 @@ const scenarios: Record<string, (api: Api) => Promise<Prepared>> = {
     await api.call('PUT', `/api/faces/${id}`, { descriptor: descriptor(), consent: true });
     return { send: () => api.call('DELETE', `/api/faces/${id}`), expected: () => ({ action: 'delete', entityType: 'face_profile', entityId: id, changedFields: [] }) };
   },
+  // The public screen delivers the descriptor of a session opened for the member: one entry, like the in-window enrollment.
+  'POST /api/faces/enrollments/missing/complete': async (api) => {
+    const { id } = await createMember(api);
+    const opened = await api.call('POST', '/api/faces/enrollments', { memberId: id, consent: true });
+    const sessionId = (opened.body.session as { id: string }).id;
+    return {
+      send: () => api.call('POST', `/api/faces/enrollments/${sessionId}/complete`, { descriptor: descriptor() }),
+      expected: () => ({ action: 'create', entityType: 'face_profile', entityId: id, changedFields: [] }),
+    };
+  },
 };
 
 const servers: Server[] = [];
@@ -294,6 +314,7 @@ async function startApp(failingAudit = false) {
     audit: auditService,
     now,
   });
+  const faceEnrollment = createFaceEnrollmentService({ members: memberService, faces: faceService, display: { publish: () => undefined, publicScreenCount: () => 1 }, now });
   const server = await listenOnFetchSafePort(createApp({
     storePath: users.storePath,
     userRepository,
@@ -307,6 +328,7 @@ async function startApp(failingAudit = false) {
     expenseService,
     backupService,
     faceService,
+    faceEnrollment,
     auditService,
   }));
   servers.push(server);

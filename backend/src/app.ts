@@ -17,6 +17,8 @@ import { createCashCountRouter } from './modules/cashcount/cashcount.routes.js';
 import type { CashCountService } from './modules/cashcount/cashcount.service.js';
 import { createExpenseRouter } from './modules/expenses/expense.routes.js';
 import type { ExpenseService } from './modules/expenses/expense.service.js';
+import { createFaceEnrollmentRouter } from './modules/faces/face-enrollment.routes.js';
+import type { FaceEnrollmentService } from './modules/faces/face-enrollment.service.js';
 import { createFaceRouter, createFacesUnavailableRouter } from './modules/faces/face.routes.js';
 import type { FaceService } from './modules/faces/face.service.js';
 import { createDisciplinesRouter } from './modules/disciplines/discipline.routes.js';
@@ -63,10 +65,12 @@ export interface AppDependencies {
   // Set when there is a database: without it GET /api/access/entries answers 503 entries_unavailable.
   accessEntries?: Pick<EntriesService, 'list'>;
   // Present: GET /api/access/display-events streams the public display's greetings. It needs no database.
-  greetings?: Pick<GreetingBus, 'subscribe'>;
+  greetings?: Pick<GreetingBus, 'subscribe'> & Partial<Pick<GreetingBus, 'subscribeEnrollment'>>;
   // Test hook: how often an idle display stream sends a heartbeat comment.
   displayHeartbeatMs?: number;
   faceService?: FaceService;
+  // Present with the face service: the enrollment sessions that guide a face capture on the public screen.
+  faceEnrollment?: FaceEnrollmentService;
   // Set when there is no database: the face routes then answer 503 faces_unavailable instead of 404.
   facesUnavailable?: boolean;
   auditService?: AuditService;
@@ -147,7 +151,11 @@ if (options.accessService) {
 }
 if (options.faceService) {
   // Enroll, remove and recognize share one capability; the router audits its own writes and recognize writes nothing.
-  app.use('/api/faces', requireCapability(authenticate, 'faces:manage'), createFaceRouter(options.faceService, authenticate));
+  // The enrollment sessions are mounted first so "enrollments" is never read as a member id.
+  const faces = express.Router();
+  if (options.faceEnrollment) faces.use('/enrollments', createFaceEnrollmentRouter(options.faceEnrollment, authenticate));
+  faces.use(createFaceRouter(options.faceService, authenticate));
+  app.use('/api/faces', requireCapability(authenticate, 'faces:manage'), faces);
 } else if (options.facesUnavailable) {
   app.use('/api/faces', requireCapability(authenticate, 'faces:manage'), createFacesUnavailableRouter());
 }

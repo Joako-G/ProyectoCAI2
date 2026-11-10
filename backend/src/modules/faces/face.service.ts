@@ -28,11 +28,12 @@ const NOT_RECOGNIZED: AccessCheck = { result: 'red', reason: 'not_recognized' };
 export function createFaceService({ repository, members, access, audit, entrance, now = () => new Date() }: FaceServiceDeps) {
   return {
     // Staff confirmed the member's consent (the route requires `consent: true`); the time and the staff member are kept.
-    async enroll(memberId: string, input: { descriptor: number[] }, actorId: string): Promise<void> {
+    // `consentedAt` lets an enrollment session keep the moment staff confirmed it, which comes before the capture.
+    async enroll(memberId: string, input: { descriptor: number[]; consentedAt?: string }, actorId: string): Promise<void> {
       const member = await members.getById(memberId);
       if (member.status !== 'active') throw new ConflictError('Member is not active');
       const at = now().toISOString();
-      const outcome = await repository.upsert({ memberId, descriptor: input.descriptor, consentedAt: at, consentedBy: actorId, enrolledAt: at });
+      const outcome = await repository.upsert({ memberId, descriptor: input.descriptor, consentedAt: input.consentedAt ?? at, consentedBy: actorId, enrolledAt: at });
       // The entry names the member and the action only: no descriptor and no personal data.
       await audit.record({ actorId, action: outcome === 'created' ? 'create' : 'update', entityType: 'face_profile', entityId: memberId });
     },

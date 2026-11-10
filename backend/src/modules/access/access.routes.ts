@@ -10,7 +10,7 @@ import { parseCheckBody, parseEntriesQuery } from './access.validation.js';
 export interface AccessRouterOptions {
   entries?: Pick<EntriesService, 'list'>;
   /** Present: GET /display-events streams its greetings to the public display. */
-  greetings?: Pick<GreetingBus, 'subscribe'>;
+  greetings?: Pick<GreetingBus, 'subscribe'> & Partial<Pick<GreetingBus, 'subscribeEnrollment'>>;
   /** How often an idle stream sends a comment so proxies and browsers keep the connection open. */
   heartbeatMs?: number;
 }
@@ -58,10 +58,18 @@ export function createAccessRouter(service: Pick<AccessService, 'check'>, authen
       const stop = greetings.subscribe((event) => {
         response.write(`event: greeting\ndata: ${JSON.stringify(event)}\n\n`);
       });
+      // Only the public screen (opened with ?screen=public) counts as a place to guide an enrollment.
+      const stopEnrollment = greetings.subscribeEnrollment?.(
+        (event) => {
+          response.write(`event: enrollment\ndata: ${JSON.stringify(event)}\n\n`);
+        },
+        { publicScreen: request.query.screen === 'public' },
+      );
       const heartbeat = setInterval(() => response.write(': ping\n\n'), heartbeatMs);
       request.on('close', () => {
         clearInterval(heartbeat);
         stop();
+        stopEnrollment?.();
       });
     });
   }

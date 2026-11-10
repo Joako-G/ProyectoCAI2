@@ -39,9 +39,22 @@ export interface GreetingEvent {
 
 export type GreetingListener = (event: GreetingEvent) => void;
 
+/**
+ * What the public screen is told about a face enrollment. First name only: no member id, number, DNI or descriptor.
+ * `start` switches the screen to enrollment mode; `end` returns it to recognition (done, cancelled, expired or failed).
+ */
+export type EnrollmentEvent =
+  | { type: 'start'; sessionId: string; firstName: string; expiresAt: string; captures: number }
+  | { type: 'end'; sessionId: string; outcome: 'completed' | 'cancelled' | 'expired' | 'failed' };
+
+export type EnrollmentListener = (event: EnrollmentEvent) => void;
+
 /** An in-memory fan-out. Nothing is stored, so a display that connects late sees only what happens next. */
 export function createGreetingBus() {
   const listeners = new Set<GreetingListener>();
+  const enrollmentListeners = new Set<EnrollmentListener>();
+  // Subscribers that identified themselves as the public screen; the staff screens listen to the stream too.
+  const publicScreens = new Set<EnrollmentListener>();
   return {
     /** Returns the function that stops listening. */
     subscribe(listener: GreetingListener): () => void {
@@ -60,6 +73,27 @@ export function createGreetingBus() {
         }
       }
     },
+    /** Returns the function that stops listening. `publicScreen` marks the connection as the screen members look at. */
+    subscribeEnrollment(listener: EnrollmentListener, { publicScreen = false }: { publicScreen?: boolean } = {}): () => void {
+      enrollmentListeners.add(listener);
+      if (publicScreen) publicScreens.add(listener);
+      return () => {
+        enrollmentListeners.delete(listener);
+        publicScreens.delete(listener);
+      };
+    },
+    publishEnrollment(event: EnrollmentEvent): void {
+      for (const listener of [...enrollmentListeners]) {
+        try {
+          listener(event);
+        } catch {
+          enrollmentListeners.delete(listener);
+          publicScreens.delete(listener);
+        }
+      }
+    },
+    /** How many public screens are connected right now. */
+    publicScreenCount: () => publicScreens.size,
     listenerCount: () => listeners.size,
   };
 }
