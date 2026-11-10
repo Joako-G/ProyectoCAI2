@@ -52,18 +52,19 @@ describe('revenueExport', () => {
     const summary = sheetNamed(revenueExport(report, ISSUED).sheets, 'Resumen');
 
     expect(rows(summary).slice(10)).toEqual([
-      ['Por concepto', null],
-      ['Concepto', 'Importe'],
-      ['Cuotas sociales', 1500],
-      ['Cuotas de actividades', 3000],
-      ['TOTAL', 4500],
+      ['Por concepto', null, null],
+      ['Concepto', 'Importe', '% del total'],
+      ['Cuotas sociales', 1500, 1500 / 4500],
+      ['Cuotas de actividades', 3000, 3000 / 4500],
+      ['TOTAL', 4500, 1],
       [null, null],
-      ['Por medio de pago', null],
-      ['Medio de pago', 'Importe'],
-      ['Efectivo', 4000],
-      ['QR', 500],
-      ['TOTAL', 4500],
+      ['Por medio de pago', null, null],
+      ['Medio de pago', 'Importe', '% del total'],
+      ['Efectivo', 4000, 4000 / 4500],
+      ['QR', 500, 500 / 4500],
+      ['TOTAL', 4500, 1],
     ]);
+    expect(cellAt(summary, 12, 2)).toMatchObject({ type: Number, format: '0.0%', align: 'right' });
   });
 
   it('keeps every receipt in order with number, date, method and amount, and a total that equals the total on screen', () => {
@@ -106,6 +107,7 @@ describe('revenueExport', () => {
     const { sheets } = revenueExport(buildRevenue({ total: 0, byConcept: [], byMethod: [], receipts: [] }), ISSUED);
 
     expect(rows(sheetNamed(sheets, 'Resumen'))[5]).toEqual(['TOTAL RECAUDADO', 0]);
+    expect(rows(sheetNamed(sheets, 'Resumen'))[12]).toEqual(['TOTAL', 0, '']);
     expect(rows(sheetNamed(sheets, 'Comprobantes'))).toHaveLength(2);
   });
 });
@@ -117,15 +119,33 @@ describe('settlementExport', () => {
   });
 
   it('exports name, member number and month, and the fee and surcharge totals apart', () => {
-    const { sheets } = settlementExport(buildSettlement());
+    const { sheets } = settlementExport(buildSettlement(), ISSUED);
 
     expect(rows(sheetNamed(sheets, 'Resumen'))).toEqual([
+      ['Club CAI | Liquidación por disciplina', null],
       ['Disciplina', 'Básquet'],
       ['Mes', '10/2026'],
-      ['Cuotas de la disciplina', 3000],
+      ['Fecha de emisión', day('2026-10-27')],
+      [null, null],
+      ['CUOTAS DE LA DISCIPLINA', 3000],
+      [null, null],
       ['Recargos por pago tardío (aparte)', 300],
+      ['Cuotas cobradas', 1],
     ]);
     expect(rows(sheetNamed(sheets, 'Socios'))).toEqual([['Nombre', 'N° de socio', 'Mes'], ['Lucía Ríos', '0001', '10/2026']]);
+  });
+
+  it('styles the workbook like the revenue one: headline fee total, frozen navy header, no grid lines', () => {
+    const { sheets } = settlementExport(buildSettlement(), ISSUED);
+    const summary = sheetNamed(sheets, 'Resumen');
+    const students = sheetNamed(sheets, 'Socios');
+
+    expect(cellAt(summary, 5, 1)).toMatchObject({ type: Number, format: '"$" #,##0.00', fontSize: 20, fontWeight: 'bold' });
+    expect(cellAt(summary, 7, 1)).toMatchObject({ type: Number, format: '"$" #,##0.00' });
+    expect(students).toMatchObject({ showGridLines: false, stickyRowsCount: 1 });
+    expect(cellAt(students, 0, 0)).toMatchObject({ backgroundColor: '#2B2A6B', textColor: '#FFFFFF', fontWeight: 'bold' });
+    // The member number stays text, so its leading zeros survive.
+    expect(cellAt(students, 1, 1).value).toBe('0001');
   });
 
   it('never includes a DNI', () => {
