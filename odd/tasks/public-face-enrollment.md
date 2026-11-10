@@ -57,6 +57,8 @@ Today "Registrar cara" (`faces/components/FaceEnrollment.tsx` in the member reco
   - Commit: see git log.
   - S5 not done: the automated browser has no real camera. The user must try the two windows on the front-desk PC.
 
+- L5 (review): native review of d4f029f..c6cac0e (medium risk; 40 files, 2059 lines; includes the uncertain-send fix 7e70749) granted by the user; reliability lens, **approved** and acknowledged (lineage review-62626e0e26129888). Fixed after: R3-001, when the completed end event reached the kiosk before the save answered, the "Listo, tu rostro quedó registrado" confirmation was skipped; the event now shows it too (commit 121732c; new test RED without the fix, GREEN with it; frontend `pnpm typecheck` clean, `pnpm test` 93 files / 884 passed).
+- L6 (browser, 2026-11-10, local data, no camera in the automated browser): with `/pantalla-ingreso` open in a second tab, a member record without a face offers "Registrar en la pantalla pública" (disabled until consent) next to "Registrar en esta pantalla". Starting the session was not done here: ticking the biometric consent on a member's behalf is for staff with the member present, so S5 stays with the user and the real camera.
 ## Next step
 
 S5: the user checks the two windows with the real camera (steps in the final report of this feature).
