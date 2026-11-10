@@ -21,6 +21,17 @@ export interface DebtNoticeList {
   rows: DebtNotice[];
 }
 
+/** Mirrors `WelcomeEmailOffer`: whether the welcome can also go by email. */
+export type WelcomeEmailOffer =
+  | { available: true; /** Where it would go, masked: `m***@gmail.com`. */ maskedAddress: string }
+  | { available: false; reason: 'mail_not_configured' | 'no_email' | 'guardian_without_email' };
+
+/** Mirrors `WelcomeEmailSent` in backend/src/modules/notices/notice.types.ts. */
+export interface WelcomeEmailSent {
+  sent: true;
+  maskedAddress: string;
+}
+
 /** Mirrors `WelcomeNotice` in backend/src/modules/notices/notice.types.ts. */
 export interface WelcomeNotice {
   memberId: string;
@@ -29,4 +40,6 @@ export interface WelcomeNotice {
   /** Null when the server could not derive a usable WhatsApp number. */
   link: string | null;
   numberIssue: boolean;
+  /** Missing in the answer of an older server: treated as not available. */
+  email?: WelcomeEmailOffer;
 }

@@ -35,8 +35,9 @@ import { routes } from '../authorization/routes.js';
 
 const TODAY = new Date('2026-10-05T15:00:00Z');
 
-// Routes that are not reads but write nothing: they only compute a preview.
-const WRITES_NOTHING = ['POST /api/payments/preview', 'POST /api/payments/enrollment-preview'];
+// Routes that are not reads but write nothing: they only compute a preview, or send an email and store nothing
+// (no audit action fits a send; see docs/welcome-email.md).
+const WRITES_NOTHING = ['POST /api/payments/preview', 'POST /api/payments/enrollment-preview', 'POST /api/notices/welcome/missing/email'];
 
 // Routes that write, but into their own record instead of the audit log. An entrance check is written to the
 // entry log (access_entries) with who passed, how, the result and the staff member: that log is the record, and

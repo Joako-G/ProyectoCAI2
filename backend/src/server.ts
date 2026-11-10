@@ -48,6 +48,8 @@ import { createCashCountService } from './modules/cashcount/cashcount.service.js
 import { createJsonCashCountRepository } from './modules/cashcount/json-cashcount.repository.js';
 import { createNoticeService } from './modules/notices/notice.service.js';
 import { createWaMeSender } from './modules/notices/notice.sender.js';
+import { createMailer, createSmtpTransport } from './modules/notices/notice.mailer.js';
+import { mailConfig } from './config/mail.js';
 import { createPaymentIncomeSource } from './modules/reports/income.source.js';
 import { createReportService } from './modules/reports/report.service.js';
 import { createRosterService } from './modules/roster/roster.service.js';
@@ -127,6 +129,9 @@ const cashCountService = createCashCountService({
 });
 const expenseService = createExpenseService({ repository: createJsonExpenseRepository(expensesFilePath()), audit: auditService });
 // Debt notices read the four sources once per request and prepare wa.me links; a Business API sender can replace the sender later.
+// The mailbox is optional: without SMTP_HOST and MAIL_FROM the welcome simply offers no email. Values are never logged.
+const mail = mailConfig();
+if (mail.state === 'invalid') console.warn(`Email sending is off: ${mail.problems.join('; ')}.`);
 const noticeService = createNoticeService({
   members: memberService,
   memberships: membershipService,
@@ -134,6 +139,8 @@ const noticeService = createNoticeService({
   pricing: pricingConfigService,
   disciplines: disciplineService,
   sender: createWaMeSender(),
+  mailer: mail.state === 'configured' ? createMailer(mail.config.from, createSmtpTransport(mail.config)) : undefined,
+  receipts: receiptPdfService,
 });
 // The members screen's stat cards read the same four sources once per request.
 const memberSummaryService = createMemberSummaryService({

@@ -12,6 +12,7 @@ import { createTestContext as createPayments } from '../payments/payment.helpers
 import { createGreetingBus } from '../../src/modules/access/greeting.bus.js';
 import { createMemberSummaryService } from '../../src/modules/members/member-summary.service.js';
 import { createRosterService } from '../../src/modules/roster/roster.service.js';
+import { MailNotConfiguredError } from '../../src/modules/notices/notice.errors.js';
 import { NotFoundError } from '../../src/shared/errors.js';
 import { roles, type Role as RoleName } from '../../src/modules/users/user.types.js';
 import { createTestContext as createAudit } from '../audit/helpers.js';
@@ -51,7 +52,8 @@ beforeAll(async () => {
     backupService: { status: async () => ({ destination: { isDefault: true, state: 'ready' }, keep: 30, keepRecent: 5, copies: 0, lastSuccessAt: null, lastGoodAt: null, lastFailure: null, running: false, database: { lastCopy: null, lastFailure: null } }), run: async () => ({ ok: true, backup: { name: 'backup-20261101T150000Z', at: '2026-11-01T15:00:00.000Z', files: [], database: { state: 'not_configured' }, partial: false } }) },
     noticeService: {
       debtNotices: async () => ({ asOf: '2026-11-01', rows: [] }),
-      welcomeNotice: async () => ({ memberId: 'm1', recipient: 'member', recipientName: 'A B', link: null, numberIssue: true }),
+      welcomeNotice: async () => ({ memberId: 'm1', recipient: 'member', recipientName: 'A B', link: null, numberIssue: true, email: { available: false, reason: 'mail_not_configured' } }),
+      sendWelcomeEmail: async () => { throw new MailNotConfiguredError(); },
     },
     accessService: { check: async () => ({ result: 'red', reason: 'not_found' }) },
     greetings: createGreetingBus(),

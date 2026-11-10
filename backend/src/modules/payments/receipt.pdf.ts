@@ -38,7 +38,8 @@ const RULE = '#c9ccd1';
 const ALERT = '#b3261e';
 
 let crest: Buffer | undefined;
-function crestImage(): Buffer | undefined {
+/** The crest bytes, or undefined when the asset is missing. */
+export function loadCrest(): Buffer | undefined {
   try {
     crest ??= readFileSync(RECEIPT_CREST_FILE);
     return crest;
@@ -68,7 +69,7 @@ export function renderReceiptPdf(receipt: ReceiptDocument, { compress = true }: 
     const width = right - left;
 
     // Header: crest, club name and the kind of document.
-    const image = crestImage();
+    const image = loadCrest();
     if (image) document.image(image, left, MARGIN, { fit: [64, 64] });
     const textLeft = image ? left + 80 : left;
     document.fillColor(INK).font('Helvetica-Bold').fontSize(18).text(CLUB_NAME, textLeft, MARGIN + 8, { width: right - textLeft });

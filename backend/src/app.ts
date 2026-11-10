@@ -58,7 +58,7 @@ export interface AppDependencies {
   cashCountService?: CashCountService;
   expenseService?: ExpenseService;
   rosterService?: RosterService;
-  noticeService?: Pick<NoticeService, 'debtNotices' | 'welcomeNotice'>;
+  noticeService?: Pick<NoticeService, 'debtNotices' | 'welcomeNotice' | 'sendWelcomeEmail'>;
   accessService?: Pick<AccessService, 'check'>;
   // Set when there is a database: without it GET /api/access/entries answers 503 entries_unavailable.
   accessEntries?: Pick<EntriesService, 'list'>;
@@ -138,7 +138,7 @@ if (options.rosterService) {
   app.use('/api/roster', requireCapability(authenticate, 'roster:read'), createRosterRouter(options.rosterService, authenticate));
 }
 if (options.noticeService) {
-  // Read-only: notices:read for every request, and the router has no write route.
+  // notices:read for every request. The router stores nothing; its only side effect is the welcome email.
   app.use('/api/notices', requireCapability(authenticate, 'notices:read'), createNoticeRouter(options.noticeService));
 }
 if (options.accessService) {

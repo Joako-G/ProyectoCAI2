@@ -7,9 +7,14 @@ import { earliestTariffPeriod } from '../payments/pricing.js';
 import type { Payment } from '../payments/payment.types.js';
 import type { PricingConfig } from '../payments/pricing-config.types.js';
 import { ConflictError, NotFoundError } from '../../shared/errors.js';
+import { loadCrest } from '../payments/receipt.pdf.js';
+import type { ReceiptPdfService } from '../payments/receipt.service.js';
+import { buildWelcomeEmail, CREST_CID } from './notice.email.js';
+import { MailNotConfiguredError, MailSendError } from './notice.errors.js';
 import { buildDebtMessage, buildWelcomeMessage, describeReceiptLine } from './notice.message.js';
+import type { Mailer } from './notice.mailer.js';
 import { deriveWhatsappNumber } from './notice.number.js';
-import type { DebtNotice, DebtNoticeList, NoticeRecipient, NoticeSender, WelcomeNotice } from './notice.types.js';
+import type { DebtNotice, DebtNoticeList, NoticeRecipient, NoticeSender, WelcomeEmailOffer, WelcomeEmailSent, WelcomeNotice } from './notice.types.js';
 
 const CLUB_NAME = 'Club Atlético Independiente';
 
@@ -23,6 +28,7 @@ export interface NoticeMember {
   status: 'active' | 'inactive';
   birthDate: string;
   deactivation?: { date: string };
+  email?: string;
   guardian?: { name: string; contact: string };
 }
 
@@ -34,6 +40,10 @@ export interface NoticeServiceDeps {
   pricing: { get(): Promise<PricingConfig> };
   disciplines: { findByIds(ids: readonly string[]): Promise<Array<{ id: string; name: string }>> };
   sender: NoticeSender;
+  /** Absent when no mailbox is configured: the welcome then offers no email. */
+  mailer?: Mailer;
+  /** Renders the receipt PDF the welcome email attaches. */
+  receipts?: Pick<ReceiptPdfService, 'render'>;
   now?: () => Date;
 }
 
@@ -54,20 +64,45 @@ function resolveRecipient(
   };
 }
 
-export function createNoticeService({ members, memberships, payments, pricing, disciplines, sender, now = () => new Date() }: NoticeServiceDeps) {
+/** `maria@gmail.com` as `m***@gmail.com`: enough to recognize the address, not to disclose it. */
+export function maskEmail(address: string): string {
+  const at = address.lastIndexOf('@');
+  return at <= 0 ? '***' : `${address[0]}***${address.slice(at)}`;
+}
+
+// A minor is written to through the guardian, and the model stores no email for a guardian: never fall back to the minor's own.
+function emailOffer(member: NoticeMember, recipient: NoticeRecipient, mailConfigured: boolean): WelcomeEmailOffer {
+  if (!mailConfigured) return { available: false, reason: 'mail_not_configured' };
+  if (recipient === 'guardian') return { available: false, reason: 'guardian_without_email' };
+  if (!member.email) return { available: false, reason: 'no_email' };
+  return { available: true, maskedAddress: maskEmail(member.email) };
+}
+
+export function createNoticeService({ members, memberships, payments, pricing, disciplines, sender, mailer, receipts, now = () => new Date() }: NoticeServiceDeps) {
+  // The payment, its member and the wording both channels share. Refuses an unknown or annulled payment.
+  async function welcomeContext(paymentId: string) {
+    const payment = (await payments.list()).find((current) => current.id === paymentId);
+    if (!payment) throw new NotFoundError('Payment not found');
+    if (payment.annulment) throw new ConflictError('Payment is annulled');
+    const member = (await members.list()).find((current) => current.id === payment.memberId);
+    if (!member) throw new NotFoundError('Member not found');
+    const activityIds = payment.lines.flatMap((line) => (line.disciplineId ? [line.disciplineId] : []));
+    const names = new Map((await disciplines.findByIds(activityIds)).map((discipline) => [discipline.id, discipline.name]));
+    const memberName = `${member.firstName} ${member.lastName}`;
+    const resolved = resolveRecipient(member, payment.paymentDate);
+    return {
+      payment,
+      member,
+      memberName,
+      ...resolved,
+      concepts: payment.lines.map((line) => describeReceiptLine(line, (id) => names.get(id) ?? 'actividad')),
+    };
+  }
+
   return {
     // The welcome for the payment that enrolled a member, with the receipt in the message and a send link.
     async welcomeNotice(paymentId: string): Promise<WelcomeNotice> {
-      const payment = (await payments.list()).find((current) => current.id === paymentId);
-      if (!payment) throw new NotFoundError('Payment not found');
-      if (payment.annulment) throw new ConflictError('Payment is annulled');
-      const member = (await members.list()).find((current) => current.id === payment.memberId);
-      if (!member) throw new NotFoundError('Member not found');
-
-      const activityIds = payment.lines.flatMap((line) => (line.disciplineId ? [line.disciplineId] : []));
-      const names = new Map((await disciplines.findByIds(activityIds)).map((discipline) => [discipline.id, discipline.name]));
-      const memberName = `${member.firstName} ${member.lastName}`;
-      const { recipient, recipientName, number } = resolveRecipient(member, payment.paymentDate);
+      const { member, memberName, recipient, recipientName, number, payment, concepts } = await welcomeContext(paymentId);
       const link = number
         ? sender.prepare({
             number,
@@ -77,12 +112,47 @@ export function createNoticeService({ members, memberships, payments, pricing, d
               addressee: { kind: recipient, name: recipientName },
               receiptNumber: payment.receiptNumber,
               paymentDate: payment.paymentDate,
-              concepts: payment.lines.map((line) => describeReceiptLine(line, (id) => names.get(id) ?? 'actividad')),
+              concepts,
               total: payment.total,
             }),
           }).link
         : null;
-      return { memberId: member.id, recipient, recipientName, link, numberIssue: link === null };
+      return { memberId: member.id, recipient, recipientName, link, numberIssue: link === null, email: emailOffer(member, recipient, Boolean(mailer && receipts)) };
+    },
+
+    // Emails the welcome with the receipt PDF attached. Nothing is stored; a refusal never reveals the SMTP details.
+    async sendWelcomeEmail(paymentId: string): Promise<WelcomeEmailSent> {
+      if (!mailer || !receipts) throw new MailNotConfiguredError();
+      const { member, memberName, recipient, recipientName, payment, concepts } = await welcomeContext(paymentId);
+      const offer = emailOffer(member, recipient, true);
+      if (!offer.available || !member.email) throw new ConflictError('The recipient has no email address');
+      const pdf = await receipts.render(payment.id);
+      const crest = loadCrest();
+      const email = buildWelcomeEmail({
+        clubName: CLUB_NAME,
+        memberName,
+        addressee: { kind: recipient, name: recipientName },
+        receiptNumber: payment.receiptNumber,
+        paymentDate: payment.paymentDate,
+        concepts,
+        total: payment.total,
+        crest: crest !== undefined,
+      });
+      try {
+        await mailer.send({
+          to: member.email,
+          subject: email.subject,
+          text: email.text,
+          html: email.html,
+          attachments: [{ filename: pdf.filename, content: pdf.content, contentType: 'application/pdf' }],
+          inlineImages: crest ? [{ cid: CREST_CID, filename: 'logo-cai.png', content: crest, contentType: 'image/png' }] : [],
+        });
+      } catch (error) {
+        // Only the error code is logged: a message can carry the server address or the account.
+        console.error('Welcome email could not be sent', (error as { code?: unknown } | null)?.code ?? 'unknown');
+        throw new MailSendError();
+      }
+      return { sent: true, maskedAddress: offer.maskedAddress };
     },
 
     // Every active member who owes at least one month, with the total as of today and a send link.
