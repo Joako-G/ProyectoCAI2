@@ -1,0 +1,34 @@
+# Audit screen redesign and filters (Auditoría)
+
+Objective: make the audit log easy to search and read. The head secretary must find "who changed what, and when" for a member, a user or a date range without scrolling the whole log. Branch: manu. Runner: vitest (backend and frontend). TDD: not configured; ordinary functional checks apply.
+
+Requirements: RF-27 (audit: who created, modified or annulled, and when), RNF-08 (the history cannot be modified: still append + list only), RNF-07 (role restricted: `audit:read` stays head secretary only), RNF-09 (privacy: the log keeps storing no member names, DNI or values). `odd/tasks/audit-trail.md` had put filters out of scope; the user asked for them on 2026-11-09 ("filtrar por socios, filtrar por usuarios que realizaron, fecha y demás filtros"), which is the authorization for this feature.
+
+## Specs
+
+- S1 (backend filters): `GET /api/audit` accepts optional query params, all combinable (AND), validated (400 `invalid_query` with field errors on a bad value, never a silent ignore):
+  - `actorId`: entries whose actor snapshot has that user id.
+  - `member`: a member number (as shown in labels, e.g. `0007`). Matches entries about that member: `entityType` `member` or `face_profile` with that member's id, and `payment` entries whose payment belongs to that member (resolved at read time from the payments source, like the labels). Nothing new is stored in the log.
+  - `entityType`: one of the existing entity types.
+  - `action`: one of the existing actions.
+  - `from`, `to`: dates `YYYY-MM-DD`, inclusive, in the club's time zone (reuse the club-day helper already used elsewhere, do not invent one).
+  - Response keeps its current shape `{ entries, failedWrites }`, newest first, plus `actors`: the distinct actors `{ id, name, role }` of the whole log (for the user filter), so the screen does not need the users module.
+  - Without params the result is exactly today's.
+- S2 (screen layout): `/auditoria` redesigned in the visual language of Arqueo / Gastos (`desk.css`, `global.css` tokens, IBM Plex Sans, IBM Plex Mono for dates and numbers), centred in a max-width column instead of stretched to the sides. Order: page header with a one-line explanation, a filter card, a results summary line ("23 registros"), the results, pagination (existing `usePagination` / `Pagination`).
+- S3 (filters UI): Usuario (select from `actors`), Socio (member number input), Registro (entity type select, Spanish labels), Acción (select, Spanish labels from `audit-format.ts`), Desde / Hasta (date inputs) with quick ranges Hoy, Últimos 7 días, Últimos 30 días, and a "Limpiar filtros" button. Active filters are shown as removable chips. Filters live in the URL query string so a filtered view survives a reload and can be shared.
+- S4 (results): each row shows date and time (mono), user with role, an action badge coloured by kind (create = success, update = accent, deactivate / delete / annul = error, reactivate = success, close = neutral), the record label, and the changed fields; on phones rows stack as cards (existing pattern). Clicking a record label that is a member filters by that member.
+- S5 (states): loading, empty ("No hay registros con estos filtros" with a clear-filters action), error, and the existing failed-writes banner, all kept.
+- S6: accessibility: every control labelled, chips removable by keyboard, the result count announced politely.
+
+## Tasks
+
+- [ ] T1 (S1): backend query validation, filtering in the audit service/routes, member resolution, `actors`, tests (validation, each filter, combination, member through payments, no-params unchanged, 401/403). Route: delegated (writer trigger: 2+ non-trivial files).
+- [ ] T2 (S2-S6): frontend redesign, filter state in the URL, hook passing params, chips, badges, tests. Route: delegated (same writer, after T1).
+
+## Log
+
+- L1 (user, 2026-11-09): "en auditoría mejorar esa parte con los diseños que ya tenemos visualmente lo más que se pueda, siguiendo un diseño UX centrado, no todo a los costados, filtrar por socios, filtrar por usuarios que realizaron, fecha y demás filtros, y más cosas que creas necesarias".
+
+## Next step
+
+T1.
