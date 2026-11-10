@@ -420,6 +420,375 @@
   }
 }
 
+/* Member record: the sheet on the left, the account and the face on the right */
+
+.member-record {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.member-record__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  grid-template-areas:
+    'back back'
+    'sheet side';
+  gap: 8px 20px;
+  align-items: start;
+}
+
+.member-record__grid--single {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'back'
+    'sheet';
+}
+
+.member-record__back {
+  grid-area: back;
+}
+
+.member-sheet {
+  grid-area: sheet;
+}
+
+.member-record__side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.member-record__back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 4px;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: 500 13px var(--font-sans);
+  cursor: pointer;
+}
+
+.member-record__back-button::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-bottom: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.member-record__back-button:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+
+.member-record__back-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.member-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 28px;
+}
+
+.member-sheet__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.member-sheet__monogram {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-accent) 10%, #fff);
+  color: var(--color-accent);
+  font: 700 18px var(--font-serif);
+  letter-spacing: 0.5px;
+}
+
+.member-sheet__identity {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.member-sheet__name {
+  margin: 0;
+  font: 700 24px/1.2 var(--font-serif);
+  letter-spacing: -0.3px;
+  overflow-wrap: anywhere;
+}
+
+.member-sheet__name:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+
+.member-sheet__line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.member-sheet__number {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.member-sheet__actions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 8.5rem;
+}
+
+/* Dar de baja stays red but quiet: an outline, so the record has no second loud button. */
+.member-sheet__actions .button--danger {
+  padding: 9px 14px;
+  border: 1px solid color-mix(in srgb, var(--color-error) 45%, transparent);
+  background: transparent;
+  color: var(--color-error);
+  font-weight: 500;
+}
+
+.member-sheet__actions .button--danger:hover {
+  background: #fbeceb;
+}
+
+.member-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 20px;
+  margin: 0;
+  padding-top: 22px;
+  border-top: 1px solid var(--color-border);
+}
+
+.member-facts--plain {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.member-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.member-fact dt {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.member-fact dd {
+  margin: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.member-fact--figure dd {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The tutor and the reason of a deactivation read as their own row. */
+.member-fact--wide {
+  grid-column: 1 / -1;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.member-facts--plain .member-fact--wide {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.member-sheet__deactivation {
+  padding: 16px 18px;
+  background: #faf9f7;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.member-sheet__deactivation-title {
+  margin: 0 0 12px;
+  font: 600 14px var(--font-sans);
+}
+
+/* Cards of the right column (account, face): one heading style, messages stay inside the card. */
+
+.member-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px;
+}
+
+.face-enrollment.member-card {
+  margin-top: 0;
+}
+
+.member-card__title {
+  margin: 0;
+  font: 600 14px var(--font-sans);
+}
+
+.member-card__note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.member-card__note--error {
+  color: var(--color-error);
+}
+
+.member-account__standing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.member-card__action {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+  background: #f3f2ef;
+  color: var(--color-text);
+  font: 500 13px var(--font-sans);
+  text-decoration: none;
+}
+
+.member-card__action:hover {
+  background: #e9e7e2;
+  color: var(--color-text);
+}
+
+.member-card__action--primary {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.member-card__action--primary:hover {
+  background: var(--color-accent-hover);
+  color: #fff;
+}
+
+.member-card__action:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.member-card .face-enrollment__state {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.member-card .face-enrollment__capture,
+.member-card .face-enrollment__confirm {
+  padding: 14px;
+  background: #faf9f7;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.member-card .face-enrollment__consent {
+  font-size: 13px;
+}
+
+.member-card .member-detail__actions {
+  flex-wrap: wrap;
+}
+
+.member-card .form-alert {
+  font-size: 13px;
+}
+
+@media (max-width: 899px) {
+  .member-record__grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'back'
+      'sheet'
+      'side';
+  }
+
+  .member-record__grid--single {
+    grid-template-areas:
+      'back'
+      'sheet';
+  }
+}
+
+@media (max-width: 640px) {
+  .member-sheet {
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .member-sheet__header {
+    flex-wrap: wrap;
+  }
+
+  .member-sheet__name {
+    font-size: 21px;
+  }
+
+  .member-sheet__actions {
+    flex: 1 1 100%;
+    flex-direction: row;
+  }
+
+  .member-sheet__actions .button {
+    flex: 1 1 0;
+  }
+
+  .member-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 360px) {
+  .member-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media print {
   .padron,
   .member-stats__error {

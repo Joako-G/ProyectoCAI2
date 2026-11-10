@@ -22,6 +22,8 @@ export interface MembersViewProps {
   canWrite: boolean;
   /** Whether the record shows the face recognition block (`faces:manage`). */
   canManageFaces?: boolean;
+  /** Whether the record shows the account card with the way to Cobros (`payments:read`). */
+  canReadPayments?: boolean;
   /** Replaces the plain create form, for example with the enrollment that also collects; the app composes it. */
   renderCreate?: (props: CreateScreenProps) => ReactNode;
   /** A search applied when the screen opens, for example a member number sent from the entrance desk. */
@@ -36,7 +38,7 @@ type View =
   | { name: 'edit'; id: string };
 
 /** Container of the members feature: switches between list, detail and the create / edit form. */
-export function MembersView({ today = todayInClub(), canWrite, canManageFaces = false, renderCreate, initialSearch = '' }: MembersViewProps) {
+export function MembersView({ today = todayInClub(), canWrite, canManageFaces = false, canReadPayments = false, renderCreate, initialSearch = '' }: MembersViewProps) {
   const [view, setView] = useState<View>({ name: 'list' });
   // Kept here, not in the list, so the filters survive going to the detail or form and back.
   const [query, setQuery] = useState<MemberListQuery>({ search: initialSearch, status: 'all', disciplineId: '' });
@@ -78,6 +80,7 @@ export function MembersView({ today = todayInClub(), canWrite, canManageFaces = 
           catalog={catalog}
           canWrite={canWrite}
           canManageFaces={canManageFaces}
+          canReadPayments={canReadPayments}
           onBack={showList}
           onEdit={(id) => setView({ name: 'edit', id })}
         />

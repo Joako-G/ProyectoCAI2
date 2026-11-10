@@ -5,6 +5,7 @@ import { catalogDisciplines, type DisciplineCatalog } from '../../disciplines/ho
 import { describeError, useMemberDetail } from '../hooks/useMemberDetail';
 import { ApiError, deactivateMember, reactivateMember } from '../services/members-api';
 import type { Member } from '../types/member';
+import { MemberAccountCard } from './MemberAccountCard';
 import { MemberDetail } from './MemberDetail';
 import { DeactivateDialog, ReactivateDialog } from './MemberDialogs';
 
@@ -17,6 +18,8 @@ interface MemberDetailScreenProps {
   canWrite: boolean;
   /** Whether to show the face recognition block (the `faces:manage` capability). */
   canManageFaces?: boolean;
+  /** Whether to show the account card (the `payments:read` capability). */
+  canReadPayments?: boolean;
   onBack: () => void;
   onEdit: (id: string) => void;
 }
@@ -24,7 +27,7 @@ interface MemberDetailScreenProps {
 type Dialog = 'deactivate' | 'reactivate' | null;
 
 /** Container: loads the member and runs the deactivate / reactivate actions. */
-export function MemberDetailScreen({ id, today, catalog, canWrite, canManageFaces = false, onBack, onEdit }: MemberDetailScreenProps) {
+export function MemberDetailScreen({ id, today, catalog, canWrite, canManageFaces = false, canReadPayments = false, onBack, onEdit }: MemberDetailScreenProps) {
   const { state, retry, replace } = useMemberDetail(id);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [saving, setSaving] = useState(false);
@@ -60,32 +63,36 @@ export function MemberDetailScreen({ id, today, catalog, canWrite, canManageFace
 
   if (state.phase === 'loading') {
     return (
-      <p className="card members-page__notice" role="status">
-        Cargando socio…
-      </p>
+      <div className="member-record">
+        <p className="card members-page__notice" role="status">
+          Cargando socio…
+        </p>
+      </div>
     );
   }
 
   if (state.phase === 'error') {
     return (
-      <div className="card members-page__notice members-page__notice--error" role="alert">
-        <p>
-          <strong>No se pudo cargar el socio.</strong> {state.message}
-        </p>
-        <div className="member-detail__actions">
-          <button
-            type="button"
-            className="button button--secondary"
-            onClick={() => {
-              setStaleNotice(undefined);
-              retry();
-            }}
-          >
-            Reintentar
-          </button>
-          <button type="button" className="button button--secondary" onClick={onBack}>
-            Volver al listado
-          </button>
+      <div className="member-record">
+        <div className="card members-page__notice members-page__notice--error" role="alert">
+          <p>
+            <strong>No se pudo cargar el socio.</strong> {state.message}
+          </p>
+          <div className="member-detail__actions">
+            <button
+              type="button"
+              className="button button--secondary"
+              onClick={() => {
+                setStaleNotice(undefined);
+                retry();
+              }}
+            >
+              Reintentar
+            </button>
+            <button type="button" className="button button--secondary" onClick={onBack}>
+              Volver al listado
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -94,26 +101,36 @@ export function MemberDetailScreen({ id, today, catalog, canWrite, canManageFace
   const { member } = state;
   const memberName = `${member.firstName} ${member.lastName}`;
 
+  // An inactive member has no face (deleted on deactivation, cannot be enrolled) and no running account to show.
+  const showFaces = canManageFaces && member.status === 'active';
+  const showAccount = canReadPayments && member.status === 'active';
+
   return (
-    <>
+    <div className="member-record">
       {staleNotice ? (
         <p className="form-alert" role="alert">
           {staleNotice}
         </p>
       ) : null}
       <DisciplineCatalogNotice catalog={catalog} />
-      <MemberDetail
-        member={member}
-        today={today}
-        disciplines={catalogDisciplines(catalog)}
-        onBack={onBack}
-        canWrite={canWrite}
-        onEdit={() => onEdit(member.id)}
-        onDeactivate={() => setDialog('deactivate')}
-        onReactivate={() => setDialog('reactivate')}
-      />
-      {/* An inactive member has no face: it is deleted on deactivation and cannot be enrolled. */}
-      {canManageFaces && member.status === 'active' ? <FaceEnrollment memberId={member.id} /> : null}
+      <div className={`member-record__grid${showFaces || showAccount ? '' : ' member-record__grid--single'}`}>
+        <MemberDetail
+          member={member}
+          today={today}
+          disciplines={catalogDisciplines(catalog)}
+          onBack={onBack}
+          canWrite={canWrite}
+          onEdit={() => onEdit(member.id)}
+          onDeactivate={() => setDialog('deactivate')}
+          onReactivate={() => setDialog('reactivate')}
+        />
+        {showFaces || showAccount ? (
+          <div className="member-record__side">
+            {showAccount ? <MemberAccountCard memberId={member.id} dni={member.dni} /> : null}
+            {showFaces ? <FaceEnrollment memberId={member.id} /> : null}
+          </div>
+        ) : null}
+      </div>
       {dialog === 'deactivate' ? (
         <DeactivateDialog
           memberName={memberName}
@@ -132,6 +149,6 @@ export function MemberDetailScreen({ id, today, catalog, canWrite, canManageFace
           onConfirm={() => run(() => reactivateMember(member.id))}
         />
       ) : null}
-    </>
+    </div>
   );
 }

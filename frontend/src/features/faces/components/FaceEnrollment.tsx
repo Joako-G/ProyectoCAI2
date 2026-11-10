@@ -243,8 +243,8 @@ export function FaceEnrollment({
   const enrolled = status.phase === 'ready' && status.status.enrolled;
 
   return (
-    <section className="card face-enrollment" aria-label="Reconocimiento facial">
-      <h3 className="face-enrollment__title">Reconocimiento facial</h3>
+    <section className="card face-enrollment member-card" aria-label="Reconocimiento facial">
+      <h3 className="face-enrollment__title member-card__title">Reconocimiento facial</h3>
 
       {status.phase === 'loading' ? <p role="status">Cargando…</p> : null}
       {status.phase === 'error' ? (
