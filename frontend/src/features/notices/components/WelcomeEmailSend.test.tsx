@@ -97,6 +97,18 @@ describe('WelcomeEmailSend first send', () => {
     expect(screen.getByRole('button', { name: 'Reenviar' })).toBeInTheDocument();
   });
 
+  it('shows the uncertain state, not "already sent", when the earlier send was uncertain', async () => {
+    stub((init) =>
+      init?.method === 'POST'
+        ? jsonResponse({ error: 'mail_already_sent', message: 'x', lastSend: { status: 'uncertain', at: AT, to: ADDRESS } }, 409)
+        : jsonResponse({ memberId: 'm1', recipient: 'member', recipientName: 'A B', link: null, numberIssue: false, email: { available: true, maskedAddress: ADDRESS, lastSend: { status: 'uncertain', at: AT, to: ADDRESS } } }),
+    );
+    const user = show();
+    await user.click(screen.getByRole('button', { name: `Enviar por email a ${ADDRESS}` }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo confirmar el envío. Puede que el email ya haya llegado.');
+    expect(screen.queryByText(/ya fue enviado/)).not.toBeInTheDocument();
+  });
+
   it('shows the uncertain message when the server could not confirm the send (504)', async () => {
     stub(() => jsonResponse({ error: 'mail_send_uncertain', message: 'x' }, 504));
     const user = show();

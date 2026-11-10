@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../members/services/members-api';
-import { sendWelcomeEmail } from '../services/notices-api';
+import { fetchWelcomeNotice, sendWelcomeEmail } from '../services/notices-api';
 import type { EmailLastSend } from '../types/notice';
 
 export type WelcomeEmailState =
@@ -46,7 +46,18 @@ export function useWelcomeEmail(paymentId: string, maskedAddress: string, lastSe
         .catch((error: unknown) => {
           if (!mounted.current) return;
           if (error instanceof ApiError && error.code === 'mail_send_in_progress') setState({ phase: 'inProgress' });
-          else if (error instanceof ApiError && error.code === 'mail_already_sent') setState({ phase: 'sent', maskedAddress });
+          // The 409 says a send exists, not how it ended: ask the welcome for the state the server holds (sent or uncertain).
+          else if (error instanceof ApiError && error.code === 'mail_already_sent') {
+            fetchWelcomeNotice(paymentId).then(
+              (notice) => {
+                const known = notice.email?.available ? notice.email.lastSend : undefined;
+                if (mounted.current) setState(known ? initialState(known) : { phase: 'sent', maskedAddress });
+              },
+              () => {
+                if (mounted.current) setState({ phase: 'sent', maskedAddress });
+              },
+            );
+          }
           else if (error instanceof ApiError && error.code === 'mail_send_uncertain') setState({ phase: 'uncertain' });
           // The client gave up waiting: the server may still have sent it.
           else if (error instanceof DOMException && error.name === 'AbortError') setState({ phase: 'uncertain' });
