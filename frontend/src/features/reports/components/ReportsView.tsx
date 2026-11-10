@@ -9,6 +9,7 @@ import { GRANULARITIES, todayDate } from '../utils/report-format';
 import { revenueExport, settlementExport } from '../utils/report-export';
 import { ReportActions } from './ReportActions';
 import { RevenueResult } from './RevenueResult';
+import { StatsView } from './StatsView';
 import { SettlementResult } from './SettlementResult';
 
 type Kind = 'revenue' | 'settlement';
@@ -47,6 +48,21 @@ function RevenueSheet({ report, issuedBy, canReadCashCount }: { report: RevenueR
 
 /** Container of the reports feature: picks a report and its criteria and shows the result the server computed. */
 export function ReportsView({ issuedBy, canReadCashCount = false }: { issuedBy?: string; canReadCashCount?: boolean } = {}) {
+  const [tab, setTab] = useState<'reports' | 'stats'>('reports');
+  return (
+    <section className="card members-page report-page" aria-label="Reportes">
+      <div className="report-tabs" role="tablist" aria-label="Secciones de reportes">
+        <button type="button" role="tab" id="report-tab-reports" aria-selected={tab === 'reports'} aria-controls="report-panel" className="report-tabs__tab" onClick={() => setTab('reports')}>Reportes</button>
+        <button type="button" role="tab" id="report-tab-stats" aria-selected={tab === 'stats'} aria-controls="report-panel" className="report-tabs__tab" onClick={() => setTab('stats')}>Estadísticas</button>
+      </div>
+      <div id="report-panel" role="tabpanel" aria-labelledby={tab === 'reports' ? 'report-tab-reports' : 'report-tab-stats'}>
+        {tab === 'reports' ? <ReportsPanel issuedBy={issuedBy} canReadCashCount={canReadCashCount} /> : <StatsView />}
+      </div>
+    </section>
+  );
+}
+
+function ReportsPanel({ issuedBy, canReadCashCount }: { issuedBy?: string; canReadCashCount: boolean }) {
   const [kind, setKind] = useState<Kind>('revenue');
   const [granularity, setGranularity] = useState<ReportGranularity>('daily');
   const [date, setDate] = useState(todayDate);
@@ -65,49 +81,51 @@ export function ReportsView({ issuedBy, canReadCashCount = false }: { issuedBy?:
   }
 
   return (
-    <section className="card members-page report-page" aria-label="Reportes">
-      <fieldset className="report-kind">
-        <legend>Tipo de reporte</legend>
-        <label><input type="radio" name="report-kind" checked={kind === 'revenue'} onChange={() => setKind('revenue')} /> Recaudación</label>
-        <label><input type="radio" name="report-kind" checked={kind === 'settlement'} onChange={() => setKind('settlement')} /> Liquidación por disciplina</label>
-      </fieldset>
+    <>
+      <div className="report-controls card">
+        <fieldset className="report-kind">
+          <legend>Tipo de reporte</legend>
+          <label><input type="radio" name="report-kind" checked={kind === 'revenue'} onChange={() => setKind('revenue')} /> Recaudación</label>
+          <label><input type="radio" name="report-kind" checked={kind === 'settlement'} onChange={() => setKind('settlement')} /> Liquidación por disciplina</label>
+        </fieldset>
 
-      <form className="report-filters" onSubmit={(event) => { event.preventDefault(); if (canGenerate) generate(); }}>
-        {kind === 'revenue' ? (
-          <>
-            <div className="form-field">
-              <label htmlFor="report-granularity" className="form-field__label">Período</label>
-              <select id="report-granularity" value={granularity} onChange={(event) => setGranularity(event.target.value as ReportGranularity)}>
-                {GRANULARITIES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
-              </select>
-            </div>
-            <div className="form-field">
-              <label htmlFor="report-date" className="form-field__label">Fecha</label>
-              <input id="report-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="form-field">
-              <label htmlFor="report-month" className="form-field__label">Mes</label>
-              <input id="report-month" type="month" value={month} onChange={(event) => setMonth(event.target.value)} />
-            </div>
-            <div className="form-field">
-              <label htmlFor="report-discipline" className="form-field__label">Disciplina</label>
-              <select id="report-discipline" value={disciplineId} onChange={(event) => setDisciplineId(event.target.value)}>
-                <option value="">Elija una disciplina</option>
-                {disciplines}
-              </select>
-            </div>
-          </>
-        )}
-        <button type="submit" className="button button--primary" disabled={!canGenerate}>Generar reporte</button>
-      </form>
+        <form className="report-filters" onSubmit={(event) => { event.preventDefault(); if (canGenerate) generate(); }}>
+          {kind === 'revenue' ? (
+            <>
+              <div className="form-field">
+                <label htmlFor="report-granularity" className="form-field__label">Período</label>
+                <select id="report-granularity" value={granularity} onChange={(event) => setGranularity(event.target.value as ReportGranularity)}>
+                  {GRANULARITIES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </div>
+              <div className="form-field">
+                <label htmlFor="report-date" className="form-field__label">Fecha</label>
+                <input id="report-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="form-field">
+                <label htmlFor="report-month" className="form-field__label">Mes</label>
+                <input id="report-month" type="month" value={month} onChange={(event) => setMonth(event.target.value)} />
+              </div>
+              <div className="form-field">
+                <label htmlFor="report-discipline" className="form-field__label">Disciplina</label>
+                <select id="report-discipline" value={disciplineId} onChange={(event) => setDisciplineId(event.target.value)}>
+                  <option value="">Elija una disciplina</option>
+                  {disciplines}
+                </select>
+              </div>
+            </>
+          )}
+          <button type="submit" className="button button--primary" disabled={!canGenerate}>Generar reporte</button>
+        </form>
+      </div>
 
       {kind === 'revenue'
         ? <Outcome state={revenue.state} retry={revenue.retry}>{(report) => <><ReportActions exported={revenueExport(report)} /><RevenueSheet report={report} issuedBy={issuedBy} canReadCashCount={canReadCashCount} /></>}</Outcome>
         : <Outcome state={settlement.state} retry={settlement.retry}>{(report) => <><ReportActions exported={settlementExport(report)} /><SettlementResult report={report} issuedBy={issuedBy} /></>}</Outcome>}
-    </section>
+    </>
   );
 }
 
