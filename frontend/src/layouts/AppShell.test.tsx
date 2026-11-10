@@ -19,7 +19,7 @@ describe('AppShell', () => {
   it('shows the club brand in the sidebar', () => {
     renderShell();
 
-    expect(screen.getByText('Club Independiente')).toBeInTheDocument();
+    expect(screen.getByText('Club Atlético Independiente')).toBeInTheDocument();
     expect(screen.getByText('Sistema de gestión')).toBeInTheDocument();
   });
 

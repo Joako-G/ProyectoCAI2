@@ -40,7 +40,7 @@ describe('KioskScreen layout', () => {
 describe('KioskScreen idle', () => {
   it('shows the crest, the welcome, the help and the fallback box', () => {
     setup();
-    expect(screen.getByAltText('Escudo del Club Independiente')).toHaveAttribute('src', '/brand/logo-cai.png');
+    expect(screen.getByAltText('Escudo del Club Atlético Independiente')).toHaveAttribute('src', '/brand/logo-cai.png');
     expect(screen.getByRole('heading', { name: 'Bienvenido al club' })).toBeInTheDocument();
     expect(screen.getByText('Mirá a la cámara para ingresar. No hace falta el carnet ni el DNI.')).toBeInTheDocument();
     expect(screen.getByText(/¿No funciona\?/)).toHaveTextContent('¿No funciona? Pedí ayuda en secretaría: te buscan por DNI.');

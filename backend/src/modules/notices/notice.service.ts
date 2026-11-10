@@ -11,7 +11,7 @@ import { buildDebtMessage, buildWelcomeMessage, describeReceiptLine } from './no
 import { deriveWhatsappNumber } from './notice.number.js';
 import type { DebtNotice, DebtNoticeList, NoticeRecipient, NoticeSender, WelcomeNotice } from './notice.types.js';
 
-const CLUB_NAME = 'Club Independiente';
+const CLUB_NAME = 'Club Atlético Independiente';
 
 /** The slice of a member the notices need; the members service satisfies it as it is. */
 export interface NoticeMember {

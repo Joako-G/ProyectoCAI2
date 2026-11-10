@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildDebtMessage } from '../../src/modules/notices/notice.message.js';
 
 const base = {
-  clubName: 'Club Independiente',
+  clubName: 'Club Atlético Independiente',
   memberName: 'Tomás Gómez',
   addressee: { kind: 'member' as const, name: 'Tomás Gómez' },
   unpaidPeriods: ['2026-08', '2026-09'],
@@ -14,7 +14,7 @@ describe('buildDebtMessage', () => {
   it('greets the member, names the club, lists the unpaid months and states the total as of today', () => {
     const message = buildDebtMessage(base);
     expect(message).toContain('Hola Tomás Gómez');
-    expect(message).toContain('Club Independiente');
+    expect(message).toContain('Club Atlético Independiente');
     expect(message).toContain('agosto de 2026');
     expect(message).toContain('septiembre de 2026');
     expect(message).toContain('$ 43.000');

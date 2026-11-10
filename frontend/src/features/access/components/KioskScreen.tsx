@@ -125,7 +125,7 @@ export function KioskScreen({ phase, result, resultTime, clock, hint, frame, enr
         <section className="kiosk-panel" role="status" aria-live="polite">
           {phase === 'idle' ? (
             <div className="kiosk-view kiosk-view--idle" key="idle">
-              <img className="kiosk-crest" src="/brand/logo-cai.png" alt="Escudo del Club Independiente" />
+              <img className="kiosk-crest" src="/brand/logo-cai.png" alt="Escudo del Club Atlético Independiente" />
               <h1 className="kiosk-title kiosk-title--welcome">{KIOSK_TEXT.idle.title}</h1>
               <p className="kiosk-help">{KIOSK_TEXT.idle.help}</p>
               <p className="kiosk-note">

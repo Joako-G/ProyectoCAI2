@@ -52,7 +52,7 @@ function setup(members: NoticeMember[], payments: Payment[]) {
 
 describe('buildWelcomeMessage', () => {
   const base = {
-    clubName: 'Club Independiente',
+    clubName: 'Club Atlético Independiente',
     memberName: 'Tomás Gómez',
     receiptNumber: 8,
     paymentDate: '2026-10-26',
@@ -63,7 +63,7 @@ describe('buildWelcomeMessage', () => {
   it('welcomes the member and lists the receipt, its concepts and the total', () => {
     const text = buildWelcomeMessage({ ...base, addressee: { kind: 'member', name: 'Tomás Gómez' } });
     expect(text).toContain('Hola Tomás Gómez');
-    expect(text).toContain('bienvenida a Club Independiente');
+    expect(text).toContain('bienvenida a Club Atlético Independiente');
     expect(text).toContain('su inscripción');
     expect(text).toContain('N° 8');
     expect(text).toContain('26/10/2026');

@@ -48,7 +48,7 @@ export function Sidebar({ sections, current, layout = NAVIGATION, user, onLogout
       onClick={(event) => { if ((event.target as HTMLElement).closest('a, .sidebar__logout')) setOpen(false); }}
     >
       <div className="sidebar__brand">
-        <div className="sidebar__brand-name">Club Independiente</div>
+        <div className="sidebar__brand-name">Club Atlético Independiente</div>
         <div className="sidebar__brand-tagline">Sistema de gestión</div>
       </div>
       {/* Only shown on small screens, where the sections collapse behind it. */}
