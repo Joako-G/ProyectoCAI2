@@ -11,6 +11,7 @@ let baseUrl: string;
 let server: Server;
 let revenue: Mock<ReportService['revenue']>;
 let disciplineSettlement: Mock<ReportService['disciplineSettlement']>;
+let disciplineIncome: Mock<ReportService['disciplineIncome']>;
 const cookies = {} as Record<Role, string>;
 const cleanups: Array<() => Promise<void>> = [];
 
@@ -24,7 +25,8 @@ beforeEach(async () => {
   // Spies over the real service prove a rejected request never reaches it.
   revenue = vi.fn(context.reports.revenue);
   disciplineSettlement = vi.fn(context.reports.disciplineSettlement);
-  server = createApp({ storePath: users.storePath, reportService: { revenue, disciplineSettlement } }).listen(0);
+  disciplineIncome = vi.fn(context.reports.disciplineIncome);
+  server = createApp({ storePath: users.storePath, reportService: { revenue, disciplineSettlement, disciplineIncome } }).listen(0);
   await new Promise<void>((resolve) => server.once('listening', resolve));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   for (const role of ['head_secretary', 'secretary', 'teacher'] as const) cookies[role] = await signIn(baseUrl, role);
@@ -37,17 +39,19 @@ afterEach(async () => {
 
 const get = (path: string, role?: Role) => fetch(`${baseUrl}${path}`, { headers: role ? { cookie: cookies[role] } : {} });
 const REVENUE = '/api/reports/revenue?granularity=daily&date=2026-10-05';
+const INCOME = '/api/reports/discipline-income?from=2026-09&to=2026-10';
 const SETTLEMENT = '/api/reports/discipline-settlement?period=2026-10&disciplineId=basket';
 
 describe('reports API: authorization', () => {
-  it.each([[REVENUE], [SETTLEMENT]])('answers 401 without a session and 403 to a teacher on %s, without calling the service', async (path) => {
+  it.each([[REVENUE], [SETTLEMENT], [INCOME]])('answers 401 without a session and 403 to a teacher on %s, without calling the service', async (path) => {
     expect((await get(path)).status).toBe(401);
     expect((await get(path, 'teacher')).status).toBe(403);
     expect(revenue).not.toHaveBeenCalled();
     expect(disciplineSettlement).not.toHaveBeenCalled();
+    expect(disciplineIncome).not.toHaveBeenCalled();
   });
 
-  it.each([[REVENUE], [SETTLEMENT]])('lets the secretary and the head secretary read %s', async (path) => {
+  it.each([[REVENUE], [SETTLEMENT], [INCOME]])('lets the secretary and the head secretary read %s', async (path) => {
     expect((await get(path, 'secretary')).status).toBe(200);
     expect((await get(path, 'head_secretary')).status).toBe(200);
   });
@@ -109,5 +113,32 @@ describe('reports API: discipline settlement', () => {
     const missing = await get('/api/reports/discipline-settlement?period=2026-10', 'secretary');
     expect(missing.status).toBe(400);
     expect(Object.keys((await missing.json()).fieldErrors)).toContain('disciplineId');
+  });
+});
+
+describe('reports API: discipline income', () => {
+  it('returns what each discipline took in over the months asked for', async () => {
+    const response = await get(INCOME, 'secretary');
+
+    expect(await response.json()).toEqual({
+      from: '2026-09',
+      to: '2026-10',
+      months: ['2026-09', '2026-10'],
+      total: 3000,
+      disciplines: [{ id: 'basket', name: 'Básquet', total: 3000, fees: 3000, surcharges: 0, byMonth: [0, 3000] }],
+    });
+  });
+
+  it.each([
+    ['/api/reports/discipline-income?from=2026-13&to=2026-10', 'from'],
+    ['/api/reports/discipline-income?from=2026-09', 'to'],
+    ['/api/reports/discipline-income?from=2026-10&to=2026-09', 'to'],
+    ['/api/reports/discipline-income?from=2024-01&to=2026-10', 'to'],
+    ['/api/reports/discipline-income?from=2026-09&from=2026-08&to=2026-10', 'from'],
+  ])('answers 400 naming the field for %s', async (path, field) => {
+    const response = await get(path, 'secretary');
+
+    expect(response.status).toBe(400);
+    expect(Object.keys((await response.json()).fieldErrors)).toContain(field);
   });
 });

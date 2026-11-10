@@ -47,7 +47,7 @@ export interface AppDependencies {
   membershipService?: MembershipService;
   pricingConfigService?: PricingConfigService;
   paymentService?: PaymentService;
-  reportService?: Pick<ReportService, 'revenue' | 'disciplineSettlement'>;
+  reportService?: Pick<ReportService, 'revenue' | 'disciplineSettlement' | 'disciplineIncome'>;
   cashCountService?: CashCountService;
   expenseService?: ExpenseService;
   rosterService?: RosterService;
