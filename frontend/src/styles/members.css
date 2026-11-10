@@ -12,8 +12,7 @@
 /* Layout: a centred column per screen */
 
 .members-screen,
-.member-record,
-.members-form-screen {
+.member-record {
   width: 100%;
   margin-inline: auto;
 }
@@ -786,6 +785,311 @@
 @media (max-width: 360px) {
   .member-facts {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Forms (alta, edición): a centred column, desk fields, a stepper for the alta */
+
+.member-form-card--members {
+  width: 100%;
+  max-width: 760px;
+  margin-inline: auto;
+  gap: 22px;
+  padding: 28px 32px;
+}
+
+.member-form-card--members .member-form__title {
+  font-size: 22px;
+}
+
+.member-form-card--members .member-form__hint {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* Stepper */
+
+.stepper {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stepper__item {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.stepper__item:last-child {
+  flex: none;
+}
+
+/* The line to the next step. */
+.stepper__item:not(:last-child)::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  margin: 0 14px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.stepper__marker {
+  flex: none;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 50%;
+  background: var(--color-surface);
+  font: 600 12px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.stepper__item[aria-current='step'] {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.stepper__item[aria-current='step'] .stepper__marker {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.stepper__item[data-done='true'] {
+  color: var(--color-text);
+}
+
+.stepper__item[data-done='true'] .stepper__marker {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, #fff);
+}
+
+/* A finished step shows a check drawn with borders instead of its number. */
+.stepper__item[data-done='true'] .stepper__number {
+  display: none;
+}
+
+.stepper__item[data-done='true'] .stepper__marker::after {
+  content: '';
+  width: 5px;
+  height: 10px;
+  margin-top: -2px;
+  border-right: 2px solid var(--color-accent);
+  border-bottom: 2px solid var(--color-accent);
+  transform: rotate(45deg);
+}
+
+/* Fields in the desk style: label above, 46 px, hairline border */
+
+.member-form--desk {
+  gap: 0;
+}
+
+.member-form--desk .member-form__section {
+  margin: 0;
+  padding: 22px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.member-form--desk .member-form__section:first-of-type {
+  border-top: 0;
+  padding-top: 4px;
+}
+
+.member-form--desk .member-form__legend {
+  padding: 0 0 14px;
+  font: 600 14px var(--font-sans);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-text);
+}
+
+.member-form--desk .form-alert {
+  margin-bottom: 18px;
+}
+
+.member-form--desk .member-form__grid {
+  gap: 16px 20px;
+}
+
+.member-form--desk .form-field {
+  gap: 6px;
+}
+
+.member-form--desk .form-field .form-field__label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.member-form--desk .form-field input,
+.member-form--desk .form-field select {
+  width: 100%;
+  height: 46px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-md);
+  background: #fff;
+  box-shadow: none;
+  color: var(--color-text);
+  font: 400 14px var(--font-sans);
+  transition: none;
+}
+
+/* Figures that are read or copied: number, phone, date. */
+.member-form--desk .form-field input[inputmode='numeric'],
+.member-form--desk .form-field input[type='tel'],
+.member-form--desk .form-field input[type='date'] {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.member-form--desk .form-field input:focus,
+.member-form--desk .form-field select:focus {
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: none;
+}
+
+.member-form--desk .form-field input:focus-visible,
+.member-form--desk .form-field select:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.member-form--desk .form-field [aria-invalid='true'] {
+  border-color: var(--color-error);
+  background: #fff;
+}
+
+.member-form--desk .check-group__option {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+.member-form--desk .check-group__option:has(input:checked) {
+  background: color-mix(in srgb, var(--color-accent) 7%, #fff);
+}
+
+.member-form--desk .check-group__option:has(input:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Footer: the way out on the left, back and the main action on the right. */
+
+.member-form--desk .member-form__actions {
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding-top: 22px;
+  border-top: 1px solid var(--color-border);
+}
+
+.member-form--desk .member-form__actions .member-form__cancel {
+  margin-right: auto;
+}
+
+.member-form--desk .member-form__actions .button {
+  display: block;
+  height: auto;
+  margin: 0;
+  padding: 12px 22px;
+  border-radius: var(--radius-md);
+  font: 600 13px var(--font-sans);
+  transform: none;
+  transition: none;
+}
+
+.member-form--desk .member-form__actions .button--primary {
+  border: 0;
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.member-form--desk .member-form__actions .button--primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  transform: none;
+}
+
+.member-form--desk .member-form__actions .button--secondary {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #f3f2ef;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.member-form--desk .member-form__actions .button--secondary:hover:not(:disabled) {
+  background: #e9e7e2;
+  color: var(--color-text);
+  transform: none;
+}
+
+.member-form--desk .member-form__actions .button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.member-form--desk .member-form__actions .button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* The collection step lives in the same column: its table and method buttons breathe a little. */
+.member-form--desk .payments-preview {
+  margin-bottom: 4px;
+}
+
+.member-form--desk > .segmented {
+  margin: 16px 0 22px;
+}
+
+.member-form--desk > .member-form__hint,
+.member-form--desk > .form-alert,
+.member-form--desk > .members-page__notice {
+  margin-bottom: 16px;
+}
+
+@media (max-width: 640px) {
+  .member-form-card--members {
+    padding: 20px 18px;
+  }
+
+  .member-form--desk .member-form__actions {
+    flex-wrap: wrap;
+  }
+
+  /* Cancelar and Volver share a row; the main action takes the next one, full width. */
+  .member-form--desk .member-form__actions .button--primary {
+    flex: 1 1 100%;
+  }
+
+  .member-form--desk .member-form__actions .member-form__cancel {
+    margin-right: 0;
+  }
+
+  .member-form--desk .member-form__actions .button--secondary {
+    flex: 1 1 0;
+  }
+
+  /* Names of the steps already left or still ahead give way to the current one. */
+  .stepper__item:not([aria-current='step']) .stepper__name {
+    display: none;
+  }
+
+  .stepper__item:not(:last-child)::after {
+    margin: 0 8px;
   }
 }
 

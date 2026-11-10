@@ -10,6 +10,7 @@ import type { Charge, ChargeConcept, Payment, PaymentMethod } from '../../paymen
 import { describePaymentError, newRequestId } from '../../payments/utils/payment-format';
 import { EnrollmentDone } from './EnrollmentDone';
 import { EnrollmentPaymentStep } from './EnrollmentPaymentStep';
+import { EnrollmentSteps, type EnrollmentStep } from './EnrollmentSteps';
 
 interface EnrollmentScreenProps {
   today: string;
@@ -20,7 +21,7 @@ interface EnrollmentScreenProps {
   onCancel: () => void;
 }
 
-type Step = 'data' | 'disciplines' | 'payment';
+type Step = EnrollmentStep;
 
 const STEP_TITLE: Record<Step, string> = {
   data: 'Paso 1 de 3 · Datos',
@@ -146,9 +147,10 @@ export function EnrollmentScreen({ today, catalog, onSaved, onCancel }: Enrollme
   }
 
   return (
-    <section className="card member-form-card" aria-label="Alta de socio">
+    <section className="card member-form-card member-form-card--members" aria-label="Alta de socio">
       <h2 className="member-form__title">Alta de socio</h2>
-      <p className="member-form__hint">{STEP_TITLE[step]}</p>
+      <EnrollmentSteps current={step} />
+      <p className="visually-hidden">{STEP_TITLE[step]}</p>
 
       {step === 'data' ? (
         <MemberForm

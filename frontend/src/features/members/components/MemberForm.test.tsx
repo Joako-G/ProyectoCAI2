@@ -159,6 +159,13 @@ describe('MemberForm', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('No se pudo conectar con el servidor.');
   });
 
+  it('keeps the main action last in the footer, after the way out', () => {
+    renderForm({ onBack: vi.fn() });
+
+    const names = screen.getAllByRole('button').map((button) => button.textContent);
+    expect(names).toEqual(['Cancelar', 'Volver', 'Crear socio']);
+  });
+
   it('disables the submit and Cancelar buttons while saving', async () => {
     const { user, onCancel } = renderForm({ saving: true });
 

@@ -76,7 +76,7 @@ Socios                                              [ Alta de socio ]
 
 - [x] T1: list (padrón bar, toolbar, table with Cuenta chip). Route: delegated (writer trigger).
 - [x] T2: member record (two columns, Cuenta card, face card). Route: delegated (same writer).
-- [ ] T3: forms (stepper, fields, layout). Route: delegated (same writer).
+- [x] T3: forms (stepper, fields, layout). Route: delegated (same writer).
 - [ ] T4: browser review at 1440 and 375 px by the parent, with fixes.
 
 ## Log
@@ -89,7 +89,11 @@ Socios                                              [ Alta de socio ]
   - Decisions where the brief was open: the member number moved from the facts grid to the header (as in the wireframe); the label "Fecha de nacimiento" stays (the wireframe shortened it, tests and accessible names use the long one); an inactive member shows no Cuenta card (no running account to act on); Dar de baja is an outlined red button so the record has no second loud button.
   - Tests touched: `MemberDetail.test` (the "N° de socio" fact became the header "N° 0001" assertion, deliberate from the wireframe); new `MemberDetailScreen.account.test` (6 tests: standing and months, al día, vencido, hidden without the capability and never reads the account, failed read keeps the record, inactive member). Everything else untouched and green.
   - Verification: `pnpm typecheck` clean; `pnpm test` 927 of 927 passed (98 files); `pnpm build` built in 5m 1s. Not checked in a browser. Commit: see git log.
+- L4 (T3, 2026-11-10, writer): forms restyled. The alta, the edit form and the alta's last screen get the modifier `member-form-card--members` (centred column, max 760 px) and `MemberForm` / `EnrollmentPaymentStep` get `member-form--desk`; the modifiers scope the new rules because `member-form*`, `form-field` and `check-group` are shared with Disciplinas, Precios and Cobros, which stay as they were. Fields follow the `desk.css` style (label above in 12 px semibold, 46 px height, hairline border, accent focus ring; DNI, phone and dates in mono with tabular numerals), section legends are sentence case in the UI font instead of mono caps, and the footer has Cancelar on the left, Volver and the main action on the right (the main action is last in the DOM too, so tab order matches what is seen; on phones Cancelar and Volver share a row and the main action takes the next one). New `EnrollmentSteps` is the three-step indicator (numbered markers joined by a line, current step filled and named, finished steps with a drawn check; under 640 px only the current name shows). It is `aria-hidden`; the existing "Paso N de 3 · ..." text stays in the DOM as a visually hidden line so screen readers hear the step once and the tests keep their anchor.
+  - Decisions where the brief was open: the invalid-field state is a red border on a white field (no pink fill); the chosen discipline chips get a faint accent tint; the confirmation dialogs (`MemberDialogs`) were left alone, they are not part of alta / edición.
+  - Tests touched: none changed; added one in `EnrollmentScreen.test` (stepper markers move with the step) and one in `MemberForm.test` (footer order Cancelar, Volver, main action).
+  - Verification: `pnpm typecheck` clean; `pnpm test` 928 of 929 on the full run, the one failure (`EntranceDisplay.test`, timing of a reset) happened while `vite build` shared the CPU and `src/features/access` passes alone (163/163); `pnpm build` built in 9m 27s. Not checked in a browser. Commit: see git log.
 
 ## Next step
 
-T3.
+T4: browser review at 1440 and 375 px, with fixes.

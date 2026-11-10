@@ -17,7 +17,7 @@ interface EnrollmentDoneProps {
 export function EnrollmentDone({ member, payment, disciplines, onFinish }: EnrollmentDoneProps) {
   const [showReceipt, setShowReceipt] = useState(false);
   return (
-    <section className="card member-form-card" aria-label="Alta de socio">
+    <section className="card member-form-card member-form-card--members" aria-label="Alta de socio">
       <h2 className="member-form__title">Socio dado de alta</h2>
       <p className="member-form__hint">
         {member.firstName} {member.lastName} quedó registrado con el N° {member.memberNumber}.

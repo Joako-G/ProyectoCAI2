@@ -195,7 +195,7 @@ export function MemberForm({
   });
 
   return (
-    <form ref={formRef} className="member-form" noValidate onSubmit={handleSubmit}>
+    <form ref={formRef} className="member-form member-form--desk" noValidate onSubmit={handleSubmit}>
       {submitError ? (
         <p className="form-alert" role="alert">
           {submitError}
@@ -298,16 +298,16 @@ export function MemberForm({
       ) : null}
 
       <div className="member-form__actions">
-        <button type="submit" className="button button--primary" disabled={saving}>
-          {saving ? 'Guardando…' : (submitLabel ?? (mode === 'create' ? 'Crear socio' : 'Guardar cambios'))}
+        <button type="button" className="button button--secondary member-form__cancel" disabled={saving} onClick={onCancel}>
+          Cancelar
         </button>
         {onBack ? (
           <button type="button" className="button button--secondary" disabled={saving} onClick={() => onBack(values)}>
             Volver
           </button>
         ) : null}
-        <button type="button" className="button button--secondary" disabled={saving} onClick={onCancel}>
-          Cancelar
+        <button type="submit" className="button button--primary" disabled={saving}>
+          {saving ? 'Guardando…' : (submitLabel ?? (mode === 'create' ? 'Crear socio' : 'Guardar cambios'))}
         </button>
       </div>
     </form>
