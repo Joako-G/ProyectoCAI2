@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import type { Role } from '../../src/modules/users/user.types.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 import { createTestContext } from './pricing-config.helpers.js';
 
 let baseUrl: string;
@@ -16,8 +17,7 @@ beforeAll(async () => {
   const users = await createUsersFile();
   context = await createTestContext();
   cleanups.push(users.cleanup, context.cleanup);
-  server = createApp({ storePath: users.storePath, pricingConfigService: context.service }).listen(0);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  server = await listenOnFetchSafePort(createApp({ storePath: users.storePath, pricingConfigService: context.service }));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   for (const role of ['head_secretary', 'secretary', 'teacher'] as const) cookies[role] = await signIn(baseUrl, role);
 });

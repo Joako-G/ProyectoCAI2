@@ -7,6 +7,7 @@ import type { BackupRun, BackupStatus } from '../../src/modules/backup/backup.ty
 import type { Role } from '../../src/modules/users/user.types.js';
 import { ConflictError } from '../../src/shared/errors.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 
 const STATUS: BackupStatus = {
   destination: { isDefault: true, state: 'ready' },
@@ -43,8 +44,7 @@ beforeEach(async () => {
   // Spies prove a rejected request never reaches the service.
   status = vi.fn(async () => STATUS);
   run = vi.fn(async () => GOOD);
-  server = createApp({ storePath: users.storePath, backupService: { status, run } }).listen(0);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  server = await listenOnFetchSafePort(createApp({ storePath: users.storePath, backupService: { status, run } }));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   for (const role of ['head_secretary', 'secretary', 'teacher'] as const) cookies[role] = await signIn(baseUrl, role);
 });

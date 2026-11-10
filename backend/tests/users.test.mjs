@@ -3,6 +3,7 @@ import { after, before, test } from 'node:test';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { listenOnFetchSafePort } from './helpers/listen.mjs';
 
 let directory;
 let storePath;
@@ -15,8 +16,7 @@ before(async () => {
   directory = await mkdtemp(join(tmpdir(), 'club-socios-users-'));
   storePath = join(directory, 'users.json');
   ({ createApp } = await import('../dist/app.js'));
-  server = createApp({ storePath }).listen(0);
-  await new Promise((resolve) => server.once('listening', resolve));
+  server = await listenOnFetchSafePort(createApp({ storePath }));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
   sessionCookie = await signInAt(baseUrl);
 });
@@ -110,8 +110,7 @@ test('DELETE deactivates and a newly loaded app reads the same persistent users'
   assert.equal((await request('/auth/login', 'POST', { email: user.email, password: 'ValidPass123!' })).status, 401);
 
   const reloaded = createApp({ storePath });
-  const reloadedServer = reloaded.listen(0);
-  await new Promise((resolve) => reloadedServer.once('listening', resolve));
+  const reloadedServer = await listenOnFetchSafePort(reloaded);
   try {
     const reloadedUrl = `http://127.0.0.1:${reloadedServer.address().port}`;
     const response = await fetch(`${reloadedUrl}/users`, { headers: { cookie: await signInAt(reloadedUrl) } });
@@ -127,8 +126,7 @@ test('failed persistence does not expose a created user or persistence details',
     storePath: join(directory, 'failing-users.json'),
     persist: () => { throw new Error('private store path'); },
   });
-  const failingServer = failingApp.listen(0);
-  await new Promise((resolve) => failingServer.once('listening', resolve));
+  const failingServer = await listenOnFetchSafePort(failingApp);
   try {
     const url = `http://127.0.0.1:${failingServer.address().port}`;
     const cookie = await signInAt(url);

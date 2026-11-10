@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DisciplineCatalog } from '../../disciplines/hooks/useDisciplineCatalog';
@@ -224,8 +224,72 @@ describe('EnrollmentScreen: collecting and creating', () => {
     expect(send).toHaveAttribute('target', '_blank');
     expect(callsTo(fetchMock, 'GET /api/notices/welcome/pay-9')).toHaveLength(1);
 
+    const download = screen.getByRole('link', { name: 'Descargar PDF' });
+    expect(download).toHaveAttribute('href', '/api/payments/pay-9/receipt.pdf');
+    expect(download).toHaveAttribute('download');
+    expect(download).toHaveAccessibleDescription('Descargue el PDF y adjúntelo en WhatsApp junto al mensaje.');
+
     await user.click(screen.getByRole('button', { name: 'Ver comprobante' }));
     expect(within(screen.getByRole('dialog', { name: 'Comprobante de pago' })).getByRole('region', { name: 'Comprobante' })).toBeInTheDocument();
+  });
+
+  describe('welcome email', () => {
+    const welcomeWithEmail = (email: unknown) => () =>
+      jsonResponse({ memberId: 'member-9', recipient: 'member', recipientName: 'Lucía Ríos', link: 'https://wa.me/5491155551234?text=hola', numberIssue: false, email });
+    const EMAIL_KEY = 'POST /api/notices/welcome/pay-9/email';
+
+    async function enroll(user: User) {
+      await reachPayment(user);
+      await user.click(screen.getByRole('radio', { name: 'Efectivo' }));
+      await user.click(screen.getByRole('button', { name: 'Crear socio' }));
+    }
+
+    it('does not offer the email when the mailbox is not configured or the recipient has no address', async () => {
+      for (const reason of ['mail_not_configured', 'no_email', 'guardian_without_email'] as const) {
+        stubApi({ 'GET /api/notices/welcome/pay-9': welcomeWithEmail({ available: false, reason }) });
+        const { user } = setup();
+        await enroll(user);
+        await screen.findByRole('link', { name: /Enviar bienvenida por WhatsApp/ });
+        expect(screen.queryByRole('button', { name: /Enviar por email/ })).not.toBeInTheDocument();
+        cleanup();
+      }
+    });
+
+    it('sends the email to the masked address and confirms it', async () => {
+      const fetchMock = stubApi({
+        'GET /api/notices/welcome/pay-9': welcomeWithEmail({ available: true, maskedAddress: 'l***@gmail.com' }),
+        [EMAIL_KEY]: () => jsonResponse({ sent: true, maskedAddress: 'l***@gmail.com', sentAt: '2026-11-10T14:05:00.000Z' }),
+      });
+      const { user } = setup();
+      await enroll(user);
+
+      expect(callsTo(fetchMock, EMAIL_KEY)).toHaveLength(0);
+      await user.click(await screen.findByRole('button', { name: 'Enviar por email a l***@gmail.com' }));
+      expect(await screen.findByText(/^Enviado el \d{2}\/\d{2}\/\d{4} \d{2}:\d{2} a l\*\*\*@gmail\.com\.$/)).toBeInTheDocument();
+      expect(callsTo(fetchMock, EMAIL_KEY)).toHaveLength(1);
+      expect(screen.getByRole('button', { name: 'Finalizar' })).toBeEnabled();
+    });
+
+    it('shows a failure, lets the secretary retry, and never blocks finishing', async () => {
+      let attempts = 0;
+      stubApi({
+        'GET /api/notices/welcome/pay-9': welcomeWithEmail({ available: true, maskedAddress: 'l***@gmail.com' }),
+        [EMAIL_KEY]: () => {
+          attempts += 1;
+          return attempts === 1 ? jsonResponse({ error: 'mail_send_failed', message: 'The email could not be sent' }, 502) : jsonResponse({ sent: true, maskedAddress: 'l***@gmail.com', sentAt: '2026-11-10T14:05:00.000Z' });
+        },
+      });
+      const { user } = setup();
+      await enroll(user);
+
+      await user.click(await screen.findByRole('button', { name: 'Enviar por email a l***@gmail.com' }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo enviar el email.');
+      expect(screen.getByRole('button', { name: 'Finalizar' })).toBeEnabled();
+
+      await user.click(screen.getByRole('button', { name: 'Reintentar envío por email' }));
+      expect(await screen.findByText(/^Enviado el \d{2}\/\d{2}\/\d{4} \d{2}:\d{2} a l\*\*\*@gmail\.com\.$/)).toBeInTheDocument();
+      expect(attempts).toBe(2);
+    });
   });
 
   it('tells the secretary to fix the number when the welcome cannot be sent', async () => {

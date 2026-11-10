@@ -1,6 +1,6 @@
 import { NETWORK_ERROR_MESSAGE } from '../../disciplines/hooks/useDisciplinesList';
 import { ApiError } from '../../members/services/members-api';
-import type { AuditFailedWrites } from '../types/audit';
+import type { AuditAction, AuditEntityType, AuditFailedWrites } from '../types/audit';
 
 // The club's time zone; mirrors CLUB_TIME_ZONE in backend/src/config/club.ts.
 const CLUB_TIME_ZONE = 'America/Argentina/Tucuman';
@@ -14,6 +14,8 @@ const instantFormat = new Intl.DateTimeFormat('es-AR', {
   minute: '2-digit',
   hourCycle: 'h23',
 });
+
+const clubDayFormat = new Intl.DateTimeFormat('en-CA', { timeZone: CLUB_TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' });
 
 /** `2026-11-01T15:30:00.000Z` -> `01/11/2026 12:30`, in the club's time zone. */
 export function formatInstant(iso: string): string {
@@ -33,6 +35,51 @@ const actionLabels: Record<string, string> = {
 };
 
 export const actionLabel = (action: string) => actionLabels[action] ?? action;
+
+/** Every action in the order the filter offers them. */
+export const AUDIT_ACTIONS: readonly AuditAction[] = ['create', 'update', 'deactivate', 'reactivate', 'delete', 'annul', 'close'];
+
+/** The colour family of an action's badge: what was done, not whether it was allowed. */
+export type ActionTone = 'success' | 'accent' | 'error' | 'neutral';
+
+const actionTones: Record<AuditAction, ActionTone> = {
+  create: 'success',
+  reactivate: 'success',
+  update: 'accent',
+  deactivate: 'error',
+  delete: 'error',
+  annul: 'error',
+  close: 'neutral',
+};
+
+export const actionTone = (action: string): ActionTone => actionTones[action as AuditAction] ?? 'neutral';
+
+const entityTypeLabels: Record<AuditEntityType, string> = {
+  member: 'Socios',
+  discipline: 'Disciplinas',
+  user: 'Usuarios',
+  tariff: 'Tarifas',
+  surcharge_tiers: 'Recargos por pago tardío',
+  proration_rule: 'Prorrateo',
+  payment: 'Pagos',
+  cash_count: 'Arqueos',
+  expense: 'Gastos',
+  backup: 'Respaldos',
+  face_profile: 'Perfiles faciales',
+};
+
+/** Every entity type in the order the filter offers them. */
+export const AUDIT_ENTITY_TYPES = Object.keys(entityTypeLabels) as AuditEntityType[];
+
+export const entityTypeLabel = (type: string) => entityTypeLabels[type as AuditEntityType] ?? type;
+
+/** `2026-11-01` -> `01/11/2026`. */
+export const formatDay = (isoDate: string) => isoDate.split('-').reverse().join('/');
+
+/** Calendar date (`YYYY-MM-DD`) of an instant in the club's time zone, like `toIsoDate` on the server. */
+export function clubDay(instant: Date): string {
+  return clubDayFormat.format(instant);
+}
 
 const fieldLabels: Record<string, string> = {
   firstName: 'Nombre',

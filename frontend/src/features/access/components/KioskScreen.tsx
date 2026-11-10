@@ -1,12 +1,15 @@
 import type { RefObject } from 'react';
+import type { KioskEnrollmentView } from '../hooks/useKioskEnrollment';
 import { STAGE_HEIGHT, STAGE_WIDTH } from '../utils/fit-scale';
 import { KIOSK_TEXT, type KioskResultView } from '../utils/kiosk-texts';
 import type { PaneRect } from '../utils/pane-geometry';
 
-export type KioskPhase = 'idle' | 'identifying' | 'result' | 'unavailable' | 'expired';
+export type KioskPhase = 'idle' | 'identifying' | 'result' | 'unavailable' | 'expired' | 'enrolling';
 
 export interface KioskScreenProps {
   phase: KioskPhase;
+  /** What to show while a face is registered; required when the phase is `enrolling`. */
+  enrollment?: KioskEnrollmentView;
   /** The panel to show; required when the phase is `result`. */
   result?: KioskResultView;
   /** `HH:MM` of the result, for the caption under the camera. */
@@ -33,12 +36,13 @@ type Tone = 'idle' | 'scanning' | 'green' | 'amber' | 'red' | 'gray' | 'dark';
 
 function toneOf(phase: KioskPhase, result: KioskResultView | undefined): Tone {
   if (phase === 'result' && result) return result.tone;
-  if (phase === 'identifying') return 'scanning';
+  if (phase === 'identifying' || phase === 'enrolling') return 'scanning';
   if (phase === 'unavailable' || phase === 'expired') return 'gray';
   return 'idle';
 }
 
 function frameLabelOf(phase: KioskPhase, result: KioskResultView | undefined): string {
+  if (phase === 'enrolling') return KIOSK_TEXT.enrolling.frameLabel;
   if (phase === 'result' && result) return result.frameLabel;
   if (phase === 'identifying') return KIOSK_TEXT.identifying.frameLabel;
   if (phase === 'unavailable' || phase === 'expired') return KIOSK_TEXT.outOfService.frameLabel;
@@ -52,7 +56,7 @@ const comparingText = (enrolled: number | undefined) =>
  * The client screen, drawn at the reference size of the approved design (1180 x 700) and scaled to the window.
  * Purely presentational: the container decides the phase and brings the data.
  */
-export function KioskScreen({ phase, result, resultTime, clock, hint, frame, enrolled, camera, videoRef, connected, scale, signInHref }: KioskScreenProps) {
+export function KioskScreen({ phase, enrollment, result, resultTime, clock, hint, frame, enrolled, camera, videoRef, connected, scale, signInHref }: KioskScreenProps) {
   const showResult = phase === 'result' && result;
   const cameraOn = camera.phase === 'starting' || camera.phase === 'ready';
 
@@ -111,6 +115,12 @@ export function KioskScreen({ phase, result, resultTime, clock, hint, frame, enr
                 </div>
               </div>
             ) : null}
+            {phase === 'enrolling' ? (
+              <div className="kiosk-mono kiosk-caption__row">
+                <span>{KIOSK_TEXT.enrolling.label}</span>
+                <span>{KIOSK_TEXT.enrolling.notStored}</span>
+              </div>
+            ) : null}
             {phase === 'idle' ? (
               <div className="kiosk-mono kiosk-caption__idle">{hint ? hint : KIOSK_TEXT.idle.waiting}</div>
             ) : null}
@@ -125,7 +135,7 @@ export function KioskScreen({ phase, result, resultTime, clock, hint, frame, enr
         <section className="kiosk-panel" role="status" aria-live="polite">
           {phase === 'idle' ? (
             <div className="kiosk-view kiosk-view--idle" key="idle">
-              <img className="kiosk-crest" src="/brand/logo-cai.png" alt="Escudo del Club Independiente" />
+              <img className="kiosk-crest" src="/brand/logo-cai.png" alt="Escudo del Club Atlético Independiente" />
               <h1 className="kiosk-title kiosk-title--welcome">{KIOSK_TEXT.idle.title}</h1>
               <p className="kiosk-help">{KIOSK_TEXT.idle.help}</p>
               <p className="kiosk-note">
@@ -133,6 +143,25 @@ export function KioskScreen({ phase, result, resultTime, clock, hint, frame, enr
                 <strong>{KIOSK_TEXT.idle.fallbackStrong}</strong>
                 {KIOSK_TEXT.idle.fallbackRest}
               </p>
+            </div>
+          ) : null}
+
+          {phase === 'enrolling' && enrollment ? (
+            <div className="kiosk-view kiosk-view--enrolling" key="enrolling" data-guide={enrollment.guideStatus} data-enrollment={enrollment.status}>
+              <div className="kiosk-mono kiosk-eyebrow">{KIOSK_TEXT.enrolling.label}</div>
+              <h1 className="kiosk-title kiosk-title--identifying">
+                {KIOSK_TEXT.enrolling.greeting}, {enrollment.firstName}
+              </h1>
+              <p className="kiosk-enroll__hint">{enrollment.hint}</p>
+              <div className="kiosk-enroll__steps">
+                <div className="kiosk-enroll__dots" aria-hidden="true">
+                  {Array.from({ length: enrollment.total }, (_, index) => (
+                    <span key={index} className={index < enrollment.captureNumber - (enrollment.status === 'done' ? 0 : 1) ? 'kiosk-enroll__dot kiosk-enroll__dot--done' : 'kiosk-enroll__dot'} />
+                  ))}
+                </div>
+                <span className="kiosk-mono kiosk-enroll__count">{KIOSK_TEXT.enrolling.progress(enrollment.captureNumber, enrollment.total)}</span>
+              </div>
+              <p className="kiosk-note">{KIOSK_TEXT.enrolling.note}</p>
             </div>
           ) : null}
 

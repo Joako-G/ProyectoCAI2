@@ -17,10 +17,14 @@ import { createCashCountRouter } from './modules/cashcount/cashcount.routes.js';
 import type { CashCountService } from './modules/cashcount/cashcount.service.js';
 import { createExpenseRouter } from './modules/expenses/expense.routes.js';
 import type { ExpenseService } from './modules/expenses/expense.service.js';
+import { createFaceEnrollmentRouter } from './modules/faces/face-enrollment.routes.js';
+import type { FaceEnrollmentService } from './modules/faces/face-enrollment.service.js';
 import { createFaceRouter, createFacesUnavailableRouter } from './modules/faces/face.routes.js';
 import type { FaceService } from './modules/faces/face.service.js';
 import { createDisciplinesRouter } from './modules/disciplines/discipline.routes.js';
 import type { DisciplineService } from './modules/disciplines/discipline.service.js';
+import { createMemberSummaryRouter } from './modules/members/member-summary.routes.js';
+import type { MemberSummaryService } from './modules/members/member-summary.service.js';
 import { createMembersRouter } from './modules/members/member.routes.js';
 import type { MemberService } from './modules/members/member.service.js';
 import { createMembershipsRouter } from './modules/memberships/membership.routes.js';
@@ -30,6 +34,7 @@ import type { NoticeService } from './modules/notices/notice.service.js';
 import { createPaymentRouter } from './modules/payments/payment.routes.js';
 import { createPricingConfigRouter } from './modules/payments/pricing-config.routes.js';
 import type { PaymentService } from './modules/payments/payment.service.js';
+import type { ReceiptPdfService } from './modules/payments/receipt.service.js';
 import type { PricingConfigService } from './modules/payments/pricing-config.service.js';
 import { createReportRouter } from './modules/reports/report.routes.js';
 import type { ReportService } from './modules/reports/report.service.js';
@@ -42,24 +47,30 @@ import type { DemoUser } from './modules/users/user.types.js';
 
 export interface AppDependencies {
   memberService?: MemberService;
+  // The stat cards' counts; mounted ahead of the members router so GET /api/members/summary never reaches GET /:id.
+  memberSummaryService?: MemberSummaryService;
   // Optional so apps that only exercise members (tests) can omit the catalog.
   disciplineService?: DisciplineService;
   membershipService?: MembershipService;
   pricingConfigService?: PricingConfigService;
   paymentService?: PaymentService;
+  // The receipt PDF download; the route is mounted only when it is present.
+  receiptPdfService?: Pick<ReceiptPdfService, 'render'>;
   reportService?: Pick<ReportService, 'revenue' | 'disciplineSettlement'>;
   cashCountService?: CashCountService;
   expenseService?: ExpenseService;
   rosterService?: RosterService;
-  noticeService?: Pick<NoticeService, 'debtNotices' | 'welcomeNotice'>;
+  noticeService?: Pick<NoticeService, 'debtNotices' | 'welcomeNotice' | 'sendWelcomeEmail'>;
   accessService?: Pick<AccessService, 'check'>;
   // Set when there is a database: without it GET /api/access/entries answers 503 entries_unavailable.
   accessEntries?: Pick<EntriesService, 'list'>;
   // Present: GET /api/access/display-events streams the public display's greetings. It needs no database.
-  greetings?: Pick<GreetingBus, 'subscribe'>;
+  greetings?: Pick<GreetingBus, 'subscribe'> & Partial<Pick<GreetingBus, 'subscribeEnrollment'>>;
   // Test hook: how often an idle display stream sends a heartbeat comment.
   displayHeartbeatMs?: number;
   faceService?: FaceService;
+  // Present with the face service: the enrollment sessions that guide a face capture on the public screen.
+  faceEnrollment?: FaceEnrollmentService;
   // Set when there is no database: the face routes then answer 503 faces_unavailable instead of 404.
   facesUnavailable?: boolean;
   auditService?: AuditService;
@@ -95,6 +106,9 @@ app.use('/auth', createAuthRouter(authService, sessions, authenticate));
 app.use('/users', requireCapability(authenticate, 'users:manage'), createUsersRouter(createUserService(repository, { disciplineLookup: options.disciplineService, audit: options.auditService ?? discardAudit }), authenticate));
 
 // Every route below needs a session and a role allowed by modules/auth/permissions.ts; only /auth and /health are public.
+if (options.memberSummaryService) {
+  app.use('/api/members/summary', requireCapability(authenticate, 'members:read'), createMemberSummaryRouter(options.memberSummaryService));
+}
 if (options.memberService) {
   app.use('/api/members', requireCapabilityByMethod(authenticate, { read: 'members:read', write: 'members:write' }), createMembersRouter(options.memberService, authenticate));
 }
@@ -110,7 +124,7 @@ if (options.pricingConfigService) {
 }
 if (options.paymentService) {
   // Reading needs payments:read; the write routes add payments:collect or payments:annul themselves.
-  app.use('/api/payments', requireCapability(authenticate, 'payments:read'), createPaymentRouter(options.paymentService, authenticate));
+  app.use('/api/payments', requireCapability(authenticate, 'payments:read'), createPaymentRouter(options.paymentService, authenticate, options.receiptPdfService));
 }
 if (options.reportService) {
   // Read-only: reports:read for every request, and the router has no write route.
@@ -128,7 +142,7 @@ if (options.rosterService) {
   app.use('/api/roster', requireCapability(authenticate, 'roster:read'), createRosterRouter(options.rosterService, authenticate));
 }
 if (options.noticeService) {
-  // Read-only: notices:read for every request, and the router has no write route.
+  // notices:read for every request. The router stores nothing; its only side effect is the welcome email.
   app.use('/api/notices', requireCapability(authenticate, 'notices:read'), createNoticeRouter(options.noticeService));
 }
 if (options.accessService) {
@@ -137,7 +151,11 @@ if (options.accessService) {
 }
 if (options.faceService) {
   // Enroll, remove and recognize share one capability; the router audits its own writes and recognize writes nothing.
-  app.use('/api/faces', requireCapability(authenticate, 'faces:manage'), createFaceRouter(options.faceService, authenticate));
+  // The enrollment sessions are mounted first so "enrollments" is never read as a member id.
+  const faces = express.Router();
+  if (options.faceEnrollment) faces.use('/enrollments', createFaceEnrollmentRouter(options.faceEnrollment, authenticate));
+  faces.use(createFaceRouter(options.faceService, authenticate));
+  app.use('/api/faces', requireCapability(authenticate, 'faces:manage'), faces);
 } else if (options.facesUnavailable) {
   app.use('/api/faces', requireCapability(authenticate, 'faces:manage'), createFacesUnavailableRouter());
 }

@@ -53,7 +53,7 @@ function ShellLayout({ user, onLogout }: { user: AuthUser; onLogout: () => void 
   // A section the role cannot open is not highlighted nor named in the header.
   const current = SECTIONS.find(({ id, path }) => path === pathname && allowed.includes(id));
   return <AppShell
-    title={current?.label ?? 'Club Independiente'} subtitle={current?.subtitle} section={current?.id}
+    title={current?.label ?? 'Club Atlético Independiente'} subtitle={current?.subtitle} section={current?.id}
     sections={allowed} user={user} onLogout={onLogout}
   >
     <Outlet />

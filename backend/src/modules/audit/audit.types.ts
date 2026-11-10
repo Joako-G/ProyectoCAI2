@@ -40,6 +40,17 @@ export interface AuditEntry {
   changedFields: string[];
 }
 
+/** Optional filters of the list, all combinable (AND). `from` and `to` are inclusive club-local dates. */
+export interface AuditQuery {
+  actorId?: string;
+  /** A member number as shown on the screen, for example `0007`. */
+  member?: string;
+  entityType?: AuditEntityType;
+  action?: AuditAction;
+  from?: string;
+  to?: string;
+}
+
 /** What a service says about a change it just made. The actor is resolved from `actorId` by the audit module. */
 export interface AuditRecordInput {
   actorId: string;

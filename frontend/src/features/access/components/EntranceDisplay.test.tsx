@@ -43,7 +43,7 @@ function show(props: { holdMs?: number; reconnectMs?: number } = {}) {
 describe('EntranceDisplay', () => {
   it('connects to the greeting stream and waits with a welcome', () => {
     show();
-    expect(latest().url).toBe('/api/access/display-events');
+    expect(latest().url).toBe('/api/access/display-events?screen=public');
     expect(screen.getByRole('heading', { name: 'Bienvenido al club' })).toBeInTheDocument();
   });
 

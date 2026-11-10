@@ -20,10 +20,19 @@ export interface AuditFailedWrites {
   lastFailedAt: string | null;
 }
 
-/** What `GET /api/audit` answers: the entries newest first and the failed-write tally. */
+/** A user who appears in the log, as they were at their latest entry; feeds the user filter. */
+export interface AuditActor {
+  id: string;
+  name: string;
+  role: string;
+}
+
+/** What `GET /api/audit` answers: the (filtered) entries newest first, the failed-write tally and every actor of the log. */
 export interface AuditLog {
   entries: AuditEntry[];
   failedWrites: AuditFailedWrites;
+  /** Whole-log actors, so the user filter keeps its options while a filter is active. */
+  actors: AuditActor[];
 }
 
 /** Mirrors `AuditEntry` in backend/src/modules/audit/audit.types.ts. */
@@ -40,4 +49,15 @@ export interface AuditEntry {
   entityLabel: string;
   /** Names of the fields an update changed; never their values. */
   changedFields: string[];
+}
+
+/** The filters of the screen. An empty string means "no filter"; `from` and `to` are club-local `YYYY-MM-DD` dates. */
+export interface AuditFilters {
+  actorId: string;
+  /** Digits only, as typed: `7` and `0007` find the same member. */
+  member: string;
+  entityType: AuditEntityType | '';
+  action: AuditAction | '';
+  from: string;
+  to: string;
 }

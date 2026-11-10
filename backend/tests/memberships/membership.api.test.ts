@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import type { MembershipService } from '../../src/modules/memberships/membership.service.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 import { BASKET, createTestContext, LUCIA, TOMAS, VOLLEY } from './helpers.js';
 
 const cleanups: Array<() => Promise<void> | void> = [];
@@ -15,8 +16,7 @@ afterEach(async () => {
 async function listen(membershipService?: MembershipService): Promise<{ baseUrl: string; cookie: string }> {
   const users = await createUsersFile();
   cleanups.push(users.cleanup);
-  const server: Server = createApp({ membershipService, storePath: users.storePath }).listen(0);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server: Server = await listenOnFetchSafePort(createApp({ membershipService, storePath: users.storePath }));
   cleanups.push(() => new Promise<void>((resolve) => server.close(() => resolve())));
   const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   return { baseUrl, cookie: await signIn(baseUrl, 'secretary') };

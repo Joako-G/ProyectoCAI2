@@ -49,7 +49,7 @@ describe('public entrance display route', () => {
     expect(await screen.findByRole('heading', { name: 'Bienvenido al club' })).toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'Navegación principal' })).not.toBeInTheDocument();
     expect(screen.queryByRole('banner')).not.toBeInTheDocument();
-    expect(SilentSource.urls).toEqual(['/api/access/display-events']);
+    expect(SilentSource.urls).toEqual(['/api/access/display-events?screen=public']);
   });
 
   it('stays behind login: a visitor without a session sees the login form and no stream is opened', async () => {

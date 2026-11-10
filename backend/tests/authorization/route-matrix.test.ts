@@ -9,10 +9,15 @@ import { createTestContext as createMembers } from '../members/helpers.js';
 import { createTestContext as createMemberships } from '../memberships/helpers.js';
 import { createTestContext as createPricing } from '../payments/pricing-config.helpers.js';
 import { createTestContext as createPayments } from '../payments/payment.helpers.js';
+import { createFaceEnrollmentService } from '../../src/modules/faces/face-enrollment.service.js';
 import { createGreetingBus } from '../../src/modules/access/greeting.bus.js';
+import { createMemberSummaryService } from '../../src/modules/members/member-summary.service.js';
 import { createRosterService } from '../../src/modules/roster/roster.service.js';
+import { MailNotConfiguredError } from '../../src/modules/notices/notice.errors.js';
+import { NotFoundError } from '../../src/shared/errors.js';
 import { roles, type Role as RoleName } from '../../src/modules/users/user.types.js';
 import { createTestContext as createAudit } from '../audit/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 import { createUsersFile, signIn } from './helpers.js';
 import { routes } from './routes.js';
 
@@ -32,13 +37,15 @@ beforeAll(async () => {
   const audit = await createAudit();
   const expenses = await createExpenses();
   cleanups.push(expenses.cleanup, audit.cleanup, users.cleanup, members.cleanup, disciplines.cleanup, memberships.cleanup, pricing.cleanup, payments.cleanup, cashCount.cleanup);
-  server = createApp({
+  server = await listenOnFetchSafePort(createApp({
     storePath: users.storePath,
     memberService: members.service,
+    memberSummaryService: createMemberSummaryService({ members: members.service, memberships: memberships.service, payments: payments.repository, pricing: pricing.service }),
     disciplineService: disciplines.service,
     membershipService: memberships.service,
     pricingConfigService: pricing.service,
     paymentService: payments.service,
+    receiptPdfService: { render: async () => { throw new NotFoundError('Payment not found'); } },
     reportService: cashCount.reports,
     cashCountService: cashCount.cashCount,
     expenseService: expenses.service,
@@ -46,14 +53,15 @@ beforeAll(async () => {
     backupService: { status: async () => ({ destination: { isDefault: true, state: 'ready' }, keep: 30, keepRecent: 5, copies: 0, lastSuccessAt: null, lastGoodAt: null, lastFailure: null, running: false, database: { lastCopy: null, lastFailure: null } }), run: async () => ({ ok: true, backup: { name: 'backup-20261101T150000Z', at: '2026-11-01T15:00:00.000Z', files: [], database: { state: 'not_configured' }, partial: false } }) },
     noticeService: {
       debtNotices: async () => ({ asOf: '2026-11-01', rows: [] }),
-      welcomeNotice: async () => ({ memberId: 'm1', recipient: 'member', recipientName: 'A B', link: null, numberIssue: true }),
+      welcomeNotice: async () => ({ memberId: 'm1', recipient: 'member', recipientName: 'A B', link: null, numberIssue: true, email: { available: false, reason: 'mail_not_configured' } }),
+      sendWelcomeEmail: async () => { throw new MailNotConfiguredError(); },
     },
     accessService: { check: async () => ({ result: 'red', reason: 'not_found' }) },
     greetings: createGreetingBus(),
     faceService: { enroll: async () => undefined, remove: async () => undefined, discardForDeactivatedMember: async () => undefined, status: async () => ({ enrolled: false }), summary: async () => ({ enrolled: 0 }), recognize: async () => ({ result: 'red', reason: 'not_recognized' }) },
+    faceEnrollment: createFaceEnrollmentService({ members: { getById: async () => { throw new NotFoundError('Member not found'); } }, faces: { enroll: async () => undefined }, display: { publish: () => undefined, publicScreenCount: () => 0 } }),
     rosterService: createRosterService({ memberships: memberships.service, members: members.service, disciplines: disciplines.service }),
-  }).listen(0);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  }));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   for (const role of roles) cookies[role] = await signIn(baseUrl, role);
 });

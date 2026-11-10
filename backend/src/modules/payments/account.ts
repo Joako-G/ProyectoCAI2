@@ -89,3 +89,8 @@ export function accountStanding(owed: readonly OwedPeriod[]): AccountStanding {
   if (unpaidMonths === 0) return 'up_to_date';
   return isDeregistered(unpaidMonths) ? 'deregistered' : 'debtor';
 }
+
+/** The standing of one member's account: the unpaid concepts folded into up to date, debtor or deregistered. */
+export function memberStanding(input: OwedInput): AccountStanding {
+  return accountStanding(owedConcepts(input));
+}

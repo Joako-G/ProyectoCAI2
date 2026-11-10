@@ -5,6 +5,7 @@ import { createApp } from '../../src/app.js';
 import type { MemberRepository } from '../../src/modules/members/member.repository.js';
 import { createMemberService } from '../../src/modules/members/member.service.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 import { basketball, createTestContext, volleyball } from './helpers.js';
 import { noAudit } from '../audit/helpers.js';
 
@@ -28,8 +29,7 @@ async function startApi() {
     memberService: createMemberService({ audit: noAudit, repository: memberRepository, disciplineLookup: context.service }),
     disciplineService: context.service,
   });
-  const server: Server = app.listen(0);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  const server: Server = await listenOnFetchSafePort(app);
   cleanups.push(() => new Promise<void>((resolve) => server.close(() => resolve())));
   const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   const cookie = await signIn(baseUrl, 'head_secretary');

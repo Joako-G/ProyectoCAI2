@@ -1,4 +1,5 @@
 import type { Member, MemberInput, MemberListQuery } from '../types/member';
+import type { MembersSummary } from '../types/member-summary';
 
 export class ApiError extends Error {
   readonly status: number;
@@ -88,4 +89,8 @@ export function deactivateMember(id: string, reason: string): Promise<Member> {
 
 export function reactivateMember(id: string): Promise<Member> {
   return request<Member>(memberUrl(id, '/reactivate'), sendJson('POST'));
+}
+
+export function fetchMembersSummary(signal?: AbortSignal): Promise<MembersSummary> {
+  return request<MembersSummary>('/api/members/summary', { signal });
 }

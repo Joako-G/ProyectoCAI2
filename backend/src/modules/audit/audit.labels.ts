@@ -10,7 +10,8 @@ export interface AuditLabelSources {
   members(): Promise<ReadonlyArray<{ id: string; memberNumber: string }>>;
   disciplines(): Promise<ReadonlyArray<{ id: string; name: string }>>;
   users(): Promise<ReadonlyArray<{ id: string; name: string }>>;
-  payments(): Promise<ReadonlyArray<{ id: string; receiptNumber: number }>>;
+  /** `memberId` is read only to filter the log by member; no label shows it. */
+  payments(): Promise<ReadonlyArray<{ id: string; receiptNumber: number; memberId?: string }>>;
   cashCounts(): Promise<ReadonlyArray<{ id: string; businessDate: string }>>;
 }
 

@@ -3,6 +3,7 @@ import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 import { createTestContext as createDisciplines } from '../disciplines/helpers.js';
 
 let server: Server;
@@ -16,8 +17,7 @@ beforeAll(async () => {
   const disciplines = await createDisciplines();
   cleanups.push(users.cleanup, disciplines.cleanup);
   disciplineId = (await disciplines.service.create({ name: 'Básquet', teachers: ['T'], leadTeacher: 'T' }, 'user-test')).id;
-  server = createApp({ storePath: users.storePath, disciplineService: disciplines.service }).listen(0);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  server = await listenOnFetchSafePort(createApp({ storePath: users.storePath, disciplineService: disciplines.service }));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   cookie = await signIn(baseUrl, 'head_secretary');
 });

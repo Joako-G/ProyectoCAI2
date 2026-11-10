@@ -1,6 +1,8 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useDisciplineCatalog, type DisciplineCatalog } from '../../disciplines/hooks/useDisciplineCatalog';
+import { useMembersSummary } from '../hooks/useMembersSummary';
 import type { Member, MemberListQuery } from '../types/member';
+import type { StandingGroup } from '../types/member-summary';
 import { todayInClub } from '../utils/member-format';
 import { MemberDetailScreen } from './MemberDetailScreen';
 import { MemberFormScreen } from './MemberFormScreen';
@@ -38,7 +40,17 @@ export function MembersView({ today = todayInClub(), canWrite, canManageFaces = 
   const [view, setView] = useState<View>({ name: 'list' });
   // Kept here, not in the list, so the filters survive going to the detail or form and back.
   const [query, setQuery] = useState<MemberListQuery>({ search: initialSearch, status: 'all', disciplineId: '' });
+  // Narrows the list to an account standing group, picked from the stat cards; kept with the query for the same reason.
+  const [standing, setStanding] = useState<StandingGroup | null>(null);
   const showList = () => setView({ name: 'list' });
+  // The counts live here, not in the list, so a change made in the detail or form is counted when the list comes back.
+  const summary = useMembersSummary();
+  const { refresh: refreshSummary } = summary;
+  const previousView = useRef(view.name);
+  useEffect(() => {
+    if (view.name === 'list' && previousView.current !== 'list') refreshSummary();
+    previousView.current = view.name;
+  }, [view.name, refreshSummary]);
   // Fetched once for the whole feature: the list, detail and form all resolve ids through it.
   const catalog = useDisciplineCatalog();
 
@@ -53,6 +65,9 @@ export function MembersView({ today = todayInClub(), canWrite, canManageFaces = 
           canCreate={canWrite}
           onCreate={() => setView({ name: 'create' })}
           onOpen={(id) => setView({ name: 'detail', id })}
+          summary={summary}
+          standing={standing}
+          onStandingChange={setStanding}
         />
       );
     case 'detail':

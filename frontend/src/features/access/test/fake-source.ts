@@ -32,6 +32,10 @@ export class FakeSource {
     act(() => (this.handlers.get('greeting') ?? []).forEach((handler) => handler({ data } as MessageEvent<string>)));
   }
 
+  enroll(event: object, raw?: string) {
+    act(() => (this.handlers.get('enrollment') ?? []).forEach((handler) => handler({ data: raw ?? JSON.stringify(event) } as MessageEvent<string>)));
+  }
+
   fail(closed: boolean) {
     this.readyState = closed ? 2 : 0;
     act(() => this.onerror?.());

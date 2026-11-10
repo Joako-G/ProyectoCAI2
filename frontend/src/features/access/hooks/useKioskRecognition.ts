@@ -24,6 +24,7 @@ export function useKioskRecognition({
   timing,
   onAttempt,
   onAnswer,
+  paused = false,
 }: {
   camera: FaceCamera;
   timing: CameraTiming;
@@ -31,6 +32,8 @@ export function useKioskRecognition({
   onAttempt: () => void;
   /** The server answered; the stream usually delivers the same result. */
   onAnswer: (check: AccessCheck) => void;
+  /** True while a face enrollment uses the camera: nobody is recognized until it ends. */
+  paused?: boolean;
 }): { guide: CaptureGuideState; identifying: boolean; stopped: RecognitionStop | undefined } {
   const [identifying, setIdentifying] = useState(false);
   const [stopped, setStopped] = useState<RecognitionStop | undefined>();
@@ -69,6 +72,6 @@ export function useKioskRecognition({
     }
   }, []);
 
-  const guide = useCameraEntrance({ camera, timing, onFace, onUnavailable: noop });
+  const guide = useCameraEntrance({ camera, timing, onFace, onUnavailable: noop, paused });
   return { guide, identifying, stopped };
 }

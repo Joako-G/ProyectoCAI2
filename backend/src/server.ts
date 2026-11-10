@@ -14,6 +14,7 @@ import {
 import { databaseUrl } from './config/database.js';
 import { runMigrations } from './database/migrate.js';
 import { createPool } from './database/pool.js';
+import { createFaceEnrollmentService } from './modules/faces/face-enrollment.service.js';
 import { startFaces } from './modules/faces/faces.startup.js';
 import { createExpenseService } from './modules/expenses/expense.service.js';
 import { createJsonExpenseRepository } from './modules/expenses/json-expense.repository.js';
@@ -37,6 +38,7 @@ import { UserRepository, defaultUsersFilePath } from './modules/users/user.repos
 import { createJsonPricingConfigRepository } from './modules/payments/json-pricing-config.repository.js';
 import { createJsonPaymentRepository } from './modules/payments/json-payment.repository.js';
 import { createPaymentService } from './modules/payments/payment.service.js';
+import { createReceiptPdfService } from './modules/payments/receipt.service.js';
 import { createPricingConfigService } from './modules/payments/pricing-config.service.js';
 import { createJsonDisciplineRepository } from './modules/disciplines/json-discipline.repository.js';
 import { createDisciplineService } from './modules/disciplines/discipline.service.js';
@@ -47,9 +49,13 @@ import { createCashCountService } from './modules/cashcount/cashcount.service.js
 import { createJsonCashCountRepository } from './modules/cashcount/json-cashcount.repository.js';
 import { createNoticeService } from './modules/notices/notice.service.js';
 import { createWaMeSender } from './modules/notices/notice.sender.js';
+import { createMailer, createSmtpTransport } from './modules/notices/notice.mailer.js';
+import { createMailSendStore } from './modules/notices/notice.send-state.js';
+import { mailConfig } from './config/mail.js';
 import { createPaymentIncomeSource } from './modules/reports/income.source.js';
 import { createReportService } from './modules/reports/report.service.js';
 import { createRosterService } from './modules/roster/roster.service.js';
+import { createMemberSummaryService } from './modules/members/member-summary.service.js';
 import { createMemberService } from './modules/members/member.service.js';
 import { bootstrap } from './startup.js';
 import { toIsoDate } from './shared/date.js';
@@ -107,6 +113,8 @@ const paymentService = createPaymentService({
   pricing: pricingConfigService,
   audit: auditService,
 });
+// The receipt PDF is rendered on demand from the stored receipt, its member and the discipline names.
+const receiptPdfService = createReceiptPdfService({ payments: paymentService, members: memberService, disciplines: disciplineService });
 // A teacher's roster is composed from the three services through the roster module's own ports.
 const rosterService = createRosterService({ memberships: membershipService, members: memberService, disciplines: disciplineService });
 // Reports read income through their own port; the daily cash count takes its expected totals from the reports.
@@ -123,6 +131,9 @@ const cashCountService = createCashCountService({
 });
 const expenseService = createExpenseService({ repository: createJsonExpenseRepository(expensesFilePath()), audit: auditService });
 // Debt notices read the four sources once per request and prepare wa.me links; a Business API sender can replace the sender later.
+// The mailbox is optional: without SMTP_HOST and MAIL_FROM the welcome simply offers no email. Values are never logged.
+const mail = mailConfig();
+if (mail.state === 'invalid') console.warn(`Email sending is off: ${mail.problems.join('; ')}.`);
 const noticeService = createNoticeService({
   members: memberService,
   memberships: membershipService,
@@ -130,6 +141,17 @@ const noticeService = createNoticeService({
   pricing: pricingConfigService,
   disciplines: disciplineService,
   sender: createWaMeSender(),
+  mailer: mail.state === 'configured' ? createMailer(mail.config.from, createSmtpTransport(mail.config)) : undefined,
+  receipts: receiptPdfService,
+  // Which welcome emails are running, sent or uncertain; in memory, so it is lost when the server restarts.
+  sendState: createMailSendStore(),
+});
+// The members screen's stat cards read the same four sources once per request.
+const memberSummaryService = createMemberSummaryService({
+  members: memberService,
+  memberships: membershipService,
+  payments: paymentRepository,
+  pricing: pricingConfigService,
 });
 // Identified checks are logged in PostgreSQL. The repository exists only once the database is ready, so the recorder
 // reaches it late: without a database, or until it is ready, a check is simply not logged and still answers.
@@ -169,7 +191,8 @@ facesReady.then((available) => {
     entryRepository = createPgEntryRepository(pool);
   }
   const accessEntries = entryRepository ? createEntriesService({ entries: entryRepository, members: memberService }) : undefined;
-  const app = createApp({ faceService, facesUnavailable: !faceService, memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, expenseService, rosterService, noticeService, accessService, accessEntries, greetings, auditService, backupService, userRepository });
+  const faceEnrollment = faceService ? createFaceEnrollmentService({ members: memberService, faces: faceService, display: { publish: (event) => greetings.publishEnrollment(event), publicScreenCount: () => greetings.publicScreenCount() } }) : undefined;
+  const app = createApp({ faceService, faceEnrollment, facesUnavailable: !faceService, memberService, memberSummaryService, disciplineService, membershipService, pricingConfigService, paymentService, receiptPdfService, reportService, cashCountService, expenseService, rosterService, noticeService, accessService, accessEntries, greetings, auditService, backupService, userRepository });
   return bootstrap({
     memberService,
     membershipService,

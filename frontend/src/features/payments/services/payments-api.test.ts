@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '../../members/services/members-api';
 import { jsonResponse } from '../../members/test/fixtures';
 import { buildAccount, buildCharge, buildPayment } from '../test/fixtures';
-import { annulPayment, fetchAccount, fetchHistory, previewCharge, registerPayment } from './payments-api';
+import { annulPayment, fetchAccount, fetchHistory, previewCharge, receiptPdfUrl, registerPayment } from './payments-api';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -43,6 +43,11 @@ describe('payments api', () => {
     const fetchMock = stubFetch(jsonResponse(buildPayment(), 201));
     expect(await registerPayment(request)).toEqual(buildPayment());
     expect(fetchMock).toHaveBeenCalledWith('/api/payments', jsonInit(request));
+  });
+
+  it('builds the receipt PDF download address and encodes the id', () => {
+    expect(receiptPdfUrl('pay-1')).toBe('/api/payments/pay-1/receipt.pdf');
+    expect(receiptPdfUrl('a/b')).toBe('/api/payments/a%2Fb/receipt.pdf');
   });
 
   it('annuls a payment with its reason', async () => {

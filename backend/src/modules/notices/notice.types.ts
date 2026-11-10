@@ -1,4 +1,5 @@
 import type { AccountStanding } from '../payments/payment.types.js';
+import type { MailSendState } from './notice.send-state.js';
 
 /** What a notice sender needs to reach someone: a derived WhatsApp number and the text to send. */
 export interface OutgoingNotice {
@@ -34,6 +35,17 @@ export interface DebtNotice {
   numberIssue: boolean;
 }
 
+/** Whether the welcome can also go by email, and if not, why. The button is offered only when `available`. */
+export type WelcomeEmailOffer =
+  | {
+      available: true;
+      /** Where it would go, masked: `m***@gmail.com`. */
+      maskedAddress: string;
+      /** The last known send of this payment (kept in memory, lost on restart). Absent when none was tried. */
+      lastSend?: MailSendState;
+    }
+  | { available: false; reason: 'mail_not_configured' | 'no_email' | 'guardian_without_email' };
+
 /** The welcome sent after an enrollment payment: a minor's goes to the guardian, anyone else's to the member. */
 export interface WelcomeNotice {
   memberId: string;
@@ -42,6 +54,15 @@ export interface WelcomeNotice {
   /** Null when no usable WhatsApp number could be derived. */
   link: string | null;
   numberIssue: boolean;
+  email: WelcomeEmailOffer;
+}
+
+/** What `POST /api/notices/welcome/:paymentId/email` answers once the mail server accepted the message. */
+export interface WelcomeEmailSent {
+  sent: true;
+  maskedAddress: string;
+  /** When the mail server accepted the message (ISO). */
+  sentAt: string;
 }
 
 export interface DebtNoticeList {

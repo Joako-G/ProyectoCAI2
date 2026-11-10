@@ -5,6 +5,7 @@ import { createApp } from '../../src/app.js';
 import type { CashCountService } from '../../src/modules/cashcount/cashcount.service.js';
 import type { Role } from '../../src/modules/users/user.types.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
+import { listenOnFetchSafePort } from '../helpers/listen.mjs';
 import { createTestContext, incomeEntry } from './helpers.js';
 
 let baseUrl: string;
@@ -25,8 +26,7 @@ beforeEach(async () => {
   preview = vi.fn(context.cashCount.preview);
   close = vi.fn(context.cashCount.close);
   history = vi.fn(context.cashCount.history);
-  server = createApp({ storePath: users.storePath, cashCountService: { preview, close, history } }).listen(0);
-  await new Promise<void>((resolve) => server.once('listening', resolve));
+  server = await listenOnFetchSafePort(createApp({ storePath: users.storePath, cashCountService: { preview, close, history } }));
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   for (const role of ['head_secretary', 'secretary', 'teacher'] as const) cookies[role] = await signIn(baseUrl, role);
 });
