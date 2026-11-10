@@ -134,6 +134,17 @@ describe('FaceEnrollment with a public screen connected', () => {
     expect(await screen.findByText('Se agotó el tiempo del registro. Intente de nuevo.')).toBeInTheDocument();
   });
 
+  it('shows the reason the public screen gave when it fails, and how to go on', async () => {
+    const user = userEvent.setup();
+    show();
+    await startOnPublicScreen(user);
+    await screen.findByText('Esperando a que Ana mire la pantalla pública…');
+    current = session({ status: 'failed', message: 'No se pudo usar la cámara.' });
+    expect(
+      await screen.findByText('No se pudo registrar la cara en la pantalla pública: No se pudo usar la cámara. Revise la cámara de esa pantalla o use "Registrar en esta pantalla".'),
+    ).toBeInTheDocument();
+  });
+
   it('tells the secretary when the server refuses to open it, and offers the in-window path again', async () => {
     open = () => jsonResponse({ error: 'conflict', message: 'Another face enrollment is in progress' }, 409);
     const user = userEvent.setup();
