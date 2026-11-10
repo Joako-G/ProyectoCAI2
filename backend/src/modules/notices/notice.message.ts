@@ -1,5 +1,6 @@
 import type { ChargeLine, ClubDate } from '../payments/charge.types.js';
 import type { Period } from '../payments/pricing.types.js';
+import { formatReceiptNumber } from '../payments/receipt.format.js';
 
 const MONTHS = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const pesos = new Intl.NumberFormat('es-AR');
@@ -58,16 +59,27 @@ export interface WelcomeMessageInput {
   total: number;
 }
 
-/** Plain Spanish welcome that carries the enrollment receipt. Pure. */
+/**
+ * The welcome as a formal WhatsApp text (usted, no emoji): `*bold*`, `_italic_` and line breaks. The salutation is
+ * the gender-neutral "Estimada/o". The PDF travels in a separate message, so the text says so. Pure.
+ */
 export function buildWelcomeMessage({ clubName, memberName, addressee, receiptNumber, paymentDate, concepts, total }: WelcomeMessageInput): string {
   const enrollment = addressee.kind === 'guardian' ? `la inscripción de ${memberName}` : 'su inscripción';
   return [
-    `Hola ${addressee.name}, le damos la bienvenida a ${clubName}.`,
-    `Registramos ${enrollment}.`,
-    `Comprobante N° ${receiptNumber} del ${dayLabel(paymentDate)}: ${joinList(concepts)}.`,
-    `Total: $ ${pesos.format(total)}.`,
-    'Quedamos a disposición para cualquier consulta.',
-  ].join(' ');
+    `*${clubName}*`,
+    '',
+    `Estimada/o ${addressee.name}:`,
+    `Le damos la bienvenida al club. Registramos ${enrollment}.`,
+    '',
+    `*Comprobante N.º ${formatReceiptNumber(receiptNumber)}* · ${dayLabel(paymentDate)}`,
+    ...concepts.map((concept) => `• ${concept}`),
+    `*Total: $ ${pesos.format(total)}*`,
+    '',
+    'Le enviamos el comprobante en PDF en un mensaje aparte.',
+    'Ante cualquier consulta, puede responder este mensaje.',
+    '',
+    `_Secretaría · ${clubName}_`,
+  ].join('\n');
 }
 
 /** Plain Spanish text of a debt notice. Pure; it says nothing about the consequences of the debt. */

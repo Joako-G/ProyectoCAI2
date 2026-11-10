@@ -62,19 +62,35 @@ describe('buildWelcomeMessage', () => {
 
   it('welcomes the member and lists the receipt, its concepts and the total', () => {
     const text = buildWelcomeMessage({ ...base, addressee: { kind: 'member', name: 'Tomás Gómez' } });
-    expect(text).toContain('Hola Tomás Gómez');
-    expect(text).toContain('bienvenida a Club Atlético Independiente');
-    expect(text).toContain('su inscripción');
-    expect(text).toContain('N° 8');
-    expect(text).toContain('26/10/2026');
-    expect(text).toContain('Inscripción y Cuota social octubre de 2026');
-    expect(text).toContain('$ 76.000');
+    expect(text).toBe([
+      '*Club Atlético Independiente*',
+      '',
+      'Estimada/o Tomás Gómez:',
+      'Le damos la bienvenida al club. Registramos su inscripción.',
+      '',
+      '*Comprobante N.º 0008* · 26/10/2026',
+      '• Inscripción',
+      '• Cuota social octubre de 2026',
+      '*Total: $ 76.000*',
+      '',
+      'Le enviamos el comprobante en PDF en un mensaje aparte.',
+      'Ante cualquier consulta, puede responder este mensaje.',
+      '',
+      '_Secretaría · Club Atlético Independiente_',
+    ].join('\n'));
+  });
+
+  it('is formal and plain: no emoji and no informal greeting', () => {
+    const text = buildWelcomeMessage({ ...base, addressee: { kind: 'member', name: 'Tomás Gómez' } });
+    expect(text).not.toMatch(/\p{Extended_Pictographic}/u);
+    expect(text).not.toMatch(/Hola/);
   });
 
   it('names the minor when it is the guardian who reads it', () => {
     const text = buildWelcomeMessage({ ...base, addressee: { kind: 'guardian', name: 'Ana Gómez' } });
-    expect(text).toContain('Hola Ana Gómez');
-    expect(text).toContain('la inscripción de Tomás Gómez');
+    expect(text).toContain('Estimada/o Ana Gómez:');
+    expect(text).toContain('Registramos la inscripción de Tomás Gómez.');
+    expect(text).not.toContain('su inscripción');
   });
 });
 
@@ -85,7 +101,7 @@ describe('welcomeNotice', () => {
     const url = new URL(notice.link!);
     expect(url.origin + url.pathname).toBe('https://wa.me/5493815550101');
     const text = url.searchParams.get('text')!;
-    expect(text).toContain('N° 8');
+    expect(text).toContain('Comprobante N.º 0008');
     expect(text).toContain('Inscripción');
     expect(text).toContain('Cuota social octubre de 2026');
     expect(text).toContain('Cuota de Básquet octubre de 2026');
