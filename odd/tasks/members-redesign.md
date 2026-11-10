@@ -77,7 +77,7 @@ Socios                                              [ Alta de socio ]
 - [x] T1: list (padrón bar, toolbar, table with Cuenta chip). Route: delegated (writer trigger).
 - [x] T2: member record (two columns, Cuenta card, face card). Route: delegated (same writer).
 - [x] T3: forms (stepper, fields, layout). Route: delegated (same writer).
-- [ ] T4: browser review at 1440 and 375 px by the parent, with fixes.
+- [x] T4: browser review at 1440 and 375 px by the parent, with fixes.
 
 ## Log
 
@@ -94,6 +94,11 @@ Socios                                              [ Alta de socio ]
   - Tests touched: none changed; added one in `EnrollmentScreen.test` (stepper markers move with the step) and one in `MemberForm.test` (footer order Cancelar, Volver, main action).
   - Verification: `pnpm typecheck` clean; `pnpm test` 928 of 929 on the full run, the one failure (`EntranceDisplay.test`, timing of a reset) happened while `vite build` shared the CPU and `src/features/access` passes alone (163/163); `pnpm build` built in 9m 27s. Not checked in a browser. Commit: see git log.
 
+- L5 (T4, browser review 2026-11-10, head secretary, local data, 1440 and 375 px): list, member record, edit form and the alta stepper checked by screenshot. Fixed: the search field and its button were stacked and narrow because the sign-in stylesheet sets every `form` to a column (commit e9bc2da). The record shows two aligned columns with the Cuenta card and the face card; phone width stacks the register bar, filters and member cards without overflow. Not checked: real data volumes and the deactivated-member record.
+- L6: `pnpm test` failed once on `EntranceDisplay.test.tsx` ("replaces a result with the next one and restarts the time"): 40 ms waits against a 60 ms hold lose under load (failed 2 of 3 runs alone). Margins widened to 350 ms against 600 ms, same assertions; 6 of 6 runs pass alone, full suite 98 files / 929 passed (commit baf4ed2).
+- L7 (review): assessed medium (13c7712..baf4ed2, 33 files, 2147 lines); the user declined the review for this candidate ("Saltear esta vez"). No review record exists for this range.
+- L8 (environment): the face routes answered 500 because the Docker database container was stopped; `docker compose up -d` brought it back.
+
 ## Next step
 
-T4: browser review at 1440 and 375 px, with fixes.
+The user looks at the new Socios screens and says what to adjust. Push is the user's decision.
