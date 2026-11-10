@@ -25,6 +25,9 @@ export function backupDirectory(env: NodeJS.ProcessEnv = process.env): { path: s
 /** The compose file at the repository root, which defines the `db` service the dump can run in. Resolved from the code location, so src and dist agree. */
 export const COMPOSE_FILE = resolve(BACKEND_DIR, '..', 'docker-compose.yml');
 
+/** The club crest drawn on the receipt PDF. A backend copy, resolved from the code location so src and dist agree. */
+export const RECEIPT_CREST_FILE = resolve(BACKEND_DIR, 'assets', 'logo-cai.png');
+
 export function membersFilePath(env: NodeJS.ProcessEnv = process.env): string {
   return dataFilePath(env, 'MEMBERS_FILE', 'members.json');
 }

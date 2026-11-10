@@ -31,6 +31,11 @@ export function registerPayment(body: RegisterRequest): Promise<Payment> {
   return request<Payment>(BASE, sendJson('POST', body));
 }
 
+/** Where the browser downloads the receipt PDF of a payment; the session cookie authorizes the request. */
+export function receiptPdfUrl(paymentId: string): string {
+  return `${BASE}/${encodeURIComponent(paymentId)}/receipt.pdf`;
+}
+
 export function annulPayment(id: string, reason: string): Promise<Payment> {
   return request<Payment>(`${BASE}/${encodeURIComponent(id)}/annul`, sendJson('POST', { reason }));
 }

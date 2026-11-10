@@ -3,6 +3,7 @@ import type { Discipline } from '../../disciplines/types/discipline';
 import type { Member } from '../../members/types/member';
 import { formatIsoDate } from '../../members/utils/member-format';
 import { formatPesos } from '../../pricing/utils/pricing-format';
+import { ReceiptPdfLink } from './ReceiptPdfLink';
 import type { Payment } from '../types/payment';
 import { lineLabel, methodLabel } from '../utils/payment-format';
 
@@ -54,6 +55,7 @@ export function ReceiptView({ payment, member, disciplines, onClose }: ReceiptVi
         </table>
         <div className="receipt__actions">
           <button type="button" className="button button--primary" onClick={() => window.print()}>Imprimir</button>
+          <ReceiptPdfLink paymentId={payment.id} />
           <button type="button" className="button button--secondary" onClick={onClose}>Cerrar</button>
         </div>
       </section>

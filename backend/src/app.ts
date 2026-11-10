@@ -32,6 +32,7 @@ import type { NoticeService } from './modules/notices/notice.service.js';
 import { createPaymentRouter } from './modules/payments/payment.routes.js';
 import { createPricingConfigRouter } from './modules/payments/pricing-config.routes.js';
 import type { PaymentService } from './modules/payments/payment.service.js';
+import type { ReceiptPdfService } from './modules/payments/receipt.service.js';
 import type { PricingConfigService } from './modules/payments/pricing-config.service.js';
 import { createReportRouter } from './modules/reports/report.routes.js';
 import type { ReportService } from './modules/reports/report.service.js';
@@ -51,6 +52,8 @@ export interface AppDependencies {
   membershipService?: MembershipService;
   pricingConfigService?: PricingConfigService;
   paymentService?: PaymentService;
+  // The receipt PDF download; the route is mounted only when it is present.
+  receiptPdfService?: Pick<ReceiptPdfService, 'render'>;
   reportService?: Pick<ReportService, 'revenue' | 'disciplineSettlement'>;
   cashCountService?: CashCountService;
   expenseService?: ExpenseService;
@@ -117,7 +120,7 @@ if (options.pricingConfigService) {
 }
 if (options.paymentService) {
   // Reading needs payments:read; the write routes add payments:collect or payments:annul themselves.
-  app.use('/api/payments', requireCapability(authenticate, 'payments:read'), createPaymentRouter(options.paymentService, authenticate));
+  app.use('/api/payments', requireCapability(authenticate, 'payments:read'), createPaymentRouter(options.paymentService, authenticate, options.receiptPdfService));
 }
 if (options.reportService) {
   // Read-only: reports:read for every request, and the router has no write route.

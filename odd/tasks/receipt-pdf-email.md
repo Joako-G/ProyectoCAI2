@@ -41,14 +41,15 @@ Requirements: RF-14 (Esencial: digital, numbered, printable receipt), RF-22 (Des
 
 ## Tasks
 
-- [ ] T1 (S1, S2): PDF generator, route, crest asset, download buttons, tests. Route: delegated (writer trigger).
+- [x] T1 (S1, S2): PDF generator, route, crest asset, download buttons, tests. Route: delegated (writer trigger).
 - [ ] T2 (S3): professional welcome message, tests. Route: delegated (same writer).
 - [ ] T3 (S4, S5): email sending, config, route, UI, docs, tests. Route: delegated (same writer).
 
 ## Log
 
 - L1 (user, 2026-11-09): "cuando le das de alta tiene que enviar en PDF ese comprobante, además obvio del mensaje"; chose download + manual attach, plus email; "el mensaje de WhatsApp debe quedar re profesional con el nombre del club".
+- L2 (T1): built `receipt.pdf.ts` (pdfkit, A4: crest, club name, `Comprobante N.º 0012`, date, member, payment method, lines, total, ANULADO mark with the reason), `receipt.service.ts` (one generator for download and, later, email), `GET /api/payments/:id/receipt.pdf` (`payments:read`, attachment `comprobante-0012.pdf`, 404 unknown, no-store). The crest is a backend copy at `backend/assets/logo-cai.png`, resolved from `backend/` by `RECEIPT_CREST_FILE`, so src and dist agree with no copy step. Frontend: `ReceiptPdfLink` ("Descargar PDF") in the receipt modal and in the enrollment done screen with the hint. Deps pinned: pdfkit 0.20.2, nodemailer 10.4.0 (used from T3), @types/pdfkit 0.17.7, @types/nodemailer 8.0.2. Checks: `cd backend && pnpm test` passed (node 20 passed; vitest 83 files, 1294 tests); `cd backend && pnpm typecheck` clean; `cd frontend && pnpm test` 835 passed; `cd frontend && pnpm typecheck` clean; `cd frontend && pnpm build` built (about 4 minutes). Commit: see git log.
 
 ## Next step
 
-T1.
+T2.

@@ -12,6 +12,7 @@ import { createTestContext as createPayments } from '../payments/payment.helpers
 import { createGreetingBus } from '../../src/modules/access/greeting.bus.js';
 import { createMemberSummaryService } from '../../src/modules/members/member-summary.service.js';
 import { createRosterService } from '../../src/modules/roster/roster.service.js';
+import { NotFoundError } from '../../src/shared/errors.js';
 import { roles, type Role as RoleName } from '../../src/modules/users/user.types.js';
 import { createTestContext as createAudit } from '../audit/helpers.js';
 import { listenOnFetchSafePort } from '../helpers/listen.mjs';
@@ -42,6 +43,7 @@ beforeAll(async () => {
     membershipService: memberships.service,
     pricingConfigService: pricing.service,
     paymentService: payments.service,
+    receiptPdfService: { render: async () => { throw new NotFoundError('Payment not found'); } },
     reportService: cashCount.reports,
     cashCountService: cashCount.cashCount,
     expenseService: expenses.service,

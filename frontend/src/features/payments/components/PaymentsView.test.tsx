@@ -286,6 +286,7 @@ describe('PaymentsView collecting', () => {
 
     await user.click(within(receipt).getByRole('button', { name: 'Imprimir' }));
     expect(print).toHaveBeenCalledTimes(1);
+    expect(within(receipt).getByRole('link', { name: 'Descargar PDF' })).toHaveAttribute('href', expect.stringMatching(/^\/api\/payments\/[^/]+\/receipt\.pdf$/));
   });
 
   it('adds the registration and the carnet replacement only when explicitly ticked', async () => {

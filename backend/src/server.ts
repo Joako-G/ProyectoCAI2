@@ -37,6 +37,7 @@ import { UserRepository, defaultUsersFilePath } from './modules/users/user.repos
 import { createJsonPricingConfigRepository } from './modules/payments/json-pricing-config.repository.js';
 import { createJsonPaymentRepository } from './modules/payments/json-payment.repository.js';
 import { createPaymentService } from './modules/payments/payment.service.js';
+import { createReceiptPdfService } from './modules/payments/receipt.service.js';
 import { createPricingConfigService } from './modules/payments/pricing-config.service.js';
 import { createJsonDisciplineRepository } from './modules/disciplines/json-discipline.repository.js';
 import { createDisciplineService } from './modules/disciplines/discipline.service.js';
@@ -108,6 +109,8 @@ const paymentService = createPaymentService({
   pricing: pricingConfigService,
   audit: auditService,
 });
+// The receipt PDF is rendered on demand from the stored receipt, its member and the discipline names.
+const receiptPdfService = createReceiptPdfService({ payments: paymentService, members: memberService, disciplines: disciplineService });
 // A teacher's roster is composed from the three services through the roster module's own ports.
 const rosterService = createRosterService({ memberships: membershipService, members: memberService, disciplines: disciplineService });
 // Reports read income through their own port; the daily cash count takes its expected totals from the reports.
@@ -177,7 +180,7 @@ facesReady.then((available) => {
     entryRepository = createPgEntryRepository(pool);
   }
   const accessEntries = entryRepository ? createEntriesService({ entries: entryRepository, members: memberService }) : undefined;
-  const app = createApp({ faceService, facesUnavailable: !faceService, memberService, memberSummaryService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, expenseService, rosterService, noticeService, accessService, accessEntries, greetings, auditService, backupService, userRepository });
+  const app = createApp({ faceService, facesUnavailable: !faceService, memberService, memberSummaryService, disciplineService, membershipService, pricingConfigService, paymentService, receiptPdfService, reportService, cashCountService, expenseService, rosterService, noticeService, accessService, accessEntries, greetings, auditService, backupService, userRepository });
   return bootstrap({
     memberService,
     membershipService,

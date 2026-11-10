@@ -224,6 +224,11 @@ describe('EnrollmentScreen: collecting and creating', () => {
     expect(send).toHaveAttribute('target', '_blank');
     expect(callsTo(fetchMock, 'GET /api/notices/welcome/pay-9')).toHaveLength(1);
 
+    const download = screen.getByRole('link', { name: 'Descargar PDF' });
+    expect(download).toHaveAttribute('href', '/api/payments/pay-9/receipt.pdf');
+    expect(download).toHaveAttribute('download');
+    expect(download).toHaveAccessibleDescription('Descargue el PDF y adjúntelo en WhatsApp junto al mensaje.');
+
     await user.click(screen.getByRole('button', { name: 'Ver comprobante' }));
     expect(within(screen.getByRole('dialog', { name: 'Comprobante de pago' })).getByRole('region', { name: 'Comprobante' })).toBeInTheDocument();
   });
