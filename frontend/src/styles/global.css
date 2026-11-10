@@ -90,14 +90,33 @@ a:hover {
   color: #fff;
   display: flex;
   flex-direction: column;
+  /* Stays in view while the page scrolls; a short window scrolls the menu itself. */
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .sidebar__brand {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 12px;
   padding: 20px 18px 22px;
   border-bottom: 1px solid var(--color-sidebar-border);
+}
+
+.sidebar__crest {
+  width: 38px;
+  height: auto;
+  flex: none;
+}
+
+.sidebar__brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .sidebar__brand-name {
