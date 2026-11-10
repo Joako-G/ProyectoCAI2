@@ -962,22 +962,165 @@ a:hover {
   color: rgba(0, 0, 0, 0.55);
 }
 
+/* Discipline form: two numbered steps, and each teacher in a row of its own */
+
+.discipline-form__step {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: #fbfaf8;
+}
+
+.discipline-form__step-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* A legend sits on the fieldset's border; floating it puts it inside the box like the other step's title. */
+legend.discipline-form__step-title {
+  float: left;
+  width: 100%;
+}
+
+.discipline-form__step-number {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  font: 600 12px var(--font-mono);
+  color: #fff;
+}
+
+.discipline-form__teachers .member-form__hint {
+  clear: both;
+  margin: 0;
+  font-size: 13px;
+}
+
 .teacher-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  margin-bottom: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
 }
 
-.teacher-row input[type='text'] {
+.teacher-row[data-lead='true'] {
+  border-color: rgba(31, 78, 140, 0.45);
+  background: #eff4fa;
+}
+
+.teacher-row__pick {
   flex: 1 1 200px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.teacher-row__pick input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--color-accent);
+}
+
+.teacher-row[data-checked='true'] {
+  border-color: rgba(31, 78, 140, 0.3);
+}
+
+.teacher-row__lead[data-disabled='true'] {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.discipline-form__legacy {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 4px solid #d9a441;
+  border-radius: var(--radius-md);
+  background: #fbf5e6;
+  font-size: 13px;
+}
+
+.discipline-form__count {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
 }
 
 .teacher-row__lead {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.teacher-row[data-lead='true'] .teacher-row__lead {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.teacher-add {
+  padding: 11px;
+  border: 1px dashed rgba(31, 78, 140, 0.5);
+  border-radius: var(--radius-md);
+  background: none;
+  font: 600 13px var(--font-sans);
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.teacher-add:hover {
+  background: #eff4fa;
+}
+
+.teacher-add:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.teacher-row__lead input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--color-accent);
+}
+
+.discipline-form__actions {
+  padding-top: 4px;
 }
 
 .disciplines-table__actions {

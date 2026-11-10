@@ -5,7 +5,7 @@ import { createApp } from '../../src/app.js';
 import type { MemberRepository } from '../../src/modules/members/member.repository.js';
 import { createMemberService } from '../../src/modules/members/member.service.js';
 import { createUsersFile, signIn } from '../authorization/helpers.js';
-import { basketball, createTestContext, volleyball } from './helpers.js';
+import { basketball, createTestContext } from './helpers.js';
 import { noAudit } from '../audit/helpers.js';
 
 const cleanups: Array<() => Promise<void> | void> = [];
@@ -42,28 +42,61 @@ async function startApi() {
   return { send, ...context };
 }
 
+const TEACHER = 'user-teacher';
+// What the screen sends: the name and the teacher accounts, one of them in charge.
+const staffed = (name: string, teacherIds: string[] = [TEACHER], leadTeacherId: string = teacherIds[0]!) => ({ name, teacherIds, leadTeacherId });
+const BASKETBALL = staffed('Básquet');
+const VOLLEYBALL = staffed('Vóley');
+
+type Send = Awaited<ReturnType<typeof startApi>>['send'];
+
+async function addTeacher(send: Send, name: string): Promise<string> {
+  const response = await send('POST', '/users', { name, email: `${name.toLowerCase().replace(/[^a-z]+/g, '.')}@club.test`, role: 'teacher', password: 'Passw0rd-Long-1' });
+  expect(response.status).toBe(201);
+  return (await response.json()).id;
+}
+
+async function disciplinesOf(send: Send, userId: string): Promise<string[]> {
+  const users: Array<{ id: string; disciplineIds?: string[] }> = await (await send('GET', '/users')).json();
+  return users.find((user) => user.id === userId)!.disciplineIds ?? [];
+}
+
 describe('disciplines API', () => {
-  it('creates a discipline with 201 and reads it back', async () => {
+  it('creates a discipline with 201, staffed by teacher accounts, and reads it back', async () => {
     const { send } = await startApi();
-    const created = await send('POST', '/api/disciplines', basketball);
+    const created = await send('POST', '/api/disciplines', BASKETBALL);
     expect(created.status).toBe(201);
     const discipline = await created.json();
     expect(discipline).toMatchObject({
       name: 'Básquet',
-      teachers: ['Marcos Ledesma'],
-      leadTeacher: 'Marcos Ledesma',
+      teachers: ['Test teacher'],
+      leadTeacher: 'Test teacher',
+      teacherIds: [TEACHER],
+      leadTeacherId: TEACHER,
       status: 'active',
     });
+    expect(await disciplinesOf(send, TEACHER)).toEqual([discipline.id]);
 
     const fetched = await send('GET', `/api/disciplines/${discipline.id}`);
     expect(fetched.status).toBe(200);
     expect(await fetched.json()).toEqual(discipline);
   });
 
+  it('lists the active teacher accounts a discipline can be given to', async () => {
+    const { send } = await startApi();
+    const lia = await addTeacher(send, 'Lía Soria');
+    const gone = await addTeacher(send, 'Ana Gil');
+    await send('DELETE', `/users/${gone}`);
+
+    const response = await send('GET', '/api/disciplines/teachers');
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual([{ id: lia, name: 'Lía Soria' }, { id: TEACHER, name: 'Test teacher' }]);
+  });
+
   it('lists disciplines filtered by search and status', async () => {
     const { send } = await startApi();
-    await send('POST', '/api/disciplines', volleyball);
-    const basket = await (await send('POST', '/api/disciplines', basketball)).json();
+    await send('POST', '/api/disciplines', VOLLEYBALL);
+    const basket = await (await send('POST', '/api/disciplines', BASKETBALL)).json();
     await send('POST', `/api/disciplines/${basket.id}/deactivate`);
 
     const all = await (await send('GET', '/api/disciplines')).json();
@@ -90,67 +123,111 @@ describe('disciplines API', () => {
 
   it('returns 400 with field errors for invalid input', async () => {
     const { send } = await startApi();
-    const response = await send('POST', '/api/disciplines', { name: '', teachers: [], leadTeacher: '' });
+    const response = await send('POST', '/api/disciplines', { name: '', teacherIds: [], leadTeacherId: '' });
     expect(response.status).toBe(400);
     const body = await response.json();
     expect(body.error).toBe('validation_error');
     expect(Object.keys(body.fieldErrors).sort()).toEqual(['leadTeacher', 'name', 'teachers']);
   });
 
+  it('rejects typed names: a teacher must be an active teacher account', async () => {
+    const { send, service } = await startApi();
+    for (const body of [
+      { name: 'Básquet', teachers: ['Marcos Ledesma'], leadTeacher: 'Marcos Ledesma' },
+      staffed('Básquet', ['user-secretary']),
+      staffed('Básquet', ['nobody']),
+    ]) {
+      const response = await send('POST', '/api/disciplines', body);
+      expect(response.status, JSON.stringify(body)).toBe(400);
+      expect((await response.json()).fieldErrors.teachers, JSON.stringify(body)).toBeTruthy();
+    }
+    const gone = await addTeacher(send, 'Ana Gil');
+    await send('DELETE', `/users/${gone}`);
+    expect((await send('POST', '/api/disciplines', staffed('Básquet', [gone]))).status).toBe(400);
+    expect(await service.list()).toEqual([]);
+  });
+
   it('rejects a lead teacher that is not among the teachers with 400 on create and update', async () => {
     const { send } = await startApi();
-    const invalid = { ...basketball, teachers: ['Ana Gil', 'Lía Soria'], leadTeacher: 'Otra Persona' };
+    const lia = await addTeacher(send, 'Lía Soria');
+    const invalid = staffed('Básquet', [TEACHER], lia);
     const created = await send('POST', '/api/disciplines', invalid);
     expect(created.status).toBe(400);
     expect(Object.keys((await created.json()).fieldErrors)).toEqual(['leadTeacher']);
 
-    const valid = await (await send('POST', '/api/disciplines', basketball)).json();
+    const valid = await (await send('POST', '/api/disciplines', BASKETBALL)).json();
     const updated = await send('PUT', `/api/disciplines/${valid.id}`, invalid);
     expect(updated.status).toBe(400);
+    expect(await disciplinesOf(send, lia)).toEqual([]);
   });
 
   it('creates a discipline with several teachers and returns them with the lead teacher', async () => {
     const { send } = await startApi();
-    const response = await send('POST', '/api/disciplines', {
-      ...basketball,
-      teachers: ['Ana Gil', 'Lía Soria'],
-      leadTeacher: 'Lía Soria',
-    });
+    const lia = await addTeacher(send, 'Lía Soria');
+    const response = await send('POST', '/api/disciplines', staffed('Básquet', [TEACHER, lia], lia));
     expect(response.status).toBe(201);
-    expect(await response.json()).toMatchObject({ teachers: ['Ana Gil', 'Lía Soria'], leadTeacher: 'Lía Soria' });
+    const discipline = await response.json();
+    expect(discipline).toMatchObject({ teachers: ['Lía Soria', 'Test teacher'], leadTeacher: 'Lía Soria', teacherIds: [lia, TEACHER], leadTeacherId: lia });
+    expect(await disciplinesOf(send, lia)).toEqual([discipline.id]);
+    expect(await disciplinesOf(send, TEACHER)).toEqual([discipline.id]);
+  });
+
+  it('moves the discipline between accounts on update and leaves their other disciplines alone', async () => {
+    const { send } = await startApi();
+    const lia = await addTeacher(send, 'Lía Soria');
+    const volley = await (await send('POST', '/api/disciplines', VOLLEYBALL)).json();
+    const basket = await (await send('POST', '/api/disciplines', BASKETBALL)).json();
+
+    const response = await send('PUT', `/api/disciplines/${basket.id}`, staffed('Básquet mayor', [lia]));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ id: basket.id, name: 'Básquet mayor', teachers: ['Lía Soria'], leadTeacher: 'Lía Soria', teacherIds: [lia] });
+    expect(await disciplinesOf(send, lia)).toEqual([basket.id]);
+    expect(await disciplinesOf(send, TEACHER)).toEqual([volley.id]);
+  });
+
+  it('follows the accounts: a renamed teacher shows the new name and an unassigned one leaves the discipline', async () => {
+    const { send } = await startApi();
+    const lia = await addTeacher(send, 'Lía Soria');
+    const created = await (await send('POST', '/api/disciplines', staffed('Básquet', [TEACHER, lia], lia))).json();
+
+    await send('PATCH', `/users/${TEACHER}`, { name: 'Marcos Ledesma' });
+    await send('PATCH', `/users/${lia}`, { disciplineIds: [] });
+    // The one in charge left, so the remaining teacher takes over.
+    expect(await (await send('GET', `/api/disciplines/${created.id}`)).json()).toMatchObject({ teachers: ['Marcos Ledesma'], leadTeacher: 'Marcos Ledesma', teacherIds: [TEACHER], leadTeacherId: TEACHER });
+
+    await send('PATCH', `/users/${TEACHER}`, { disciplineIds: [] });
+    expect(await (await send('GET', `/api/disciplines/${created.id}`)).json()).toMatchObject({ teachers: [], leadTeacher: '', teacherIds: [], leadTeacherId: null });
+  });
+
+  it('shows the typed names of a discipline saved before teachers were accounts, until it is edited', async () => {
+    const { send, service } = await startApi();
+    const legacy = await service.create(basketball, 'user-test');
+
+    expect(await (await send('GET', `/api/disciplines/${legacy.id}`)).json()).toMatchObject({ teachers: ['Marcos Ledesma'], leadTeacher: 'Marcos Ledesma', teacherIds: [], leadTeacherId: null });
+
+    const edited = await send('PUT', `/api/disciplines/${legacy.id}`, BASKETBALL);
+    expect(await edited.json()).toMatchObject({ teachers: ['Test teacher'], leadTeacher: 'Test teacher', teacherIds: [TEACHER], leadTeacherId: TEACHER });
   });
 
   it('returns 409 conflict for a duplicate name on create and update', async () => {
     const { send } = await startApi();
-    await send('POST', '/api/disciplines', basketball);
-    const duplicate = await send('POST', '/api/disciplines', { ...basketball, name: 'básquet' });
+    await send('POST', '/api/disciplines', BASKETBALL);
+    const duplicate = await send('POST', '/api/disciplines', staffed('básquet'));
     expect(duplicate.status).toBe(409);
     expect((await duplicate.json()).error).toBe('conflict');
 
-    const other = await (await send('POST', '/api/disciplines', volleyball)).json();
-    const clash = await send('PUT', `/api/disciplines/${other.id}`, { ...volleyball, name: 'BÁSQUET' });
+    const other = await (await send('POST', '/api/disciplines', VOLLEYBALL)).json();
+    const clash = await send('PUT', `/api/disciplines/${other.id}`, staffed('BÁSQUET'));
     expect(clash.status).toBe(409);
-  });
-
-  it('updates with PUT', async () => {
-    const { send } = await startApi();
-    const created = await (await send('POST', '/api/disciplines', basketball)).json();
-    const response = await send('PUT', `/api/disciplines/${created.id}`, {
-      name: 'Básquet mayor',
-      teachers: ['Nuevo Docente', 'Otra Docente'],
-      leadTeacher: 'Otra Docente',
-    });
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ id: created.id, name: 'Básquet mayor' });
   });
 
   it('deactivates and reactivates, with 409 on a repeated transition', async () => {
     const { send } = await startApi();
-    const created = await (await send('POST', '/api/disciplines', basketball)).json();
+    const created = await (await send('POST', '/api/disciplines', BASKETBALL)).json();
 
     const inactive = await send('POST', `/api/disciplines/${created.id}/deactivate`);
     expect(inactive.status).toBe(200);
-    expect(await inactive.json()).toMatchObject({ status: 'inactive' });
+    expect(await inactive.json()).toMatchObject({ status: 'inactive', teachers: ['Test teacher'] });
     expect((await send('POST', `/api/disciplines/${created.id}/deactivate`)).status).toBe(409);
 
     const active = await send('POST', `/api/disciplines/${created.id}/reactivate`);
@@ -166,11 +243,11 @@ describe('disciplines API', () => {
       ['POST', '/api/disciplines/missing/deactivate'],
       ['POST', '/api/disciplines/missing/reactivate'],
     ] as const) {
-      const response = await send(method, path, method === 'PUT' ? basketball : undefined);
+      const response = await send(method, path, method === 'PUT' ? BASKETBALL : undefined);
       expect(response.status, `${method} ${path}`).toBe(404);
       expect((await response.json()).error).toBe('not_found');
     }
-    const created = await (await send('POST', '/api/disciplines', basketball)).json();
+    const created = await (await send('POST', '/api/disciplines', BASKETBALL)).json();
     expect((await send('DELETE', `/api/disciplines/${created.id}`)).status).toBe(404);
   });
 });

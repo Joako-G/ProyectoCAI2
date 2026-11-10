@@ -21,6 +21,7 @@ import { createFaceRouter, createFacesUnavailableRouter } from './modules/faces/
 import type { FaceService } from './modules/faces/face.service.js';
 import { createDisciplinesRouter } from './modules/disciplines/discipline.routes.js';
 import type { DisciplineService } from './modules/disciplines/discipline.service.js';
+import { createDisciplineStaffing } from './modules/disciplines/discipline.staffing.js';
 import { createMembersRouter } from './modules/members/member.routes.js';
 import type { MemberService } from './modules/members/member.service.js';
 import { createMembershipsRouter } from './modules/memberships/membership.routes.js';
@@ -99,7 +100,7 @@ if (options.memberService) {
   app.use('/api/members', requireCapabilityByMethod(authenticate, { read: 'members:read', write: 'members:write' }), createMembersRouter(options.memberService, authenticate));
 }
 if (options.disciplineService) {
-  app.use('/api/disciplines', requireCapabilityByMethod(authenticate, { read: 'disciplines:read', write: 'disciplines:write' }), createDisciplinesRouter(options.disciplineService, authenticate));
+  app.use('/api/disciplines', requireCapabilityByMethod(authenticate, { read: 'disciplines:read', write: 'disciplines:write' }), createDisciplinesRouter(createDisciplineStaffing({ disciplines: options.disciplineService, users: repository }), authenticate));
 }
 if (options.membershipService) {
   // Read-only guard for every method: memberships has no write routes. Add a write capability before adding one.

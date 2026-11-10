@@ -2,9 +2,12 @@ export type DisciplineStatus = 'active' | 'inactive';
 
 export interface DisciplineInput {
   name: string;
-  // At least one teacher; exactly one of them is in charge (teachers are not system users).
+  // Names, at least one, exactly one of them in charge. With `leadTeacherId` they are the names the teacher
+  // accounts had when the discipline was saved; without it they were typed in before teachers were accounts.
   teachers: string[];
   leadTeacher: string;
+  // The teacher account in charge. The other teachers are the accounts that have this discipline assigned.
+  leadTeacherId?: string;
 }
 
 export interface Discipline extends DisciplineInput {
