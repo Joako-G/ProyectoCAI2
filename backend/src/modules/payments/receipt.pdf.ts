@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import PDFDocument from 'pdfkit';
 import { RECEIPT_CREST_FILE } from '../../config/paths.js';
+import { CLUB_NAME } from '../../shared/club.js';
 import { formatClubDate, formatPesos, formatReceiptNumber } from './receipt.format.js';
 import type { PaymentMethod } from './payment.types.js';
 
-export const CLUB_NAME = 'Club Atlético Independiente';
 
 const METHOD_LABEL: Record<PaymentMethod, string> = {
   cash: 'Efectivo',

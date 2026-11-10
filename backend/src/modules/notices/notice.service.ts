@@ -1,3 +1,4 @@
+import { CLUB_NAME } from '../../shared/club.js';
 import { toIsoDate } from '../../shared/date.js';
 import { isMinor } from '../members/member.validation.js';
 import type { Membership } from '../memberships/membership.types.js';
@@ -16,7 +17,6 @@ import type { Mailer } from './notice.mailer.js';
 import { deriveWhatsappNumber } from './notice.number.js';
 import type { DebtNotice, DebtNoticeList, NoticeRecipient, NoticeSender, WelcomeEmailOffer, WelcomeEmailSent, WelcomeNotice } from './notice.types.js';
 
-const CLUB_NAME = 'Club Atlético Independiente';
 
 /** The slice of a member the notices need; the members service satisfies it as it is. */
 export interface NoticeMember {
