@@ -39,6 +39,8 @@ Al día + Deudores + Vencidos = Activos. Standing is computed only for active me
 
 - L6 (follow-ups, user said fix them): R4 fixed in ad0c454: a failed refresh keeps the last loaded counts on screen with a retry line, and the standing filter keeps applying (`lastSummary` in useMembersSummary.ts); new test proved RED without the fix, GREEN with it. R3 covered in 998904a: API test asserts 500 `internal_error` without details on a failing source, twice. Verification: backend `pnpm test` 80 files / 1257 passed; frontend `pnpm test` 86 files / 816 passed, `pnpm typecheck` clean. R2 suggestions left as is.
 
+- L7 (browser, 2026-11-10, head secretary, local data): five cards render and add up (8 activos = 3 al día + 0 deudores + 5 vencidos; 1 inactivo); clicking Vencidos marks the card and lists 5 ("Filtro: Vencidos · 5 resultados"). Phone width 375: cards in a 2-column grid with Vencidos on its own row. Checked by screenshot.
+
 ## Next step
 
-Browser check of the cards (needs a signed-in session). Then the audit feature.
+Done. Push is the user's decision.

@@ -33,6 +33,8 @@ Requirements: RF-27 (audit: who created, modified or annulled, and when), RNF-08
 
 - L4 (review): native review of 5359db8..b731695 (medium risk, 30 files, 1740 lines; includes the member stats fixes) granted by the user; one reliability lens, **approved** and acknowledged (lineage review-e9ff1d555d39b048). Non-blocking: R3-001, when the member sources cannot be read the member filter shows a normal empty state; the failure is only logged on the server. Accepted deviation from S1: a bad filter answers 400 `validation_error` with `fieldErrors` (shared ValidationError, as expenses do) instead of `invalid_query`.
 
+- L5 (browser, 2026-11-10, head secretary, local data): 22 records load; clicking "Socio 0003" sets ?member=0003, fills the Socio field, shows the chip and 2 records (API answer checked: 2 entries). At 1440 px the content sits in a centred column; at 375 px the filters stack in one column. Observation for later: on phones the filter card is long (quick ranges take one row each) and pushes the results down; a collapsible filter card would help.
+
 ## Next step
 
-Browser check (needs a signed-in session). Then the receipt PDF and email feature.
+Done. Push is the user's decision. Next feature: receipt PDF and email.
