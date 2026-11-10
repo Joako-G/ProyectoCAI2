@@ -50,6 +50,7 @@ import { createWaMeSender } from './modules/notices/notice.sender.js';
 import { createPaymentIncomeSource } from './modules/reports/income.source.js';
 import { createReportService } from './modules/reports/report.service.js';
 import { createRosterService } from './modules/roster/roster.service.js';
+import { createMemberSummaryService } from './modules/members/member-summary.service.js';
 import { createMemberService } from './modules/members/member.service.js';
 import { bootstrap } from './startup.js';
 import { toIsoDate } from './shared/date.js';
@@ -131,6 +132,13 @@ const noticeService = createNoticeService({
   disciplines: disciplineService,
   sender: createWaMeSender(),
 });
+// The members screen's stat cards read the same four sources once per request.
+const memberSummaryService = createMemberSummaryService({
+  members: memberService,
+  memberships: membershipService,
+  payments: paymentRepository,
+  pricing: pricingConfigService,
+});
 // Identified checks are logged in PostgreSQL. The repository exists only once the database is ready, so the recorder
 // reaches it late: without a database, or until it is ready, a check is simply not logged and still answers.
 let entryRepository: EntryRepository | undefined;
@@ -169,7 +177,7 @@ facesReady.then((available) => {
     entryRepository = createPgEntryRepository(pool);
   }
   const accessEntries = entryRepository ? createEntriesService({ entries: entryRepository, members: memberService }) : undefined;
-  const app = createApp({ faceService, facesUnavailable: !faceService, memberService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, expenseService, rosterService, noticeService, accessService, accessEntries, greetings, auditService, backupService, userRepository });
+  const app = createApp({ faceService, facesUnavailable: !faceService, memberService, memberSummaryService, disciplineService, membershipService, pricingConfigService, paymentService, reportService, cashCountService, expenseService, rosterService, noticeService, accessService, accessEntries, greetings, auditService, backupService, userRepository });
   return bootstrap({
     memberService,
     membershipService,

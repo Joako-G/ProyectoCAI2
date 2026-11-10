@@ -21,6 +21,8 @@ import { createFaceRouter, createFacesUnavailableRouter } from './modules/faces/
 import type { FaceService } from './modules/faces/face.service.js';
 import { createDisciplinesRouter } from './modules/disciplines/discipline.routes.js';
 import type { DisciplineService } from './modules/disciplines/discipline.service.js';
+import { createMemberSummaryRouter } from './modules/members/member-summary.routes.js';
+import type { MemberSummaryService } from './modules/members/member-summary.service.js';
 import { createMembersRouter } from './modules/members/member.routes.js';
 import type { MemberService } from './modules/members/member.service.js';
 import { createMembershipsRouter } from './modules/memberships/membership.routes.js';
@@ -42,6 +44,8 @@ import type { DemoUser } from './modules/users/user.types.js';
 
 export interface AppDependencies {
   memberService?: MemberService;
+  // The stat cards' counts; mounted ahead of the members router so GET /api/members/summary never reaches GET /:id.
+  memberSummaryService?: MemberSummaryService;
   // Optional so apps that only exercise members (tests) can omit the catalog.
   disciplineService?: DisciplineService;
   membershipService?: MembershipService;
@@ -95,6 +99,9 @@ app.use('/auth', createAuthRouter(authService, sessions, authenticate));
 app.use('/users', requireCapability(authenticate, 'users:manage'), createUsersRouter(createUserService(repository, { disciplineLookup: options.disciplineService, audit: options.auditService ?? discardAudit }), authenticate));
 
 // Every route below needs a session and a role allowed by modules/auth/permissions.ts; only /auth and /health are public.
+if (options.memberSummaryService) {
+  app.use('/api/members/summary', requireCapability(authenticate, 'members:read'), createMemberSummaryRouter(options.memberSummaryService));
+}
 if (options.memberService) {
   app.use('/api/members', requireCapabilityByMethod(authenticate, { read: 'members:read', write: 'members:write' }), createMembersRouter(options.memberService, authenticate));
 }

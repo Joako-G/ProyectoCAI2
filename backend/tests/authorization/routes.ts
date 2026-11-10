@@ -11,6 +11,7 @@ export const routes: Array<[string, string, readonly RoleName[]]> = [
   ['PATCH', '/users/missing', headOnly],
   ['DELETE', '/users/missing', headOnly],
   ['GET', '/api/members', both],
+  ['GET', '/api/members/summary', both],
   ['GET', '/api/members/missing', both],
   ['POST', '/api/members', both],
   ['PUT', '/api/members/missing', both],

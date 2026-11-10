@@ -10,6 +10,7 @@ import { createTestContext as createMemberships } from '../memberships/helpers.j
 import { createTestContext as createPricing } from '../payments/pricing-config.helpers.js';
 import { createTestContext as createPayments } from '../payments/payment.helpers.js';
 import { createGreetingBus } from '../../src/modules/access/greeting.bus.js';
+import { createMemberSummaryService } from '../../src/modules/members/member-summary.service.js';
 import { createRosterService } from '../../src/modules/roster/roster.service.js';
 import { roles, type Role as RoleName } from '../../src/modules/users/user.types.js';
 import { createTestContext as createAudit } from '../audit/helpers.js';
@@ -36,6 +37,7 @@ beforeAll(async () => {
   server = await listenOnFetchSafePort(createApp({
     storePath: users.storePath,
     memberService: members.service,
+    memberSummaryService: createMemberSummaryService({ members: members.service, memberships: memberships.service, payments: payments.repository, pricing: pricing.service }),
     disciplineService: disciplines.service,
     membershipService: memberships.service,
     pricingConfigService: pricing.service,
