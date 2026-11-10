@@ -129,6 +129,25 @@ describe('Members stat cards', () => {
     expect(screen.getByRole('table', { name: 'Listado de socios' })).toBeInTheDocument();
   });
 
+  it('keeps the last counts and the standing filter when a refresh fails', async () => {
+    const user = renderView();
+    await waitFor(() => expect(card('Deudores')).toBeEnabled());
+    await user.click(card('Deudores'));
+    expect(await screen.findByText('Ana Álvarez')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Ana Álvarez' }));
+    await screen.findByRole('heading', { level: 2, name: 'Ana Álvarez' });
+    summaryResponse = () => jsonResponse({ error: 'internal_error', message: 'Unexpected failure' }, 500);
+    await user.click(screen.getByRole('button', { name: /Volver al listado/ }));
+
+    expect(await screen.findByText(/se muestran los últimos cargados/)).toBeInTheDocument();
+    expect(card('Deudores')).toHaveAttribute('aria-pressed', 'true');
+    expect(card('Activos')).toHaveTextContent('2');
+    expect(screen.getByText('Ana Álvarez')).toBeInTheDocument();
+    expect(screen.queryByText('Lucía Ríos')).not.toBeInTheDocument();
+    expect(screen.queryByText('Beto Benítez')).not.toBeInTheDocument();
+  });
+
   it('counts again when the list comes back after a change', async () => {
     const user = renderView();
     await waitFor(() => expect(card('Activos')).toHaveTextContent('2'));

@@ -4,7 +4,7 @@ import { usePagination } from '../../../hooks/usePagination';
 import { DisciplineCatalogNotice } from '../../disciplines/components/DisciplineCatalogNotice';
 import { catalogDisciplines, type DisciplineCatalog } from '../../disciplines/hooks/useDisciplineCatalog';
 import { useMembersList } from '../hooks/useMembersList';
-import type { MembersSummaryController } from '../hooks/useMembersSummary';
+import { lastSummary, type MembersSummaryController } from '../hooks/useMembersSummary';
 import type { Member, MemberListQuery } from '../types/member';
 import type { StandingGroup } from '../types/member-summary';
 import { todayInClub } from '../utils/member-format';
@@ -57,8 +57,9 @@ export function MembersPage({
   const { search, status, disciplineId = '' } = query;
   const { state, retry } = useMembersList(query);
   // A new search or filter starts again from the first page.
-  // The standing groups come from the summary, so the narrowing applies only while that is loaded.
-  const standingIds = standing && summary?.state.phase === 'ready' ? summary.state.summary.ids[standing] : null;
+  // The standing groups come from the summary; after a failed refresh the last loaded ids keep the filter applied.
+  const loadedSummary = summary ? lastSummary(summary.state) : undefined;
+  const standingIds = standing && loadedSummary ? loadedSummary.ids[standing] : null;
   const members = useMemo(() => {
     if (state.phase !== 'ready') return NO_MEMBERS;
     if (!standingIds) return state.members;

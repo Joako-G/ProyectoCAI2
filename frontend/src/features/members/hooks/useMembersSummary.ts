@@ -4,7 +4,8 @@ import type { MembersSummary } from '../types/member-summary';
 
 export type MembersSummaryState =
   | { phase: 'loading' }
-  | { phase: 'error'; message: string }
+  /** `stale` keeps the last counts that loaded, so a failed refresh does not drop what is on screen. */
+  | { phase: 'error'; message: string; stale?: MembersSummary }
   | { phase: 'ready'; summary: MembersSummary };
 
 export interface MembersSummaryController {
@@ -14,6 +15,13 @@ export interface MembersSummaryController {
 }
 
 const NETWORK_ERROR_MESSAGE = 'No se pudo conectar con el servidor.';
+
+/** The last counts that loaded, if any. */
+export function lastSummary(state: MembersSummaryState): MembersSummary | undefined {
+  if (state.phase === 'ready') return state.summary;
+  if (state.phase === 'error') return state.stale;
+  return undefined;
+}
 
 /** Container logic of the stat cards: the counts and the member ids of each standing group. */
 export function useMembersSummary(): MembersSummaryController {
@@ -29,7 +37,8 @@ export function useMembersSummary(): MembersSummaryController {
       },
       (error: unknown) => {
         if (!controller.signal.aborted) {
-          setState({ phase: 'error', message: error instanceof ApiError ? error.message : NETWORK_ERROR_MESSAGE });
+          const message = error instanceof ApiError ? error.message : NETWORK_ERROR_MESSAGE;
+          setState((previous) => ({ phase: 'error', message, stale: lastSummary(previous) }));
         }
       },
     );
