@@ -1,0 +1,1020 @@
+/* Reports section: tabs, report-type cards and the economic statistics tab. */
+
+.report-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.report-tabs__tab {
+  margin-bottom: -1px;
+  padding: 10px 18px;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  font: 600 14px var(--font-sans);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.report-tabs__tab:hover {
+  color: var(--color-text);
+}
+
+.report-tabs__tab[aria-selected='true'] {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.report-tabs__tab:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* The report kind reads as two selectable cards instead of two bare radios. */
+.report-kind label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.report-kind label:has(input:checked) {
+  border-color: var(--color-accent);
+  background: #eff4fa;
+}
+
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.stats__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+}
+
+.stats__kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.stats__kpi-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.stats__kpi-value {
+  font-family: var(--font-mono);
+  font-size: 21px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stats__kpi[data-tone='good'] .stats__kpi-value {
+  color: var(--color-success);
+}
+
+.stats__kpi[data-tone='warn'] .stats__kpi-value {
+  color: var(--color-warning);
+}
+
+.stats__kpi[data-tone='bad'] .stats__kpi-value {
+  color: var(--color-error);
+}
+
+.stats__kpi-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.stats__card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.stats__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.stats__legend {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.stats__swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  border-radius: 2px;
+}
+
+.stats__fill {
+  background: var(--color-accent);
+}
+
+.stats__note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.stats__split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.stats__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.stats__row-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.stats__row-head span:last-child {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.stats__track {
+  height: 8px;
+  border-radius: 4px;
+  background: #eceae4;
+  overflow: hidden;
+}
+
+.stats__fill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+}
+
+@media (max-width: 860px) {
+  .stats__split {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .report-kind {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media print {
+  .report-tabs {
+    display: none;
+  }
+}
+
+.stats__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.stats__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-basis: 100%;
+}
+
+.stats__preset {
+  padding: 8px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  font: 500 13px var(--font-sans);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.stats__preset:hover {
+  background: #f3f2ef;
+}
+
+.stats__preset[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: #eff4fa;
+  color: var(--color-accent);
+  font-weight: 600;
+}
+
+.stats__preset:focus-visible,
+.stats__row-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.stats__discipline-total {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.stats__legend-list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.stats__pie {
+  position: relative;
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+}
+
+.stats__pie-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.stats__slice {
+  cursor: pointer;
+  transition: stroke-width 0.2s ease, opacity 0.2s ease;
+}
+
+.stats__slice[data-selected='false'] {
+  opacity: 0.85;
+}
+
+.stats__slice:hover {
+  opacity: 1;
+}
+
+.stats__pie-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 26%;
+  text-align: center;
+  pointer-events: none;
+}
+
+.stats__pie-center .stats__kpi-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats__pie-amount {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stats__pie-share {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.stats__row-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stats__row-name .stats__swatch {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  border-radius: 50%;
+}
+
+.stats__row-button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.stats__row-button .stats__row-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.stats__row-button .stats__row-head span:last-child {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.stats__row-button .stats__track {
+  display: block;
+}
+
+.stats__row-button:hover {
+  background: #f7f6f3;
+}
+
+.stats__row-button[aria-pressed='true'] {
+  border-color: rgba(31, 78, 140, 0.35);
+  background: #eff4fa;
+}
+
+.stats__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.stats__subtitle {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 15px;
+}
+
+
+/*
+ * On screen the Reportes section reads like the Arqueo desk: the page itself is no card, and the filters, the
+ * report's figures and each table sit in their own white cards. None of this reaches paper (report-print.css).
+ */
+@media screen {
+  .report-page {
+    padding: 0;
+    background: none;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .report-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 18px;
+    padding: 20px 24px;
+  }
+
+  .report-controls .report-kind,
+  .report-controls .report-filters {
+    margin: 0;
+  }
+
+  .report-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 22px 24px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  .report-head > .report-title,
+  .report-head > .report-result__range,
+  .report-head > .report-warning,
+  .report-head > .members-page__notice {
+    flex: 1 1 100%;
+  }
+
+  .report-head .report-result__total,
+  .report-head .report-summary div {
+    flex: 1 1 170px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    margin: 0;
+    padding: 12px 14px;
+    background: #f7f6f3;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
+  .report-head .report-result__total {
+    background: #eff4fa;
+    border-color: rgba(31, 78, 140, 0.25);
+  }
+
+  .report-head .report-result__total--secondary {
+    background: #f7f6f3;
+    border-color: var(--color-border);
+  }
+
+  .report-head .report-result__total--secondary strong {
+    color: var(--color-text);
+  }
+
+  .report-head .report-result__total span,
+  .report-head .report-summary dt {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: rgba(0, 0, 0, 0.5);
+  }
+
+  .report-head .report-result__total strong {
+    font-size: 22px;
+    color: var(--color-accent);
+  }
+
+  .report-head .report-summary dd {
+    font: 600 20px var(--font-mono);
+  }
+
+  /* The summary tiles join the head's own row of tiles. */
+  .report-head .report-summary {
+    display: contents;
+  }
+
+  .report-sheet .report-section {
+    padding: 20px 24px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  .report-sheet .report-section__title {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: rgba(0, 0, 0, 0.45);
+  }
+}
+
+/* Shared by every slide of the statistics */
+
+.stats__period {
+  gap: 12px;
+}
+
+.stats__pie-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px 28px;
+  align-items: center;
+}
+
+.stats__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  margin-top: 6px;
+}
+
+/* Plain-language pieces: a sentence that says the conclusion, big figures, and a ledger of months. */
+
+.stats__title {
+  font-size: 16px;
+}
+
+.stats__note {
+  font-size: 13px;
+}
+
+.stats__lead {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+.stats__good {
+  color: var(--color-success);
+}
+
+.stats__bad {
+  color: var(--color-error);
+}
+
+.stats__showing {
+  margin: 0;
+  font-size: 14px;
+}
+
+.stats__equation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.stats__operator {
+  align-self: center;
+  font: 600 26px var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.stats__tile {
+  flex: 1 1 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border);
+  border-left: 6px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #f7f6f3;
+}
+
+.stats__tile-label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.stats__tile-value {
+  font: 600 24px var(--font-mono);
+  white-space: nowrap;
+}
+
+.stats__tile-hint {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.stats__tile[data-tone='income'] {
+  border-left-color: #1f4e8c;
+}
+
+.stats__tile[data-tone='expense'] {
+  border-left-color: #d9a441;
+}
+
+.stats__tile[data-tone='good'] {
+  border-left-color: var(--color-success);
+  background: #eef7f2;
+}
+
+.stats__tile[data-tone='good'] .stats__tile-value {
+  color: var(--color-success);
+}
+
+.stats__tile[data-tone='bad'] {
+  border-left-color: var(--color-error);
+  background: #fbefec;
+}
+
+.stats__tile[data-tone='bad'] .stats__tile-value {
+  color: var(--color-error);
+}
+
+.stats__facts {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.stats__facts:empty {
+  display: none;
+}
+
+.stats__row-head,
+.stats__row-button .stats__row-head {
+  font-size: 14px;
+}
+
+.stats__row-head span:last-child,
+.stats__row-button .stats__row-head span:last-child {
+  font-size: 13px;
+}
+
+/* The months as the rows of a ledger */
+
+.month-rows {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.month-rows th,
+.month-rows td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.month-rows thead th {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.month-rows tbody th {
+  width: 1%;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.month-rows__amount {
+  display: block;
+  font: 600 14px var(--font-mono);
+  white-space: nowrap;
+}
+
+.month-rows__track {
+  display: block;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 5px;
+  background: #eceae4;
+  overflow: hidden;
+}
+
+.month-rows__fill {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+}
+
+.month-rows__balance {
+  width: 1%;
+  font: 600 14px var(--font-mono);
+  white-space: nowrap;
+}
+
+.month-rows__balance small {
+  font: 500 12px var(--font-sans);
+}
+
+.month-rows__balance[data-tone='good'] {
+  color: var(--color-success);
+}
+
+.month-rows__balance[data-tone='bad'] {
+  color: var(--color-error);
+}
+
+.month-rows tfoot th,
+.month-rows tfoot td {
+  border-bottom: 0;
+  border-top: 2px solid var(--color-text);
+  background: #f7f6f3;
+  font-weight: 700;
+}
+
+/* Members up to date against members who owe, as one bar split in proportion */
+
+.stats__people {
+  display: flex;
+  gap: 3px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.stats__people span {
+  flex-basis: 0;
+  min-width: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 16px var(--font-mono);
+  color: #fff;
+}
+
+.stats__people-key {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  font-size: 14px;
+}
+
+.stats__people-key .stats__swatch {
+  width: 12px;
+  height: 12px;
+  margin-right: 6px;
+}
+
+/* The carousel */
+
+.carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.carousel__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.carousel__step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px 7px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  font: 500 13px var(--font-sans);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.carousel__step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #eceae4;
+  font: 600 11px var(--font-mono);
+}
+
+.carousel__step[aria-current='step'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.carousel__step[aria-current='step'] .carousel__step-number {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.carousel__step:focus-visible,
+.carousel__arrow:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
+}
+
+.carousel__stage {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr) 76px;
+  gap: 10px;
+  align-items: start;
+}
+
+.carousel__slide {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  animation: carouselNext 0.35s ease-out;
+}
+
+.carousel__slide[data-direction='previous'] {
+  animation-name: carouselPrevious;
+}
+
+.carousel__title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 20px;
+}
+
+@keyframes carouselNext {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+}
+
+@keyframes carouselPrevious {
+  from {
+    opacity: 0;
+    transform: translateX(-28px);
+  }
+}
+
+/* The arrows sit at the middle of the screen's height, big and in the club's blue, so they cannot be missed. */
+.carousel__arrow {
+  position: sticky;
+  top: 45vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: 600 11px var(--font-sans);
+  cursor: pointer;
+}
+
+.carousel__arrow svg {
+  box-sizing: content-box;
+  padding: 14px;
+  border-radius: 50%;
+  background: var(--color-accent);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(31, 78, 140, 0.35);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.carousel__arrow:hover:not(:disabled) svg {
+  background: var(--color-accent-hover);
+  transform: scale(1.08);
+}
+
+.carousel__arrow:disabled {
+  cursor: default;
+  opacity: 0.3;
+}
+
+.carousel__arrow:disabled svg {
+  background: #9a9a94;
+  box-shadow: none;
+}
+
+.carousel__arrow-caption {
+  max-width: 76px;
+  text-align: center;
+  line-height: 1.2;
+}
+
+/* Until the arrow is used once, the next one pulses so the secretary notices there is more to see. */
+.carousel__arrow[data-attention='true'] svg {
+  animation: arrowPulse 1.6s ease-out infinite;
+}
+
+@keyframes arrowPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(31, 78, 140, 0.55), 0 6px 16px rgba(31, 78, 140, 0.35);
+  }
+  70% {
+    box-shadow: 0 0 0 18px rgba(31, 78, 140, 0), 0 6px 16px rgba(31, 78, 140, 0.35);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(31, 78, 140, 0), 0 6px 16px rgba(31, 78, 140, 0.35);
+  }
+}
+
+.carousel__hint {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .carousel__slide,
+  .carousel__arrow[data-attention='true'] svg {
+    animation: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .stats__pie-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* On a narrower screen the arrows move under the slide, side by side. */
+  .carousel__stage {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: 'slide slide' 'previous next';
+    gap: 16px 12px;
+  }
+
+  .carousel__slide {
+    grid-area: slide;
+  }
+
+  .carousel__arrow--previous {
+    grid-area: previous;
+  }
+
+  .carousel__arrow--next {
+    grid-area: next;
+  }
+
+  .carousel__arrow {
+    position: static;
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
+    padding: 4px 8px;
+    font-size: 13px;
+  }
+
+  .carousel__arrow--next {
+    flex-direction: row-reverse;
+  }
+
+  .carousel__arrow-caption {
+    max-width: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .carousel__step {
+    padding-right: 10px;
+    font-size: 12px;
+  }
+
+  .stats__lead {
+    font-size: 16px;
+  }
+
+  .stats__operator {
+    display: none;
+  }
+
+  /* On a phone each month becomes a small card: the month on top, then each amount with its name. */
+  .month-rows thead {
+    display: none;
+  }
+
+  .month-rows,
+  .month-rows tbody,
+  .month-rows tfoot,
+  .month-rows tr,
+  .month-rows th,
+  .month-rows td {
+    display: block;
+    width: auto;
+  }
+
+  .month-rows tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .month-rows th,
+  .month-rows td {
+    padding: 4px 0;
+    border: 0;
+  }
+
+  .month-rows td::before {
+    content: attr(data-label);
+    display: block;
+    font: 500 12px var(--font-sans);
+    color: var(--color-text-muted);
+  }
+
+  .month-rows tfoot th,
+  .month-rows tfoot td {
+    border: 0;
+    background: none;
+  }
+}
+
+@media print {
+  .carousel__arrow,
+  .carousel__steps {
+    display: none;
+  }
+}

@@ -75,3 +75,22 @@ export interface DisciplineSettlement {
   /** Late-payment surcharges linked to the discipline, kept out of `feeTotal`. */
   surchargeTotal: Money;
 }
+
+export interface DisciplineIncomeQuery {
+  /** First month of the range, `YYYY-MM`. */
+  from: Period;
+  /** Last month of the range, `YYYY-MM`, included. */
+  to: Period;
+}
+
+/** What each discipline took in over a range of months, counted by the day the money was taken. */
+export interface DisciplineIncome {
+  from: Period;
+  to: Period;
+  /** Every month of the range, oldest first; each discipline's `byMonth` lines up with it. */
+  months: Period[];
+  /** Valid activity fees and their surcharges; the disciplines' totals add up to it. */
+  total: Money;
+  /** Biggest first; a discipline that took nothing in the range is not listed. */
+  disciplines: Array<{ id: string; name: string; total: Money; fees: Money; surcharges: Money; byMonth: Money[] }>;
+}

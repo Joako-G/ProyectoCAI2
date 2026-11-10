@@ -1,11 +1,15 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import type { FieldErrors } from '../../members/utils/member-validation';
-import type { DisciplineInput } from '../types/discipline';
+import type { DisciplineInput, TeacherOption } from '../types/discipline';
 import { validateDisciplineForm, type DisciplineFormValues } from '../utils/discipline-validation';
 
 interface DisciplineFormProps {
   mode: 'create' | 'edit';
   initialValues: DisciplineFormValues;
+  /** The teacher accounts that can be put on the discipline. */
+  teacherOptions: TeacherOption[];
+  /** Names typed in before teachers were accounts; shown so the matching accounts can be picked. */
+  legacyTeachers?: string[];
   saving: boolean;
   /** Errors reported by the backend, keyed like the form fields. */
   fieldErrors?: FieldErrors;
@@ -34,6 +38,7 @@ function NameField({ value, error, onChange }: NameFieldProps) {
         name="name"
         type="text"
         autoComplete="off"
+        placeholder="Por ejemplo: Vóley"
         required
         value={value}
         aria-invalid={error ? true : undefined}
@@ -53,6 +58,8 @@ function NameField({ value, error, onChange }: NameFieldProps) {
 export function DisciplineForm({
   mode,
   initialValues,
+  teacherOptions,
+  legacyTeachers = [],
   saving,
   fieldErrors,
   submitError,
@@ -62,8 +69,6 @@ export function DisciplineForm({
   const [values, setValues] = useState<DisciplineFormValues>(initialValues);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [focusRequest, setFocusRequest] = useState(0);
-  // A new object per request, so asking for the same row twice still moves the focus.
-  const [teacherFocus, setTeacherFocus] = useState<{ index: number }>();
   const formRef = useRef<HTMLFormElement>(null);
   const leadGroupName = useId();
   const teachersErrorId = useId();
@@ -80,12 +85,6 @@ export function DisciplineForm({
     if (focusRequest > 0) formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
   }, [focusRequest]);
 
-  useEffect(() => {
-    if (teacherFocus) {
-      formRef.current?.querySelector<HTMLElement>(`[data-teacher-row="${teacherFocus.index}"]`)?.focus();
-    }
-  }, [teacherFocus]);
-
   function clearErrors(...names: string[]) {
     setErrors((current) => {
       if (!names.some((name) => name in current)) return current;
@@ -100,35 +99,17 @@ export function DisciplineForm({
     clearErrors('name');
   }
 
-  function changeTeacher(index: number, value: string) {
-    setValues((current) => ({
-      ...current,
-      teachers: current.teachers.map((teacher, i) => (i === index ? value : teacher)),
-    }));
-    clearErrors('teachers');
-  }
-
-  function addTeacher() {
-    setValues((current) => ({ ...current, teachers: [...current.teachers, ''] }));
-    setTeacherFocus({ index: values.teachers.length });
-    clearErrors('teachers');
-  }
-
-  // The lead follows the same person when a row above it goes away; if the lead row is removed, row 1 takes over.
-  function removeTeacher(index: number) {
-    if (values.teachers.length <= 1) return;
-    setValues((current) => ({
-      ...current,
-      teachers: current.teachers.filter((_, i) => i !== index),
-      leadIndex:
-        current.leadIndex === index ? 0 : current.leadIndex > index ? current.leadIndex - 1 : current.leadIndex,
-    }));
-    setTeacherFocus({ index: Math.max(0, index - 1) });
+  // The first teacher picked is in charge; when the one in charge is taken off, the first one left takes over.
+  function toggleTeacher(id: string) {
+    setValues((current) => {
+      const teacherIds = current.teacherIds.includes(id) ? current.teacherIds.filter((other) => other !== id) : [...current.teacherIds, id];
+      return { ...current, teacherIds, leadId: teacherIds.includes(current.leadId) ? current.leadId : (teacherIds[0] ?? '') };
+    });
     clearErrors('teachers', 'leadTeacher');
   }
 
-  function selectLead(index: number) {
-    setValues((current) => ({ ...current, leadIndex: index }));
+  function selectLead(id: string) {
+    setValues((current) => ({ ...current, leadId: id }));
     clearErrors('leadTeacher');
   }
 
@@ -141,6 +122,9 @@ export function DisciplineForm({
     else setFocusRequest((current) => current + 1);
   }
 
+  const chosen = values.teacherIds.length;
+  const firstChosen = teacherOptions.find(({ id }) => values.teacherIds.includes(id))?.id;
+
   return (
     <form ref={formRef} className="member-form" noValidate onSubmit={handleSubmit}>
       {submitError ? (
@@ -149,48 +133,58 @@ export function DisciplineForm({
         </p>
       ) : null}
 
-      <div className="member-form__grid">
+      <div className="discipline-form__step">
+        <p className="discipline-form__step-title"><span className="discipline-form__step-number" aria-hidden="true">1</span>Datos de la disciplina</p>
         <NameField value={values.name} error={errors.name} onChange={handleNameChange} />
       </div>
 
-      <fieldset className="member-form__section" aria-describedby={errors.teachers ? teachersErrorId : undefined}>
-        <legend className="member-form__legend">Profesores</legend>
-        {values.teachers.map((teacher, index) => (
-          // Rows have no identity besides their position, so the index is the key.
-          <div key={index} className="teacher-row">
-            <input
-              type="text"
-              autoComplete="off"
-              data-teacher-row={index}
-              aria-label={`Profesor ${index + 1}`}
-              value={teacher}
-              aria-invalid={errors.teachers ? true : undefined}
-              aria-describedby={errors.teachers ? teachersErrorId : undefined}
-              onChange={(event) => changeTeacher(index, event.target.value)}
-            />
-            <label className="teacher-row__lead">
-              <input
-                type="radio"
-                name={leadGroupName}
-                checked={values.leadIndex === index}
-                aria-label={`A cargo: profesor ${index + 1}`}
-                aria-invalid={errors.leadTeacher && index === 0 ? true : undefined}
-                aria-describedby={errors.leadTeacher ? leadErrorId : undefined}
-                onChange={() => selectLead(index)}
-              />
-              <span aria-hidden="true">A cargo</span>
-            </label>
-            <button
-              type="button"
-              className="button button--secondary"
-              aria-label={`Quitar profesor ${index + 1}`}
-              disabled={values.teachers.length === 1}
-              onClick={() => removeTeacher(index)}
-            >
-              Quitar
-            </button>
-          </div>
-        ))}
+      <fieldset className="discipline-form__step discipline-form__teachers" aria-describedby={errors.teachers ? teachersErrorId : undefined}>
+        <legend className="discipline-form__step-title"><span className="discipline-form__step-number" aria-hidden="true">2</span>Profesores</legend>
+        <p className="member-form__hint">Marcá los profesores que dan esta disciplina y elegí cuál está a cargo. La lista muestra los usuarios con rol profesor.</p>
+        {legacyTeachers.length > 0 ? (
+          <p className="discipline-form__legacy">
+            Antes figuraban: <strong>{legacyTeachers.join(', ')}</strong>. Marcá sus usuarios en la lista; al guardar, reemplazan a esos nombres.
+          </p>
+        ) : null}
+        {teacherOptions.length === 0 ? (
+          <p className="members-page__notice">Todavía no hay usuarios con rol profesor. Creá uno desde la sección Usuarios y volvé a esta pantalla.</p>
+        ) : (
+          <>
+            {teacherOptions.map((teacher, index) => {
+              const checked = values.teacherIds.includes(teacher.id);
+              return (
+                <div key={teacher.id} className="teacher-row" data-checked={checked} data-lead={values.leadId === teacher.id}>
+                  <label className="teacher-row__pick">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      aria-invalid={errors.teachers && index === 0 ? true : undefined}
+                      aria-describedby={errors.teachers ? teachersErrorId : undefined}
+                      onChange={() => toggleTeacher(teacher.id)}
+                    />
+                    <span>{teacher.name}</span>
+                  </label>
+                  <label className="teacher-row__lead" data-disabled={!checked}>
+                    <input
+                      type="radio"
+                      name={leadGroupName}
+                      checked={values.leadId === teacher.id}
+                      disabled={!checked}
+                      aria-label={`A cargo: ${teacher.name}`}
+                      aria-invalid={errors.leadTeacher && teacher.id === firstChosen ? true : undefined}
+                      aria-describedby={errors.leadTeacher ? leadErrorId : undefined}
+                      onChange={() => selectLead(teacher.id)}
+                    />
+                    <span aria-hidden="true">A cargo</span>
+                  </label>
+                </div>
+              );
+            })}
+            <p className="discipline-form__count" role="status">
+              {chosen === 0 ? 'Ningún profesor elegido' : chosen === 1 ? '1 profesor elegido' : `${chosen} profesores elegidos`}
+            </p>
+          </>
+        )}
         {errors.teachers ? (
           <p id={teachersErrorId} className="form-field__error">
             {errors.teachers}
@@ -201,12 +195,9 @@ export function DisciplineForm({
             {errors.leadTeacher}
           </p>
         ) : null}
-        <button type="button" className="button button--secondary" onClick={addTeacher}>
-          Agregar profesor
-        </button>
       </fieldset>
 
-      <div className="member-form__actions">
+      <div className="member-form__actions discipline-form__actions">
         <button type="submit" className="button button--primary" disabled={saving}>
           {saving ? 'Guardando…' : mode === 'create' ? 'Crear disciplina' : 'Guardar cambios'}
         </button>

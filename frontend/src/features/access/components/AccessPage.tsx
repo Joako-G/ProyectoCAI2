@@ -50,16 +50,14 @@ export function AccessPage({ refreshMs = DEFAULT_REFRESH_MS, today = todayInClub
           {KIOSK_TEXT.sessionExpired}. <a href="/ingreso">{KIOSK_TEXT.signIn}</a>
         </p>
       ) : null}
-      <div className="ventanilla__top">
+      <aside className="ventanilla__side">
         <DoorCard connected={control.connected || control.sessionExpired} check={check} onCheck={handleCheck} />
-        <div className="ventanilla__result">
-          <ControlBanner banner={banner} />
-          {card ? <MemberControlCard card={card} dni={details.dni} /> : null}
-        </div>
-      </div>
-      <div className="ventanilla__bottom">
-        <EntriesToday state={entries} onRetry={() => void reload()} />
         <ClubToday counts={entries.day?.counts} />
+      </aside>
+      <div className="ventanilla__main">
+        <ControlBanner banner={banner} />
+        {card ? <MemberControlCard card={card} dni={details.dni} /> : null}
+        <EntriesToday state={entries} onRetry={() => void reload()} />
       </div>
     </div>
   );

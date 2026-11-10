@@ -59,10 +59,10 @@ describe('fetchDisciplines', () => {
 });
 
 describe('mutations', () => {
-  const input = { name: 'Vóley', teachers: ['Ana Gómez', 'Luis Sosa'], leadTeacher: 'Luis Sosa' };
+  const input = { name: 'Vóley', teacherIds: ['t1', 't2'], leadTeacherId: 't2' };
 
   it('creates with a JSON POST', async () => {
-    stubFetch(jsonResponse(buildDiscipline(input), 201));
+    stubFetch(jsonResponse(buildDiscipline({ name: input.name }), 201));
 
     await createDiscipline(input);
 
@@ -72,7 +72,7 @@ describe('mutations', () => {
   });
 
   it('updates with a JSON PUT to the encoded id', async () => {
-    stubFetch(jsonResponse(buildDiscipline(input)));
+    stubFetch(jsonResponse(buildDiscipline({ name: input.name })));
 
     await updateDiscipline('disc/1', input);
 

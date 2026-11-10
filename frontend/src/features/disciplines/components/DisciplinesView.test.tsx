@@ -14,6 +14,8 @@ const volley = buildDiscipline({ id: 'disc-2', name: 'Vóley',
   status: 'inactive',
 });
 
+const TEACHERS = [{ id: 'teacher-1', name: 'Marcos Peña' }, { id: 'teacher-2', name: 'Ana Gómez' }];
+
 function requests() {
   return fetchMock.mock.calls.map(([url, init]) => `${init?.method ?? 'GET'} ${String(url)}`);
 }
@@ -96,6 +98,7 @@ describe('DisciplinesView create and edit', () => {
   it('creates a discipline and returns to the refreshed list', async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse(TEACHERS))
       .mockResolvedValueOnce(jsonResponse(basket, 201))
       .mockResolvedValueOnce(jsonResponse([basket]));
     const user = userEvent.setup();
@@ -103,32 +106,49 @@ describe('DisciplinesView create and edit', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Nueva disciplina' }));
     expect(screen.getByRole('heading', { name: 'Alta de disciplina' })).toHaveFocus();
-    await user.type(screen.getByLabelText('Nombre'), 'Básquet');
-    await user.type(screen.getByLabelText('Profesor 1'), 'Marcos Peña');
-    await user.click(screen.getByRole('button', { name: 'Agregar profesor' }));
-    await user.type(screen.getByLabelText('Profesor 2'), 'Ana Gómez');
-    await user.click(screen.getByRole('radio', { name: 'A cargo: profesor 2' }));
+    await user.type(await screen.findByLabelText('Nombre'), 'Básquet');
+    await user.click(screen.getByRole('checkbox', { name: 'Marcos Peña' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Ana Gómez' }));
+    await user.click(screen.getByRole('radio', { name: 'A cargo: Ana Gómez' }));
     await user.click(screen.getByRole('button', { name: 'Crear disciplina' }));
 
     expect(await screen.findByRole('table', { name: 'Listado de disciplinas' })).toBeInTheDocument();
-    expect(requests()).toEqual(['GET /api/disciplines', 'POST /api/disciplines', 'GET /api/disciplines']);
-    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({
+    expect(requests()).toEqual(['GET /api/disciplines', 'GET /api/disciplines/teachers', 'POST /api/disciplines', 'GET /api/disciplines']);
+    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual({
       name: 'Básquet',
-      teachers: ['Marcos Peña', 'Ana Gómez'],
-      leadTeacher: 'Ana Gómez',
+      teacherIds: ['teacher-1', 'teacher-2'],
+      leadTeacherId: 'teacher-2',
     });
+  });
+
+  it('offers to try again when the teacher accounts cannot be read', async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse({ error: 'internal_error', message: 'Boom' }, 500))
+      .mockResolvedValueOnce(jsonResponse(TEACHERS));
+    const user = userEvent.setup();
+    render(<DisciplinesView canWrite />);
+
+    await user.click(await screen.findByRole('button', { name: 'Nueva disciplina' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('No se pudo cargar la lista de profesores. Boom');
+    expect(screen.queryByLabelText('Nombre')).not.toBeInTheDocument();
+
+    await user.click(within(alert).getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByRole('checkbox', { name: 'Marcos Peña' })).toBeInTheDocument();
   });
 
   it('shows the duplicate-name conflict on the name field', async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse(TEACHERS))
       .mockResolvedValueOnce(jsonResponse({ error: 'conflict', message: 'A discipline with this name already exists' }, 409));
     const user = userEvent.setup();
     render(<DisciplinesView canWrite />);
 
     await user.click(await screen.findByRole('button', { name: 'Nueva disciplina' }));
-    await user.type(screen.getByLabelText('Nombre'), 'Básquet');
-    await user.type(screen.getByLabelText('Profesor 1'), 'Marcos Peña');
+    await user.type(await screen.findByLabelText('Nombre'), 'Básquet');
+    await user.click(screen.getByRole('checkbox', { name: 'Marcos Peña' }));
     await user.click(screen.getByRole('button', { name: 'Crear disciplina' }));
 
     await waitFor(() =>
@@ -141,23 +161,24 @@ describe('DisciplinesView create and edit', () => {
   it('maps backend field errors from a 400 onto the fields', async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse([]))
+      .mockResolvedValueOnce(jsonResponse(TEACHERS))
       .mockResolvedValueOnce(
-        jsonResponse({ error: 'validation_error', message: 'Invalid', fieldErrors: { teachers: 'Teachers must not be repeated', leadTeacher: 'Lead teacher must be one of the teachers' } }, 400),
+        jsonResponse({ error: 'validation_error', message: 'Invalid', fieldErrors: { teachers: 'Every teacher must be an active teacher account', leadTeacher: 'Lead teacher must be one of the teachers' } }, 400),
       );
     const user = userEvent.setup();
     render(<DisciplinesView canWrite />);
 
     await user.click(await screen.findByRole('button', { name: 'Nueva disciplina' }));
-    await user.type(screen.getByLabelText('Nombre'), 'Básquet');
-    await user.type(screen.getByLabelText('Profesor 1'), 'x');
+    await user.type(await screen.findByLabelText('Nombre'), 'Básquet');
+    await user.click(screen.getByRole('checkbox', { name: 'Marcos Peña' }));
     await user.click(screen.getByRole('button', { name: 'Crear disciplina' }));
 
     await waitFor(() =>
       expect(screen.getByRole('group', { name: 'Profesores' })).toHaveAccessibleDescription(
-        'Teachers must not be repeated',
+        'Every teacher must be an active teacher account',
       ),
     );
-    expect(screen.getByRole('radio', { name: 'A cargo: profesor 1' })).toHaveAccessibleDescription(
+    expect(screen.getByRole('radio', { name: 'A cargo: Marcos Peña' })).toHaveAccessibleDescription(
       'Lead teacher must be one of the teachers',
     );
   });
@@ -165,23 +186,25 @@ describe('DisciplinesView create and edit', () => {
   it('edits a discipline with a prefilled form', async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse([basket]))
-      .mockResolvedValueOnce(jsonResponse({ ...basket, teachers: ['Lucas Vera'], leadTeacher: 'Lucas Vera' }))
-      .mockResolvedValueOnce(jsonResponse([{ ...basket, teachers: ['Lucas Vera'], leadTeacher: 'Lucas Vera' }]));
+      .mockResolvedValueOnce(jsonResponse(TEACHERS))
+      .mockResolvedValueOnce(jsonResponse({ ...basket, teachers: ['Ana Gómez'], leadTeacher: 'Ana Gómez' }))
+      .mockResolvedValueOnce(jsonResponse([{ ...basket, teachers: ['Ana Gómez'], leadTeacher: 'Ana Gómez' }]));
     const user = userEvent.setup();
     render(<DisciplinesView canWrite />);
 
     await user.click(await screen.findByRole('button', { name: 'Editar Básquet' }));
     expect(screen.getByRole('heading', { name: 'Editar disciplina' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Nombre')).toHaveValue('Básquet');
-    expect(screen.getByLabelText('Profesor 1')).toHaveValue('Marcos Peña');
-    expect(screen.getByRole('radio', { name: 'A cargo: profesor 1' })).toBeChecked();
+    expect(await screen.findByLabelText('Nombre')).toHaveValue('Básquet');
+    expect(screen.getByRole('checkbox', { name: 'Marcos Peña' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'A cargo: Marcos Peña' })).toBeChecked();
 
-    await user.clear(screen.getByLabelText('Profesor 1'));
-    await user.type(screen.getByLabelText('Profesor 1'), 'Lucas Vera');
+    await user.click(screen.getByRole('checkbox', { name: 'Marcos Peña' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Ana Gómez' }));
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
 
-    expect(await screen.findByText('Lucas Vera')).toBeInTheDocument();
-    expect(requests()[1]).toBe('PUT /api/disciplines/disc-1');
+    expect(await screen.findByText('Ana Gómez')).toBeInTheDocument();
+    expect(requests()[2]).toBe('PUT /api/disciplines/disc-1');
+    expect(JSON.parse(String(fetchMock.mock.calls[2][1]?.body))).toEqual({ name: 'Básquet', teacherIds: ['teacher-2'], leadTeacherId: 'teacher-2' });
   });
 
   it('keeps the status tab and search when coming back from the form', async () => {
@@ -195,7 +218,7 @@ describe('DisciplinesView create and edit', () => {
     await waitFor(() => expect(requests()).toContain('GET /api/disciplines?search=b%C3%A1s&status=active'));
 
     await user.click(await screen.findByRole('button', { name: 'Editar Básquet' }));
-    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+    await user.click(await screen.findByRole('button', { name: 'Cancelar' }));
 
     await screen.findByRole('table', { name: 'Listado de disciplinas' });
     expect(screen.getByRole('radio', { name: 'Activas' })).toBeChecked();
@@ -209,7 +232,7 @@ describe('DisciplinesView create and edit', () => {
     render(<DisciplinesView canWrite />);
 
     await user.click(await screen.findByRole('button', { name: 'Editar Básquet' }));
-    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+    await user.click(await screen.findByRole('button', { name: 'Cancelar' }));
 
     expect(await screen.findByRole('table')).toBeInTheDocument();
     expect(requests().every((request) => request.startsWith('GET'))).toBe(true);

@@ -8,11 +8,14 @@
 
 /* ---- Screen ---- */
 
+/* Only the frame's own structure is flattened; the tables inside the report keep behaving as tables. */
 .report-frame,
 .report-frame > thead,
 .report-frame > tbody,
-.report-frame tr,
-.report-frame td {
+.report-frame > thead > tr,
+.report-frame > tbody > tr,
+.report-frame > thead > tr > td,
+.report-frame > tbody > tr > td {
   display: block;
   padding: 0;
 }

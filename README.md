@@ -48,14 +48,19 @@ pnpm --filter @club-socios/backend seed          # add --force to replace existi
 
 ## Disciplines API (demo)
 
-The disciplines catalog is stored in a JSON file (`backend/data/disciplines.json`, or the path in `DISCIPLINES_FILE`), with the same demo-only limits as members. Each discipline has a name (required, unique ignoring case and accents, also against inactive ones) and one or more teachers. `teachers` is a list of names (free text, each trimmed, at most 100 characters, unique ignoring case and accents) and `leadTeacher` is the one in charge; it must be one of `teachers` (compared after trimming). Validation errors use the field keys `teachers` and `leadTeacher`. Members enroll in the discipline only, not with a specific teacher. Records stored with the older single `teacherName` are read as `teachers: [teacherName]`, `leadTeacher: teacherName` (the file is rewritten in the new shape on the next change). Removal is logical, so there is no delete endpoint.
+The disciplines catalog is stored in a JSON file (`backend/data/disciplines.json`, or the path in `DISCIPLINES_FILE`), with the same demo-only limits as members. Each discipline has a name (required, unique ignoring case and accents, also against inactive ones) and one or more teachers. Members enroll in the discipline only, not with a specific teacher. Removal is logical, so there is no delete endpoint.
+
+Teachers are user accounts with the `teacher` role. A create or update sends `teacherIds` (at least one id of an active teacher account) and `leadTeacherId` (the one in charge, one of `teacherIds`); validation errors use the field keys `teachers` and `leadTeacher`. Who teaches a discipline is stored once, on the accounts (`disciplineIds`, the same list the users screen edits and the teacher roster reads): saving a discipline gives it to exactly the accounts sent and takes it from every other teacher. The discipline itself keeps only the id of the teacher in charge.
+
+A discipline is answered with `teachers` and `leadTeacher` (the accounts' current names, by name), `teacherIds` and `leadTeacherId`. When the teacher in charge loses the discipline from the users screen, the first remaining teacher is in charge; with no teacher left, `teachers` is empty and `leadTeacherId` is `null`. A discipline saved before teachers were accounts (typed names, or the older single `teacherName`) is answered with those names, `teacherIds: []` and `leadTeacherId: null` until it is edited.
 
 | Method | Path | Notes |
 | --- | --- | --- |
 | GET | `/api/disciplines?search=&status=` | `search` matches the name; `status` is `active` or `inactive` |
+| GET | `/api/disciplines/teachers` | The active teacher accounts (`id`, `name`) a discipline can be given to |
 | GET | `/api/disciplines/:id` | 404 if unknown |
 | POST | `/api/disciplines` | 201 with the created discipline; 409 on a duplicate name |
-| PUT | `/api/disciplines/:id` | Replaces name, teachers and lead teacher |
+| PUT | `/api/disciplines/:id` | Replaces name, teacher accounts and the one in charge |
 | POST | `/api/disciplines/:id/deactivate` | 409 if already inactive |
 | POST | `/api/disciplines/:id/reactivate` | 409 if already active |
 

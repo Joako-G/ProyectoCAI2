@@ -1,5 +1,5 @@
 import { ApiError, request, sendJson } from '../../members/services/members-api';
-import type { Discipline, DisciplineInput, DisciplineListQuery } from '../types/discipline';
+import type { Discipline, DisciplineInput, DisciplineListQuery, TeacherOption } from '../types/discipline';
 
 // The HTTP plumbing and error contract are shared with the members client.
 export { ApiError };
@@ -18,6 +18,11 @@ function disciplineUrl(id: string, action = ''): string {
 
 export function fetchDisciplines(query: DisciplineListQuery, signal?: AbortSignal): Promise<Discipline[]> {
   return request<Discipline[]>(buildListUrl(query), { signal });
+}
+
+/** The active teacher accounts, by name: the ones a discipline can be given to. */
+export function fetchTeacherOptions(signal?: AbortSignal): Promise<TeacherOption[]> {
+  return request<TeacherOption[]>('/api/disciplines/teachers', { signal });
 }
 
 export function createDiscipline(input: DisciplineInput): Promise<Discipline> {

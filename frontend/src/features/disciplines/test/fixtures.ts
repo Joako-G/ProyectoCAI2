@@ -6,6 +6,8 @@ export function buildDiscipline(overrides: Partial<Discipline> = {}): Discipline
     name: 'Básquet',
     teachers: ['Marcos Peña'],
     leadTeacher: 'Marcos Peña',
+    teacherIds: ['teacher-1'],
+    leadTeacherId: 'teacher-1',
     status: 'active',
     createdAt: '2026-10-21T15:00:00.000Z',
     ...overrides,

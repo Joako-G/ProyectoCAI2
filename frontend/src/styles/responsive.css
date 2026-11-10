@@ -19,8 +19,13 @@
     align-items: center;
     justify-content: space-between;
     padding: 6px 12px;
+    height: auto;
     max-height: 100vh;
     overflow-y: auto;
+  }
+
+  .sidebar__crest {
+    width: 28px;
   }
 
   .sidebar__brand {

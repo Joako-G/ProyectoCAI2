@@ -6,7 +6,7 @@ import type { ReportGranularity } from './report.types.js';
 const queryText = (value: unknown) => (typeof value === 'string' ? value : undefined);
 
 // Mounted behind requireCapability('reports:read'). Reports only read: there is no write route.
-export function createReportRouter(service: Pick<ReportService, 'revenue' | 'disciplineSettlement'>): Router {
+export function createReportRouter(service: Pick<ReportService, 'revenue' | 'disciplineSettlement' | 'disciplineIncome'>): Router {
   const router = Router();
 
   router.get('/revenue', async (request, response) => {
@@ -17,6 +17,11 @@ export function createReportRouter(service: Pick<ReportService, 'revenue' | 'dis
   router.get('/discipline-settlement', async (request, response) => {
     const { period, disciplineId } = request.query;
     response.json(await service.disciplineSettlement({ period: queryText(period) as string, disciplineId: queryText(disciplineId) as string }));
+  });
+
+  router.get('/discipline-income', async (request, response) => {
+    const { from, to } = request.query;
+    response.json(await service.disciplineIncome({ from: queryText(from) as string, to: queryText(to) as string }));
   });
 
   return router;
