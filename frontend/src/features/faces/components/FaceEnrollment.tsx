@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { DEFAULT_CAPTURE_TIMING, useCaptureGuide, type CaptureOutcome, type CaptureTiming } from '../hooks/useCaptureGuide';
 import { useFaceCamera } from '../hooks/useFaceCamera';
+import { ApiError } from '../../members/services/members-api';
+import { getActiveEnrollment, getEnrollmentDisplay, openEnrollment } from '../services/enrollment-api';
 import { enrollFace, getFaceStatus, removeFace } from '../services/faces-api';
+import { isEnrollmentActive, type EnrollmentSession } from '../types/enrollment';
 import type { FaceStatus } from '../types/face';
 import { addCapture, EMPTY_PROGRESS, ENROLLMENT_CAPTURES, type EnrollmentProgress } from '../utils/enrollment-captures';
 import { describeFaceApiError } from '../utils/face-messages';
 import { CaptureGuide } from './CaptureGuide';
+import { PublicEnrollmentFollow } from './PublicEnrollmentFollow';
 
 const CONSENT_LABEL = 'El socio (o su tutor, si es menor) autorizó el uso de su imagen para reconocimiento facial';
 
@@ -15,7 +19,18 @@ const DEFAULT_ENROLLMENT_TIMING: CaptureTiming = { ...DEFAULT_CAPTURE_TIMING, pa
 const INCONSISTENT_MESSAGE = 'Esa captura no coincide con las anteriores. Probemos de nuevo.';
 const RESTART_MESSAGE = 'Las capturas no fueron consistentes. Empezamos de nuevo.';
 
-type Status = { phase: 'loading' } | { phase: 'error'; message: string } | { phase: 'ready'; status: FaceStatus };
+/** How often the block checks whether a public screen is connected while it is idle. */
+const DISPLAY_CHECK_MS = 5000;
+
+const PUBLIC_OPEN_CONFLICT = 'No se pudo iniciar el registro: hay otro registro en curso o la pantalla pública no está conectada.';
+const ENDED_MESSAGE: Record<string, string> = {
+  failed: 'No se pudo registrar la cara en la pantalla pública. Intente de nuevo.',
+  expired: 'Se agotó el tiempo del registro. Intente de nuevo.',
+  cancelled: 'El registro se canceló.',
+};
+const LOST_MESSAGE = 'Se perdió el seguimiento del registro. Verifique si la cara quedó registrada.';
+
+type Status ={ phase: 'loading' } | { phase: 'error'; message: string } | { phase: 'ready'; status: FaceStatus };
 
 /**
  * The "Reconocimiento facial" block of a member's record: whether a face is enrolled, and enrolling or deleting it.
@@ -26,8 +41,11 @@ type Status = { phase: 'loading' } | { phase: 'error'; message: string } | { pha
 export function FaceEnrollment({
   memberId,
   timing = DEFAULT_ENROLLMENT_TIMING,
+  followIntervalMs,
 }: {
   memberId: string;
+  /** Overrides how often a public-screen session is polled; used by tests. */
+  followIntervalMs?: number;
   /** Overrides the capture timing; used by tests. */
   timing?: CaptureTiming;
 }) {
@@ -37,6 +55,11 @@ export function FaceEnrollment({
   const [busy, setBusy] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [message, setMessage] = useState<string>();
+  const [info, setInfo] = useState<string>();
+  // A public screen is connected: the registration can be guided there, with the member looking at it.
+  const [displayConnected, setDisplayConnected] = useState(false);
+  const [choosing, setChoosing] = useState(false);
+  const [following, setFollowing] = useState<EnrollmentSession>();
   const camera = useFaceCamera();
   const [progress, setProgress] = useState<EnrollmentProgress>();
   const [notice, setNotice] = useState<string>();
@@ -72,6 +95,37 @@ export function FaceEnrollment({
     return () => controller.abort();
   }, [load]);
 
+  // A session already running for this member (after a reload) is followed again.
+  useEffect(() => {
+    const controller = new AbortController();
+    getActiveEnrollment(controller.signal).then(
+      (answer) => {
+        const session = answer?.session;
+        if (!controller.signal.aborted && session && session.memberId === memberId && isEnrollmentActive(session.status)) setFollowing(session);
+      },
+      () => undefined,
+    );
+    return () => controller.abort();
+  }, [memberId]);
+
+  // While idle, keep checking whether a public screen is connected.
+  const idle = !capturing && !following;
+  useEffect(() => {
+    if (!idle) return;
+    const controller = new AbortController();
+    const check = () =>
+      getEnrollmentDisplay(controller.signal).then(
+        (answer) => !controller.signal.aborted && setDisplayConnected(answer?.connected === true),
+        () => !controller.signal.aborted && setDisplayConnected(false),
+      );
+    void check();
+    const timer = setInterval(() => void check(), DISPLAY_CHECK_MS);
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+    };
+  }, [idle]);
+
   function updateProgress(next: EnrollmentProgress | undefined) {
     progressRef.current = next ?? EMPTY_PROGRESS;
     setProgress(next);
@@ -82,7 +136,52 @@ export function FaceEnrollment({
     updateProgress(undefined);
     setNotice(undefined);
     setCapturing(false);
+    setChoosing(false);
     setConsent(false);
+  }
+
+  /** With a public screen connected the secretary chooses where to register; without one the camera opens here. */
+  function startRegistering() {
+    setMessage(undefined);
+    setInfo(undefined);
+    if (displayConnected) setChoosing(true);
+    else openCamera();
+  }
+
+  async function startOnPublicScreen() {
+    setBusy(true);
+    setMessage(undefined);
+    try {
+      setFollowing(await openEnrollment(memberId));
+      setChoosing(false);
+      setConsent(false);
+    } catch (error) {
+      setMessage(error instanceof ApiError && error.status === 409 ? PUBLIC_OPEN_CONFLICT : describeFaceApiError(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function registerOnThisScreen() {
+    setChoosing(false);
+    openCamera();
+  }
+
+  /** The session ended: saved, cancelled, timed out, failed, or the follow-up was lost (`undefined`). */
+  function publicEnrollmentEnded(final: EnrollmentSession | undefined) {
+    setFollowing(undefined);
+    if (!final) {
+      setMessage(LOST_MESSAGE);
+      return;
+    }
+    if (final.status === 'completed') {
+      setInfo('Cara registrada en la pantalla pública.');
+      setStatus({ phase: 'ready', status: { enrolled: true } });
+      // Reads the enrollment date the server recorded.
+      void getFaceStatus(memberId).then((current) => setStatus({ phase: 'ready', status: current }), () => undefined);
+      return;
+    }
+    setMessage(ENDED_MESSAGE[final.status]);
   }
 
   function openCamera() {
@@ -154,9 +253,9 @@ export function FaceEnrollment({
         <>
           <p className="face-enrollment__state">{enrolled ? 'Cara registrada' : 'Sin cara registrada'}</p>
 
-          {!capturing && !confirmingDelete ? (
+          {!capturing && !confirmingDelete && !choosing && !following ? (
             <div className="member-detail__actions">
-              <button type="button" className="button button--secondary" onClick={openCamera}>
+              <button type="button" className="button button--secondary" onClick={startRegistering}>
                 Registrar cara
               </button>
               {enrolled ? (
@@ -182,6 +281,29 @@ export function FaceEnrollment({
           ) : null}
         </>
       ) : null}
+
+      {choosing ? (
+        <div className="face-enrollment__capture" role="group" aria-label="Elegir dónde registrar">
+          <p>El socio verá en la pantalla pública dónde poner la cara, y usted seguirá el avance desde aquí.</p>
+          <label htmlFor={consentId} className="face-enrollment__consent">
+            <input id={consentId} type="checkbox" checked={consent} disabled={busy} onChange={(event) => setConsent(event.target.checked)} />
+            <span>{CONSENT_LABEL}</span>
+          </label>
+          <div className="member-detail__actions">
+            <button type="button" className="button button--primary" disabled={!consent || busy} onClick={() => void startOnPublicScreen()}>
+              Registrar en la pantalla pública
+            </button>
+            <button type="button" className="button button--secondary" disabled={busy} onClick={registerOnThisScreen}>
+              Registrar en esta pantalla
+            </button>
+            <button type="button" className="button button--secondary" disabled={busy} onClick={closeCamera}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {following ? <PublicEnrollmentFollow initial={following} intervalMs={followIntervalMs} onEnded={publicEnrollmentEnded} /> : null}
 
       {capturing ? (
         <div className="face-enrollment__capture">
@@ -223,6 +345,7 @@ export function FaceEnrollment({
         </div>
       ) : null}
 
+      {info ? <p role="status">{info}</p> : null}
       {message ? (
         <p className="form-alert" role="alert">
           {message}

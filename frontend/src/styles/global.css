@@ -1476,6 +1476,16 @@ a:hover {
   font-weight: 600;
 }
 
+/* The secretary's read-only look at the front-desk camera while the member registers on the public screen. */
+.face-enrollment__preview {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.face-enrollment__preview .face-video {
+  transform: scaleX(-1);
+}
+
 .face-enrollment__consent {
   display: flex;
   gap: 0.5rem;

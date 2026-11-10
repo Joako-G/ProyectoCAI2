@@ -38,7 +38,7 @@ Today "Registrar cara" (`faces/components/FaceEnrollment.tsx` in the member reco
 
 - [x] T1 (S1, S2): backend enrollment session and display events. Route: delegated (writer trigger: 2+ non-trivial files).
 - [x] T2 (S3): public screen enrollment mode. Route: delegated (same writer).
-- [ ] T3 (S4): secretary screen flow and fallback. Route: delegated (same writer).
+- [x] T3 (S4): secretary screen flow and fallback. Route: delegated (same writer).
 
 ## Log
 
@@ -52,6 +52,11 @@ Today "Registrar cara" (`faces/components/FaceEnrollment.tsx` in the member reco
   - Verification: `cd frontend && pnpm typecheck`: clean. `cd frontend && pnpm test`: 92 files, 869 tests passed. `cd frontend && pnpm build`: built (chunk-size warning only). Real camera not exercised (see S5).
   - Commit: see git log.
 
+- T3 done (route: delegated writer). `FaceEnrollment` (member record): it checks `GET /enrollments/display` every 5 s while idle; with a public screen connected, "Registrar cara" opens a choice (consent checkbox, "Registrar en la pantalla pública", "Registrar en esta pantalla", "Cancelar"); without one it opens the camera here exactly as before. New `PublicEnrollmentFollow` shows the waiting text, "Captura n de 3", the hint the member reads, "Cancelar registro" and an opt-in "Ver cámara" (`LocalCameraPreview`: video only, no detector, released when hidden; a PC without camera says so). Progress is followed by polling `GET /enrollments/:id` every second (`useEnrollmentFollow`): the display stream is one-way, public-screen oriented and has no per-user channel, while the session is a tiny in-memory state, so polling is the simplest option that survives reloads and dropped connections; it stops on a final state, a 404 or 5 failures in a row. A session already running for the member is followed again after a reload. Completed refreshes the enrolled state; cancelled, expired, failed and lost show a Spanish message. Leaving the page does not cancel the session (it expires by itself in about 2 minutes).
+  - Verification: `cd frontend && pnpm typecheck`: clean. `cd frontend && pnpm test`: 93 files, 883 tests passed. `cd frontend && pnpm build`: built (chunk-size warning only). `cd backend && pnpm typecheck` and `pnpm test`: unchanged since T1 (clean; 87 files, 1376 tests passed, database tests skipped).
+  - Commit: see git log.
+  - S5 not done: the automated browser has no real camera. The user must try the two windows on the front-desk PC.
+
 ## Next step
 
-T3.
+S5: the user checks the two windows with the real camera (steps in the final report of this feature).
