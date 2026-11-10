@@ -46,7 +46,7 @@ Requirements: RF-14 (Esencial: digital, numbered, printable receipt), RF-22 (Des
 - [x] T1 (S1, S2): PDF generator, route, crest asset, download buttons, tests. Route: delegated (writer trigger).
 - [x] T2 (S3): professional welcome message, tests. Route: delegated (same writer).
 - [x] T3 (S4, S5): email sending, config, route, UI, docs, tests. Route: delegated (same writer).
-- [ ] T4 (S7): bounded send time and no duplicate or hanging sends. Route: delegated (writer trigger: backend service, routes, mailer and frontend hook/component).
+- [x] T4 (S7): bounded send time and no duplicate or hanging sends. Route: delegated (writer trigger: backend service, routes, mailer and frontend hook/component).
 
 ## Log
 
@@ -57,8 +57,9 @@ Requirements: RF-14 (Esencial: digital, numbered, printable receipt), RF-22 (Des
 
 - L5 (review): native review of b731695..e760445 (high risk: payments routes; 45 files, 1587 lines) granted by the user; 4 lenses, **approved** and acknowledged (lineage review-d9f7df0df9ec754a). Fixed after: R2-001, the club name lived in two constants; now `backend/src/shared/club.ts` (commit a20b5d4; backend `pnpm typecheck` clean, `pnpm test` 85 files / 1314 passed). Open follow-ups: R4-smtp-latency (sequential SMTP timeouts can hold the request ~40 s, and a timeout after the server accepted the mail returns 502, so a retry can send a duplicate); R3-001 (the sent state is per component, a remount allows a second send); R4-send-observability, R2-002..004 suggestions.
 - L6 (browser, 2026-11-10, local data): `GET /api/payments/:id/receipt.pdf` for receipt 0006 answers 200 `application/pdf`, 162 KB, `comprobante-0006.pdf`; rendered PDF shows crest, club name, number, date, member and number, method, three lines and total. Welcome for that payment returns the new formal message and `email.available: false` (`mail_not_configured`). Email sending not tried against a real SMTP server.
+- L8 (T4): send bounded and not duplicated. Backend: SMTP timeouts 5/5/10 s plus an overall 15 s timer (`sendTimeoutMs`, injectable); in-memory `MailSendStore` (`notice.send-state.ts`, injected in `server.ts`) keeps per payment `sending | sent | uncertain` with time and masked address, lost on restart (documented). Classification: `EAUTH`, `ECONNREFUSED`, `ENOTFOUND`, `EDNS`, `EENVELOPE`, `ETLS` are plain failures (502, state restored, normal retry); anything else, including the timer, is uncertain (504 `mail_send_uncertain`). 409 `mail_send_in_progress`; 409 `mail_already_sent` (with `lastSend`) for sent or uncertain unless the body has `resend: true`; the success answer adds `sentAt`; `GET welcome` reports `email.lastSend`. UI: the client aborts after 20 s (uncertain), a remount shows "Enviado el dd/mm/aaaa hh:mm a m***@..." with a "Reenviar" that asks for confirmation, uncertain shows "No se pudo confirmar el envío. Puede que el email ya haya llegado.". Checks: see the verification lines in the delivery report; backend and frontend `pnpm typecheck` and `pnpm test` run green. Commit: see git log.
 - L7: the env example files are not readable in this session, so the SMTP_* block lives only in `docs/welcome-email.md`; the user must add it to `.env.example` by hand.
 
 ## Next step
 
-T4. Then the user chooses the club mailbox and sets SMTP_* to try a real send.
+The user chooses the club mailbox and sets SMTP_* to try a real send. Next feature: the public face enrollment screen.

@@ -11,7 +11,8 @@ import { ConflictError, NotFoundError } from '../../shared/errors.js';
 import { loadCrest } from '../payments/receipt.pdf.js';
 import type { ReceiptPdfService } from '../payments/receipt.service.js';
 import { buildWelcomeEmail, CREST_CID } from './notice.email.js';
-import { MailNotConfiguredError, MailSendError } from './notice.errors.js';
+import { MailAlreadySentError, MailNotConfiguredError, MailSendError, MailSendInProgressError, MailSendUncertainError } from './notice.errors.js';
+import { createMailSendStore, isClearRejection, SendTimeoutError, type MailSendState, type MailSendStore } from './notice.send-state.js';
 import { buildDebtMessage, buildWelcomeMessage, describeReceiptLine } from './notice.message.js';
 import type { Mailer } from './notice.mailer.js';
 import { deriveWhatsappNumber } from './notice.number.js';
@@ -44,6 +45,10 @@ export interface NoticeServiceDeps {
   mailer?: Mailer;
   /** Renders the receipt PDF the welcome email attaches. */
   receipts?: Pick<ReceiptPdfService, 'render'>;
+  /** Per-payment send state; defaults to a fresh in-memory store. Injected so tests control it. */
+  sendState?: MailSendStore;
+  /** Upper bound of one send in milliseconds (default 15 s). The SMTP timeouts are shorter, so this is the backstop. */
+  sendTimeoutMs?: number;
   now?: () => Date;
 }
 
@@ -71,14 +76,32 @@ export function maskEmail(address: string): string {
 }
 
 // A minor is written to through the guardian, and the model stores no email for a guardian: never fall back to the minor's own.
-function emailOffer(member: NoticeMember, recipient: NoticeRecipient, mailConfigured: boolean): WelcomeEmailOffer {
+function emailOffer(member: NoticeMember, recipient: NoticeRecipient, mailConfigured: boolean, lastSend?: MailSendState): WelcomeEmailOffer {
   if (!mailConfigured) return { available: false, reason: 'mail_not_configured' };
   if (recipient === 'guardian') return { available: false, reason: 'guardian_without_email' };
   if (!member.email) return { available: false, reason: 'no_email' };
-  return { available: true, maskedAddress: maskEmail(member.email) };
+  return { available: true, maskedAddress: maskEmail(member.email), ...(lastSend ? { lastSend } : {}) };
 }
 
-export function createNoticeService({ members, memberships, payments, pricing, disciplines, sender, mailer, receipts, now = () => new Date() }: NoticeServiceDeps) {
+/** The whole send is bounded to about this long; the client gives up a little later (20 s). */
+export const MAIL_SEND_TIMEOUT_MS = 15_000;
+
+// Rejects with SendTimeoutError when the transport does not answer in time; the timer never outlives the call.
+async function bounded<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new SendTimeoutError()), ms);
+  });
+  // A late rejection of the abandoned work must not surface as an unhandled rejection.
+  work.catch(() => undefined);
+  try {
+    return await Promise.race([work, timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function createNoticeService({ members, memberships, payments, pricing, disciplines, sender, mailer, receipts, sendState = createMailSendStore(), sendTimeoutMs = MAIL_SEND_TIMEOUT_MS, now = () => new Date() }: NoticeServiceDeps) {
   // The payment, its member and the wording both channels share. Refuses an unknown or annulled payment.
   async function welcomeContext(paymentId: string) {
     const payment = (await payments.list()).find((current) => current.id === paymentId);
@@ -117,42 +140,67 @@ export function createNoticeService({ members, memberships, payments, pricing, d
             }),
           }).link
         : null;
-      return { memberId: member.id, recipient, recipientName, link, numberIssue: link === null, email: emailOffer(member, recipient, Boolean(mailer && receipts)) };
+      return { memberId: member.id, recipient, recipientName, link, numberIssue: link === null, email: emailOffer(member, recipient, Boolean(mailer && receipts), sendState.get(paymentId)) };
     },
 
-    // Emails the welcome with the receipt PDF attached. Nothing is stored; a refusal never reveals the SMTP details.
-    async sendWelcomeEmail(paymentId: string): Promise<WelcomeEmailSent> {
+    // Emails the welcome with the receipt PDF attached. The send is bounded in time and remembered per payment, so a
+    // second click, a remount or a retry after a timeout cannot silently send it twice. A refusal never reveals the SMTP details.
+    async sendWelcomeEmail(paymentId: string, { resend = false }: { resend?: boolean } = {}): Promise<WelcomeEmailSent> {
       if (!mailer || !receipts) throw new MailNotConfiguredError();
       const { member, memberName, recipient, recipientName, payment, concepts } = await welcomeContext(paymentId);
       const offer = emailOffer(member, recipient, true);
       if (!offer.available || !member.email) throw new ConflictError('The recipient has no email address');
-      const pdf = await receipts.render(payment.id);
-      const crest = loadCrest();
-      const email = buildWelcomeEmail({
-        clubName: CLUB_NAME,
-        memberName,
-        addressee: { kind: recipient, name: recipientName },
-        receiptNumber: payment.receiptNumber,
-        paymentDate: payment.paymentDate,
-        concepts,
-        total: payment.total,
-        crest: crest !== undefined,
-      });
+
+      // Check and mark in one synchronous step: nothing is awaited in between, so two requests cannot both pass.
+      const previous = sendState.get(paymentId);
+      if (previous?.status === 'sending') throw new MailSendInProgressError();
+      if (previous && !resend) throw new MailAlreadySentError(previous);
+      sendState.set(paymentId, { status: 'sending', at: now().toISOString(), to: offer.maskedAddress });
+      // A plain failure leaves the payment as it was before this attempt, so a normal retry stays possible.
+      const restore = () => (previous ? sendState.set(paymentId, previous) : sendState.delete(paymentId));
+
+      let message: Parameters<Mailer['send']>[0];
       try {
-        await mailer.send({
+        const pdf = await receipts.render(payment.id);
+        const crest = loadCrest();
+        const email = buildWelcomeEmail({
+          clubName: CLUB_NAME,
+          memberName,
+          addressee: { kind: recipient, name: recipientName },
+          receiptNumber: payment.receiptNumber,
+          paymentDate: payment.paymentDate,
+          concepts,
+          total: payment.total,
+          crest: crest !== undefined,
+        });
+        message = {
           to: member.email,
           subject: email.subject,
           text: email.text,
           html: email.html,
           attachments: [{ filename: pdf.filename, content: pdf.content, contentType: 'application/pdf' }],
           inlineImages: crest ? [{ cid: CREST_CID, filename: 'logo-cai.png', content: crest, contentType: 'image/png' }] : [],
-        });
+        };
+      } catch (error) {
+        restore();
+        throw error;
+      }
+
+      try {
+        await bounded(mailer.send(message), sendTimeoutMs);
       } catch (error) {
         // Only the error code is logged: a message can carry the server address or the account.
         console.error('Welcome email could not be sent', (error as { code?: unknown } | null)?.code ?? 'unknown');
-        throw new MailSendError();
+        if (isClearRejection(error)) {
+          restore();
+          throw new MailSendError();
+        }
+        sendState.set(paymentId, { status: 'uncertain', at: now().toISOString(), to: offer.maskedAddress });
+        throw new MailSendUncertainError();
       }
-      return { sent: true, maskedAddress: offer.maskedAddress };
+      const sentAt = now().toISOString();
+      sendState.set(paymentId, { status: 'sent', at: sentAt, to: offer.maskedAddress });
+      return { sent: true, maskedAddress: offer.maskedAddress, sentAt };
     },
 
     // Every active member who owes at least one month, with the total as of today and a send link.

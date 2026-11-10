@@ -9,6 +9,15 @@ export function describeLoadError(error: unknown): string {
   return 'Intente de nuevo.';
 }
 
+const two = (value: number) => String(value).padStart(2, '0');
+
+/** `10/11/2026 14:05` in the browser's local time, from an ISO instant. */
+export function formatSentAt(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${two(date.getDate())}/${two(date.getMonth() + 1)}/${date.getFullYear()} ${two(date.getHours())}:${two(date.getMinutes())}`;
+}
+
 export const standingLabel = (standing: DebtNotice['standing']) => (standing === 'deregistered' ? 'Dado de baja' : 'Deudor');
 
 /** Who the message goes to and at which number: the member, or the guardian of a minor. */

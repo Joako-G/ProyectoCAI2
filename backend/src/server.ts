@@ -49,6 +49,7 @@ import { createJsonCashCountRepository } from './modules/cashcount/json-cashcoun
 import { createNoticeService } from './modules/notices/notice.service.js';
 import { createWaMeSender } from './modules/notices/notice.sender.js';
 import { createMailer, createSmtpTransport } from './modules/notices/notice.mailer.js';
+import { createMailSendStore } from './modules/notices/notice.send-state.js';
 import { mailConfig } from './config/mail.js';
 import { createPaymentIncomeSource } from './modules/reports/income.source.js';
 import { createReportService } from './modules/reports/report.service.js';
@@ -141,6 +142,8 @@ const noticeService = createNoticeService({
   sender: createWaMeSender(),
   mailer: mail.state === 'configured' ? createMailer(mail.config.from, createSmtpTransport(mail.config)) : undefined,
   receipts: receiptPdfService,
+  // Which welcome emails are running, sent or uncertain; in memory, so it is lost when the server restarts.
+  sendState: createMailSendStore(),
 });
 // The members screen's stat cards read the same four sources once per request.
 const memberSummaryService = createMemberSummaryService({

@@ -33,10 +33,10 @@ export function createSmtpTransport(config: MailConfig): MailTransport {
     port: config.port,
     secure: config.secure,
     ...(config.auth ? { auth: { user: config.auth.user, pass: config.auth.password } } : {}),
-    // A slow server must not hold a secretary's request for long.
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 20_000,
+    // A slow server must not hold a secretary's request for long: the service also bounds the whole send to 15 s.
+    connectionTimeout: 5_000,
+    greetingTimeout: 5_000,
+    socketTimeout: 10_000,
   });
 }
 

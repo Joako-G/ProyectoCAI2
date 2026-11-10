@@ -258,14 +258,14 @@ describe('EnrollmentScreen: collecting and creating', () => {
     it('sends the email to the masked address and confirms it', async () => {
       const fetchMock = stubApi({
         'GET /api/notices/welcome/pay-9': welcomeWithEmail({ available: true, maskedAddress: 'l***@gmail.com' }),
-        [EMAIL_KEY]: () => jsonResponse({ sent: true, maskedAddress: 'l***@gmail.com' }),
+        [EMAIL_KEY]: () => jsonResponse({ sent: true, maskedAddress: 'l***@gmail.com', sentAt: '2026-11-10T14:05:00.000Z' }),
       });
       const { user } = setup();
       await enroll(user);
 
       expect(callsTo(fetchMock, EMAIL_KEY)).toHaveLength(0);
       await user.click(await screen.findByRole('button', { name: 'Enviar por email a l***@gmail.com' }));
-      expect(await screen.findByText('Se envió el comprobante por email a l***@gmail.com.')).toBeInTheDocument();
+      expect(await screen.findByText(/^Enviado el \d{2}\/\d{2}\/\d{4} \d{2}:\d{2} a l\*\*\*@gmail\.com\.$/)).toBeInTheDocument();
       expect(callsTo(fetchMock, EMAIL_KEY)).toHaveLength(1);
       expect(screen.getByRole('button', { name: 'Finalizar' })).toBeEnabled();
     });
@@ -276,7 +276,7 @@ describe('EnrollmentScreen: collecting and creating', () => {
         'GET /api/notices/welcome/pay-9': welcomeWithEmail({ available: true, maskedAddress: 'l***@gmail.com' }),
         [EMAIL_KEY]: () => {
           attempts += 1;
-          return attempts === 1 ? jsonResponse({ error: 'mail_send_failed', message: 'The email could not be sent' }, 502) : jsonResponse({ sent: true, maskedAddress: 'l***@gmail.com' });
+          return attempts === 1 ? jsonResponse({ error: 'mail_send_failed', message: 'The email could not be sent' }, 502) : jsonResponse({ sent: true, maskedAddress: 'l***@gmail.com', sentAt: '2026-11-10T14:05:00.000Z' });
         },
       });
       const { user } = setup();
@@ -287,7 +287,7 @@ describe('EnrollmentScreen: collecting and creating', () => {
       expect(screen.getByRole('button', { name: 'Finalizar' })).toBeEnabled();
 
       await user.click(screen.getByRole('button', { name: 'Reintentar envío por email' }));
-      expect(await screen.findByText('Se envió el comprobante por email a l***@gmail.com.')).toBeInTheDocument();
+      expect(await screen.findByText(/^Enviado el \d{2}\/\d{2}\/\d{4} \d{2}:\d{2} a l\*\*\*@gmail\.com\.$/)).toBeInTheDocument();
       expect(attempts).toBe(2);
     });
   });

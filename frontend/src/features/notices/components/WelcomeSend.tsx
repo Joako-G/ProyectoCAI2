@@ -30,7 +30,7 @@ export function WelcomeSend({ paymentId }: WelcomeSendProps) {
       ) : (
         <p className="notice-issue" role="status">{numberIssueLabel(notice)}</p>
       )}
-      {notice.email?.available ? <WelcomeEmailSend paymentId={paymentId} maskedAddress={notice.email.maskedAddress} /> : null}
+      {notice.email?.available ? <WelcomeEmailSend paymentId={paymentId} maskedAddress={notice.email.maskedAddress} lastSend={notice.email.lastSend} /> : null}
     </>
   );
 }
