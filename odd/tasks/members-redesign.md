@@ -74,7 +74,7 @@ Socios                                              [ Alta de socio ]
 
 ## Tasks
 
-- [ ] T1: list (padrón bar, toolbar, table with Cuenta chip). Route: delegated (writer trigger).
+- [x] T1: list (padrón bar, toolbar, table with Cuenta chip). Route: delegated (writer trigger).
 - [ ] T2: member record (two columns, Cuenta card, face card). Route: delegated (same writer).
 - [ ] T3: forms (stepper, fields, layout). Route: delegated (same writer).
 - [ ] T4: browser review at 1440 and 375 px by the parent, with fixes.
@@ -82,7 +82,10 @@ Socios                                              [ Alta de socio ]
 ## Log
 
 - L1 (user, 2026-11-10): request quoted above, with a screenshot of the member record.
+- L2 (T1, 2026-11-10, writer): list redesigned. `MemberStats` is now the padron bar: one card, headline Activos / Inactivos buttons, a proportional bar of al día / deudores / vencidos (flex-grow from the counts; an empty group is left out unless selected, then it keeps a 6 px sliver), and the three standing buttons as legend with swatches. Segments are `aria-hidden` spans that mirror the legend buttons, so accessible names do not collide (the legend stays the keyboard control; the other four button names are unchanged). `MembersToolbar` lost its create button (it moved to a head row in `MembersPage`, top right), search takes row 1 (46 px field, quiet "Buscar" button), the status radios and the discipline select share row 2. `MembersTable`: Estado column replaced by Cuenta (chip Al día / Debe / Vencido from the summary ids through `utils/member-standing.ts`, "Inactivo" for inactive members, empty cell when the counts are not loaded); the rest of the columns stay, including Socio desde (the wireframe omitted it; kept, less change). Styles: new `styles/members.css` (imported in `main.tsx` in place of `member-stats.css`, which was deleted because only `MemberStats` used its classes). Nothing was removed from `global.css`: `.members-toolbar*`, `.members-table`, `.segmented`, `.members-page*` are shared with Disciplinas and Cobros. New rules repeat a parent class (`.members-filters ...`, `.members-table.members-register ...`) to beat the bare `form input/button` rules of `app.css`. Decision where the brief was open: the segmented status filter shows its chosen option as accent border plus tint, not a solid fill, so the bar stays the only strong colour; "Buscar" is the secondary button style.
+  - Tests touched (deliberate, from the brief): `MembersToolbar.test` (the create-button tests moved: the toolbar no longer owns it), `MembersPage.test` (added: Alta de socio hidden without `canCreate`), `MembersTable.test` (Estado -> Cuenta header; the Activo chip assertion became the Debe chip; new test for Al día / Vencido / empty cell), `MembersView.stats.test` (new: bar segments mirror the legend and the zero group rules; Cuenta chips in the list).
+  - Verification: `pnpm typecheck` clean; `pnpm build` built in 6m 34s; `pnpm test` 920 of 921 passed; the one failure (`App.display.test`, EventSource not defined) happened while a second `vite build` hogged the CPU and passes alone (3/3), on a route this task does not touch. Not checked in a browser. Commit: see git log.
 
 ## Next step
 
-T1.
+T2.

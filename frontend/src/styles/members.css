@@ -1,0 +1,428 @@
+/*
+ * Socios: the list (register bar, filters, table), the member record and the forms.
+ *
+ * One calm look: white cards with hairline borders and the single card radius, status colours only where they say
+ * a status, Libre Baskerville for names, IBM Plex Mono for figures (number, DNI, dates, phone). The register bar is
+ * the one bold element. Content is a centred column like Arqueo and Gastos.
+ *
+ * app.css styles every bare `form`, `form input`, `form label` and `form button` for the login, with selectors the
+ * shared classes cannot beat; the rules for anything inside a form therefore repeat a parent class on purpose.
+ */
+
+/* Layout: a centred column per screen */
+
+.members-screen,
+.member-record,
+.members-form-screen {
+  width: 100%;
+  margin-inline: auto;
+}
+
+.members-screen,
+.member-record {
+  max-width: 1180px;
+}
+
+.members-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.members-screen__head {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Register bar */
+
+.padron {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 24px 16px;
+}
+
+.padron__totals {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.padron__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+
+.padron__filter {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+}
+
+.padron__filter:hover:not(:disabled) {
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.padron__filter[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface));
+}
+
+.padron__filter:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.padron__filter:disabled {
+  cursor: default;
+}
+
+.padron__value {
+  font: 600 16px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.padron__label {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+/* The two headline counts. */
+.padron__totals .padron__value {
+  font-size: 30px;
+}
+
+.padron__totals .padron__label {
+  font-size: 14px;
+}
+
+/* Legend swatches say which part of the bar a button stands for. */
+.padron__legend .padron__filter::before {
+  content: '';
+  flex: none;
+  width: 10px;
+  height: 10px;
+  align-self: center;
+  border-radius: 2px;
+  background: var(--swatch);
+}
+
+.padron__filter--upToDate {
+  --swatch: var(--color-success);
+}
+
+.padron__filter--debtors {
+  --swatch: var(--color-warning);
+}
+
+.padron__filter--overdue {
+  --swatch: var(--color-error);
+}
+
+.padron__bar {
+  display: flex;
+  gap: 2px;
+  height: 20px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.padron__segment {
+  flex-basis: 0;
+  min-width: 6px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.padron__segment--upToDate {
+  background: var(--color-success);
+}
+
+.padron__segment--debtors {
+  background: var(--color-warning);
+}
+
+.padron__segment--overdue {
+  background: var(--color-error);
+}
+
+/* With one group selected, the others step back. */
+.padron__segment[data-dimmed='true'] {
+  opacity: 0.3;
+}
+
+.padron__segment:hover {
+  opacity: 0.85;
+}
+
+.member-stats__error {
+  margin: 0;
+  font-size: 12.5px;
+  text-align: center;
+  color: var(--color-error);
+}
+
+.member-stats__retry {
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.member-stats__retry:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* List card: filters, result line, table */
+
+.members-screen .members-page__summary {
+  padding: 10px 20px;
+  background: none;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.members-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.members-filters__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.members-filters .members-filters__input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  height: 46px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-md);
+  background: #fff;
+  box-shadow: none;
+  color: var(--color-text);
+  font: 400 14px var(--font-sans);
+  transition: none;
+}
+
+.members-filters .members-filters__input::placeholder {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.members-filters .members-filters__input:focus {
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: none;
+}
+
+.members-filters .members-filters__input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.members-filters .members-filters__submit {
+  display: block;
+  flex: none;
+  height: 46px;
+  padding: 0 20px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+  background: #f3f2ef;
+  color: var(--color-text);
+  font: 500 13px var(--font-sans);
+  transition: none;
+}
+
+.members-filters .members-filters__submit:hover:not(:disabled) {
+  background: #e9e7e2;
+  color: var(--color-text);
+  transform: none;
+}
+
+.members-filters .members-filters__submit:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.members-filters__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+/* The chosen status is marked, not filled: the register bar is the only strong colour on the screen. */
+.members-filters .segmented__option:has(input:checked) {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 9%, #fff);
+  color: var(--color-accent);
+}
+
+.members-filters__select {
+  min-width: 14rem;
+}
+
+/* Table */
+
+.members-table.members-register td,
+.members-table.members-register th {
+  vertical-align: middle;
+}
+
+.members-table.members-register .members-table__number,
+.members-table.members-register .members-table__mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.members-table.members-register .members-table__number {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.members-table.members-register .members-table__mono {
+  font-size: 12.5px;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.members-table.members-register .members-table__name {
+  font-size: 14px;
+}
+
+.members-table.members-register .members-table__meta {
+  font-size: 12px;
+}
+
+.members-table.members-register .members-table__disciplines {
+  font-size: 13px;
+}
+
+.members-table.members-register tbody tr:focus-within {
+  background: #f2f6fb;
+}
+
+.account-chip {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 4px;
+  font: 600 12px var(--font-sans);
+  white-space: nowrap;
+}
+
+.account-chip--upToDate {
+  background: #e3f1ea;
+  color: var(--color-success);
+}
+
+.account-chip--debtors {
+  background: #fbf3df;
+  color: var(--color-warning);
+}
+
+.account-chip--overdue {
+  background: #fbeceb;
+  color: var(--color-error);
+}
+
+.account-chip--inactive {
+  background: #ececec;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+@media screen and (min-width: 641px) {
+  .members-table.members-register td {
+    padding: 14px 12px;
+  }
+
+  .members-table.members-register td:last-child,
+  .members-table.members-register th:last-child {
+    padding-right: 20px;
+  }
+}
+
+@media screen and (max-width: 640px) {
+  /* An active member without counts has an empty Cuenta cell: no label for nothing. */
+  .members-table.members-register td:empty {
+    display: none;
+  }
+
+  .members-table.members-register tr {
+    padding: 8px 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .padron {
+    padding: 14px 14px 12px;
+  }
+
+  .padron__totals .padron__value {
+    font-size: 26px;
+  }
+
+  .members-filters {
+    padding: 14px;
+  }
+
+  .members-filters__row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .members-filters .segmented {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .members-filters .segmented__option {
+    padding-inline: 8px;
+    text-align: center;
+  }
+
+  .members-filters__select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .members-screen__head .button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .padron__segment {
+    transition: none;
+  }
+}
+
+@media print {
+  .padron,
+  .member-stats__error {
+    display: none;
+  }
+}

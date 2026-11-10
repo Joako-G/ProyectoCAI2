@@ -16,10 +16,6 @@ interface MembersToolbarProps {
   onSearchSubmit: (search: string) => void;
   onStatusChange: (status: MemberStatusFilter) => void;
   onDisciplineChange: (disciplineId: string) => void;
-  /** Whether to offer the create action. */
-  canCreate: boolean;
-  /** Opens the member creation flow. */
-  onCreate?: () => void;
 }
 
 const STATUS_OPTIONS: ReadonlyArray<{ value: MemberStatusFilter; label: string }> = [
@@ -34,6 +30,7 @@ const ALL_DISCIPLINES_LABEL: Record<CatalogPhase, string> = {
   error: 'Disciplinas no disponibles',
 };
 
+/** Search takes the first row; the status filter and the discipline select share the second one. */
 export function MembersToolbar({
   search,
   status,
@@ -43,8 +40,6 @@ export function MembersToolbar({
   onSearchSubmit,
   onStatusChange,
   onDisciplineChange,
-  canCreate,
-  onCreate,
 }: MembersToolbarProps) {
   const [draft, setDraft] = useState(search);
 
@@ -54,58 +49,52 @@ export function MembersToolbar({
   }
 
   return (
-    <div className="members-toolbar">
-      <form className="members-toolbar__search" role="search" onSubmit={handleSubmit}>
-        <label className="members-toolbar__search-field">
-          <span className="members-toolbar__search-label table-head">Buscar</span>
-          <input
-            type="search"
-            aria-label="Buscar socio por N° de socio, DNI, apellido o nombre"
-            placeholder="N° de socio, DNI, apellido o nombre…"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-          />
-        </label>
-        <button type="submit" className="button button--secondary">
+    <div className="members-filters">
+      <form className="members-filters__search" role="search" onSubmit={handleSubmit}>
+        <input
+          type="search"
+          className="members-filters__input"
+          aria-label="Buscar socio por N° de socio, DNI, apellido o nombre"
+          placeholder="N° de socio, DNI, apellido o nombre…"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+        />
+        <button type="submit" className="button button--secondary members-filters__submit">
           Buscar
         </button>
       </form>
 
-      <div className="segmented" role="radiogroup" aria-label="Filtrar por estado">
-        {STATUS_OPTIONS.map((option) => (
-          <label key={option.value} className="segmented__option">
-            <input
-              type="radio"
-              name="member-status"
-              value={option.value}
-              checked={status === option.value}
-              onChange={() => onStatusChange(option.value)}
-            />
-            <span>{option.label}</span>
-          </label>
-        ))}
+      <div className="members-filters__row">
+        <div className="segmented members-filters__status" role="radiogroup" aria-label="Filtrar por estado">
+          {STATUS_OPTIONS.map((option) => (
+            <label key={option.value} className="segmented__option">
+              <input
+                type="radio"
+                name="member-status"
+                value={option.value}
+                checked={status === option.value}
+                onChange={() => onStatusChange(option.value)}
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
+
+        <select
+          className="members-toolbar__select members-filters__select"
+          aria-label="Filtrar por disciplina"
+          value={disciplineId}
+          disabled={catalogPhase !== 'ready'}
+          onChange={(event) => onDisciplineChange(event.target.value)}
+        >
+          <option value="">{ALL_DISCIPLINES_LABEL[catalogPhase]}</option>
+          {disciplines.map((discipline) => (
+            <option key={discipline.id} value={discipline.id}>
+              {disciplineOptionLabel(discipline)}
+            </option>
+          ))}
+        </select>
       </div>
-
-      <select
-        className="members-toolbar__select"
-        aria-label="Filtrar por disciplina"
-        value={disciplineId}
-        disabled={catalogPhase !== 'ready'}
-        onChange={(event) => onDisciplineChange(event.target.value)}
-      >
-        <option value="">{ALL_DISCIPLINES_LABEL[catalogPhase]}</option>
-        {disciplines.map((discipline) => (
-          <option key={discipline.id} value={discipline.id}>
-            {disciplineOptionLabel(discipline)}
-          </option>
-        ))}
-      </select>
-
-      {canCreate ? (
-        <button type="button" className="button button--primary" onClick={onCreate}>
-          Alta de socio
-        </button>
-      ) : null}
     </div>
   );
 }

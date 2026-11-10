@@ -8,6 +8,7 @@ import { lastSummary, type MembersSummaryController } from '../hooks/useMembersS
 import type { Member, MemberListQuery } from '../types/member';
 import type { StandingGroup } from '../types/member-summary';
 import { todayInClub } from '../utils/member-format';
+import { standingByMemberId } from '../utils/member-standing';
 import { MemberStats, type StatCardKey } from './MemberStats';
 import { MembersTable } from './MembersTable';
 import { MembersToolbar } from './MembersToolbar';
@@ -69,6 +70,7 @@ export function MembersPage({
   const activeStanding = standingIds ? standing : null;
   const pager = usePagination(members, JSON.stringify({ query, standing: activeStanding }));
   const disciplines = catalog ? catalogDisciplines(catalog) : [];
+  const standingById = useMemo(() => standingByMemberId(loadedSummary), [loadedSummary]);
 
   // Submitting the same text again acts as a refresh: the unchanged query alone would not refetch.
   function submitSearch(next: string) {
@@ -92,6 +94,13 @@ export function MembersPage({
 
   return (
     <div className="members-screen">
+      {canCreate ? (
+        <div className="members-screen__head">
+          <button type="button" className="button button--primary" onClick={onCreate}>
+            Alta de socio
+          </button>
+        </div>
+      ) : null}
       {summary ? <MemberStats state={summary.state} selected={selectedCard} onSelect={selectCard} onRetry={summary.refresh} /> : null}
       <section className="card members-page" aria-label="Socios">
         <MembersToolbar
@@ -106,8 +115,6 @@ export function MembersPage({
             onStandingChange?.(null);
           }}
           onDisciplineChange={(next) => onQueryChange({ ...query, disciplineId: next })}
-          canCreate={canCreate}
-          onCreate={onCreate}
         />
 
         <div className="members-page__summary">
@@ -151,6 +158,7 @@ export function MembersPage({
               members={pager.pageItems}
               today={today}
               disciplines={disciplines}
+              standingById={standingById}
               onOpen={onOpen ? (member) => onOpen(member.id) : undefined}
             />
             <Pagination page={pager.page} pageCount={pager.pageCount} total={pager.total} onPageChange={pager.setPage} label="Paginación de socios" />

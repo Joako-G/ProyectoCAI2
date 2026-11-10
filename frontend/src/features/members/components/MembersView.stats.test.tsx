@@ -120,6 +120,35 @@ describe('Members stat cards', () => {
     expect(card('Deudores')).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('draws the bar from the counts and lets a segment mirror its legend button', async () => {
+    const user = renderView();
+    await waitFor(() => expect(card('Deudores')).toBeEnabled());
+
+    const group = screen.getByRole('group', { name: 'Resumen de socios' });
+    const segments = () => Array.from(group.querySelectorAll<HTMLElement>('.padron__segment'));
+    // Vencidos has nobody, so it is left out of the bar until it is selected.
+    expect(segments().map((segment) => segment.style.flexGrow)).toEqual(['1', '1']);
+
+    await user.click(segments()[1]);
+    expect(card('Deudores')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByText('Lucía Ríos')).not.toBeInTheDocument();
+    expect(segments()[0]).toHaveAttribute('data-dimmed', 'true');
+
+    await user.click(card('Vencidos'));
+    expect(segments()).toHaveLength(3);
+    expect(segments()[2].style.flexGrow).toBe('0');
+  });
+
+  it('shows the account standing of each active member in the list', async () => {
+    renderView();
+    await waitFor(() => expect(card('Deudores')).toBeEnabled());
+
+    const row = (name: string) => screen.getByRole('row', { name: new RegExp(name) });
+    expect(within(row('Lucía Ríos')).getByText('Al día')).toBeInTheDocument();
+    expect(within(row('Ana Álvarez')).getByText('Debe')).toBeInTheDocument();
+    expect(within(row('Beto Benítez')).getByText('Inactivo')).toBeInTheDocument();
+  });
+
   it('shows a small message and keeps the list when the summary fails', async () => {
     summaryResponse = () => jsonResponse({ error: 'internal_error', message: 'Unexpected failure' }, 500);
     renderView();

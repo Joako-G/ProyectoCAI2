@@ -12,13 +12,14 @@ describe('MembersTable', () => {
     render(<MembersTable members={[buildMember()]} today={TODAY} />);
 
     const table = screen.getByRole('table', { name: 'Listado de socios' });
-    for (const name of ['N° socio', 'Socio', 'DNI', 'Disciplinas', 'Socio desde', 'Estado']) {
+    for (const name of ['N° socio', 'Socio', 'DNI', 'Disciplinas', 'Socio desde', 'Cuenta']) {
       expect(within(table).getByRole('columnheader', { name })).toBeInTheDocument();
     }
   });
 
-  it('shows number, name, category with age, DNI, member since and status', () => {
-    render(<MembersTable members={[buildMember()]} today={TODAY} />);
+  it('shows number, name, category with age, DNI, member since and account standing', () => {
+    const member = buildMember();
+    render(<MembersTable members={[member]} today={TODAY} standingById={new Map([[member.id, 'debtors' as const]])} />);
 
     const row = screen.getByRole('row', { name: /Lucía Ríos/ });
     expect(within(row).getByRole('cell', { name: '0001' })).toBeInTheDocument();
@@ -26,7 +27,24 @@ describe('MembersTable', () => {
     expect(within(row).getByText('Mayor · 36 años')).toBeInTheDocument();
     expect(within(row).getByRole('cell', { name: '30123456' })).toBeInTheDocument();
     expect(within(row).getByRole('cell', { name: '01/02/2015' })).toBeInTheDocument();
-    expect(within(row).getByText('Activo')).toBeInTheDocument();
+    expect(within(row).getByText('Debe')).toBeInTheDocument();
+    expect(within(row).queryByText('Activo')).not.toBeInTheDocument();
+  });
+
+  it('names each standing group in the Cuenta column and leaves the cell empty without counts', () => {
+    const upToDate = buildMember({ id: 'a', firstName: 'Ana', lastName: 'Álvarez' });
+    const overdue = buildMember({ id: 'b', firstName: 'Beto', lastName: 'Benítez' });
+    const unknown = buildMember({ id: 'c', firstName: 'Cora', lastName: 'Campos' });
+    const standingById = new Map([
+      ['a', 'upToDate' as const],
+      ['b', 'overdue' as const],
+    ]);
+    render(<MembersTable members={[upToDate, overdue, unknown]} today={TODAY} standingById={standingById} />);
+
+    const rows = screen.getAllByRole('row').slice(1);
+    expect(within(rows[0]).getByText('Al día')).toBeInTheDocument();
+    expect(within(rows[1]).getByText('Vencido')).toBeInTheDocument();
+    expect(within(rows[2]).getByRole('cell', { name: '' })).toBeInTheDocument();
   });
 
   it('shows the discipline names of each member compactly', () => {

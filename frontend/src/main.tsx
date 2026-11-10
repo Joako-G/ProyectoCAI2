@@ -25,7 +25,7 @@ import './styles/ventanilla.css';
 import './styles/desk.css';
 import './styles/responsive.css';
 import './styles/pagination.css';
-import './styles/member-stats.css';
+import './styles/members.css';
 import './styles/audit.css';
 import './styles/stats.css';
 import './styles/kiosk.css';

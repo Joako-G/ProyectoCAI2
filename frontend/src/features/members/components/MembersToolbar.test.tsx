@@ -17,8 +17,6 @@ function setup(overrides: Partial<ComponentProps<typeof MembersToolbar>> = {}) {
     onSearchSubmit: vi.fn(),
     onStatusChange: vi.fn(),
     onDisciplineChange: vi.fn(),
-    canCreate: true,
-    onCreate: vi.fn(),
     ...overrides,
   };
   render(<MembersToolbar {...props} />);
@@ -26,8 +24,8 @@ function setup(overrides: Partial<ComponentProps<typeof MembersToolbar>> = {}) {
 }
 
 describe('MembersToolbar', () => {
-  it('hides Alta de socio when the user cannot create members', () => {
-    setup({ canCreate: false });
+  it('leaves Alta de socio to the screen head and keeps the search button', () => {
+    setup();
 
     expect(screen.queryByRole('button', { name: 'Alta de socio' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Buscar' })).toBeInTheDocument();
@@ -95,20 +93,6 @@ describe('MembersToolbar', () => {
 
     await user.selectOptions(select, 'Todas las disciplinas');
     expect(props.onDisciplineChange).toHaveBeenLastCalledWith('');
-  });
-
-  it('calls onCreate from the Alta de socio button', async () => {
-    const { props, user } = setup();
-
-    await user.click(screen.getByRole('button', { name: 'Alta de socio' }));
-
-    expect(props.onCreate).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not fail when no create handler is given', async () => {
-    const { user } = setup({ onCreate: undefined });
-
-    await user.click(screen.getByRole('button', { name: 'Alta de socio' }));
   });
 
   it('disables the discipline select with an explanation while the catalog loads', () => {

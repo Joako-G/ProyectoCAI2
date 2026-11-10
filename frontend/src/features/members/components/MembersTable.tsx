@@ -1,7 +1,9 @@
 import type { Discipline } from '../../disciplines/types/discipline';
 import { disciplineNames } from '../../disciplines/utils/discipline-labels';
 import type { Member } from '../types/member';
+import type { StandingGroup } from '../types/member-summary';
 import { calculateAge, formatAge, formatIsoDate } from '../utils/member-format';
+import { STANDING_CHIP_LABEL } from '../utils/member-standing';
 
 interface MembersTableProps {
   members: Member[];
@@ -9,15 +11,22 @@ interface MembersTableProps {
   today: string;
   /** Discipline catalog used to show names instead of ids. */
   disciplines?: Discipline[];
+  /** Account standing of each active member, from the summary; an active member missing from it shows nothing. */
+  standingById?: ReadonlyMap<string, StandingGroup>;
   /** Opens a member. The whole row is clickable; the name button makes it reachable by keyboard. */
   onOpen?: (member: Member) => void;
 }
 
-const STATUS_LABEL = { active: 'Activo', inactive: 'Inactivo' } as const;
+function AccountCell({ member, standing }: { member: Member; standing: StandingGroup | undefined }) {
+  if (member.status === 'inactive') return <span className="account-chip account-chip--inactive">Inactivo</span>;
+  // The counts did not load (or the member is new to them): the cell stays empty rather than guess.
+  if (!standing) return null;
+  return <span className={`account-chip account-chip--${standing}`}>{STANDING_CHIP_LABEL[standing]}</span>;
+}
 
-export function MembersTable({ members, today, disciplines = [], onOpen }: MembersTableProps) {
+export function MembersTable({ members, today, disciplines = [], standingById, onOpen }: MembersTableProps) {
   return (
-    <table className="members-table members-table--stack">
+    <table className="members-table members-table--stack members-register">
       <caption className="visually-hidden">Listado de socios</caption>
       <thead>
         <tr className="table-head">
@@ -26,7 +35,7 @@ export function MembersTable({ members, today, disciplines = [], onOpen }: Membe
           <th scope="col">DNI</th>
           <th scope="col">Disciplinas</th>
           <th scope="col">Socio desde</th>
-          <th scope="col">Estado</th>
+          <th scope="col">Cuenta</th>
         </tr>
       </thead>
       <tbody>
@@ -58,10 +67,8 @@ export function MembersTable({ members, today, disciplines = [], onOpen }: Membe
               {disciplineNames(member.disciplineIds, disciplines).join(', ') || '—'}
             </td>
             <td className="members-table__mono" data-label="Socio desde">{formatIsoDate(member.memberSince)}</td>
-            <td data-label="Estado">
-              <span className={`status-chip status-chip--${member.status}`}>
-                {STATUS_LABEL[member.status]}
-              </span>
+            <td data-label="Cuenta">
+              <AccountCell member={member} standing={standingById?.get(member.id)} />
             </td>
           </tr>
         ))}
