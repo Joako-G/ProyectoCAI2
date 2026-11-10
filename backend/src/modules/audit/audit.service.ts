@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import { toIsoDate } from '../../shared/date.js';
 import { resolveEntityLabels, type AuditLabelSources } from './audit.labels.js';
 import type { AuditRepository } from './audit.repository.js';
-import type { AuditActor, AuditEntry, AuditRecordInput } from './audit.types.js';
+import type { AuditActor, AuditEntry, AuditQuery, AuditRecordInput } from './audit.types.js';
 
 /** The port the other modules write through. It never rejects: a failed audit write must not undo a change. */
 export interface AuditRecorder {
@@ -34,6 +35,49 @@ export interface AuditFailures {
 
 /** An entry as the API shows it: the stored fields plus a readable name for the record, never stored. */
 export type AuditEntryView = AuditEntry & { entityLabel: string };
+
+type EntryMatcher = (entry: AuditEntry) => boolean;
+
+/**
+ * Member filter, resolved at read time like the labels: nothing about members is stored in the log. A member
+ * matches its own `member` and `face_profile` entries (keyed by the member id) and the payments it owns.
+ * An unknown number, or a source that cannot be read, matches nothing.
+ */
+async function memberMatcher(memberNumber: string | undefined, sources?: AuditLabelSources): Promise<EntryMatcher | undefined> {
+  if (memberNumber === undefined) return undefined;
+  const none: EntryMatcher = () => false;
+  if (!sources) return none;
+  try {
+    const member = (await sources.members()).find((row) => Number(row.memberNumber) === Number(memberNumber));
+    if (!member) return none;
+    const paymentIds = new Set((await sources.payments()).filter((payment) => payment.memberId === member.id).map((payment) => payment.id));
+    return ({ entityType, entityId }) =>
+      ((entityType === 'member' || entityType === 'face_profile') && entityId === member.id) || (entityType === 'payment' && paymentIds.has(entityId));
+  } catch (error) {
+    console.error('Could not read the member records to filter the audit log', error);
+    return none;
+  }
+}
+
+/** Club-local day of a stored instant, or undefined when it is not a valid date. */
+function entryDay(at: string): string | undefined {
+  const instant = new Date(at);
+  return Number.isNaN(instant.getTime()) ? undefined : toIsoDate(instant);
+}
+
+function filterEntries(entries: AuditEntry[], { actorId, entityType, action, from, to }: AuditQuery, belongsToMember?: EntryMatcher): AuditEntry[] {
+  return entries.filter((entry) => {
+    if (actorId !== undefined && entry.actor.id !== actorId) return false;
+    if (entityType !== undefined && entry.entityType !== entityType) return false;
+    if (action !== undefined && entry.action !== action) return false;
+    if (belongsToMember && !belongsToMember(entry)) return false;
+    if (from !== undefined || to !== undefined) {
+      const day = entryDay(entry.at);
+      if (day === undefined || (from !== undefined && day < from) || (to !== undefined && day > to)) return false;
+    }
+    return true;
+  });
+}
 
 export function createAuditService({ repository, actors, labels, now = () => new Date(), newId = randomUUID }: AuditServiceDeps) {
   // Kept in memory only: it resets when the server restarts, so it says "since the last start", not "ever".
@@ -77,10 +121,20 @@ export function createAuditService({ repository, actors, labels, now = () => new
     },
 
     // Newest first. Entries are appended in time order, so reversing keeps same-instant entries newest first too.
-    async list(): Promise<AuditEntryView[]> {
-      const entries = (await repository.list()).reverse();
+    // Filters run before labels are resolved, so only the sources the remaining entries need are read.
+    async list(query: AuditQuery = {}): Promise<AuditEntryView[]> {
+      const entries = filterEntries((await repository.list()).reverse(), query, await memberMatcher(query.member, labels));
       const entityLabels = await resolveEntityLabels(entries, labels);
       return entries.map((entry, index) => ({ ...entry, entityLabel: entityLabels[index]! }));
+    },
+
+    // The distinct actors of the whole log, as they were at their latest entry, for the user filter.
+    async actors(): Promise<AuditActor[]> {
+      const latest = new Map<string, AuditActor>();
+      for (const { actor } of (await repository.list()).reverse()) {
+        if (!latest.has(actor.id)) latest.set(actor.id, { id: actor.id, name: actor.name, role: actor.role });
+      }
+      return [...latest.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'));
     },
   };
 }

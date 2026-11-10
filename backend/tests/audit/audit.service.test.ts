@@ -111,8 +111,8 @@ describe('audit service', () => {
     expect(service.failures()).toEqual({ count: 0, lastFailedAt: null });
   });
 
-  it('exposes record, list and failures only', async () => {
+  it('exposes record, list, actors and failures only: no update or delete', async () => {
     const { service } = await setup();
-    expect(Object.keys(service).sort()).toEqual(['failures', 'list', 'record']);
+    expect(Object.keys(service).sort()).toEqual(['actors', 'failures', 'list', 'record']);
   });
 });

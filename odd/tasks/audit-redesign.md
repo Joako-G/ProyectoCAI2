@@ -22,13 +22,14 @@ Requirements: RF-27 (audit: who created, modified or annulled, and when), RNF-08
 
 ## Tasks
 
-- [ ] T1 (S1): backend query validation, filtering in the audit service/routes, member resolution, `actors`, tests (validation, each filter, combination, member through payments, no-params unchanged, 401/403). Route: delegated (writer trigger: 2+ non-trivial files).
+- [x] T1 (S1): backend query validation, filtering in the audit service/routes, member resolution, `actors`, tests (validation, each filter, combination, member through payments, no-params unchanged, 401/403). Route: delegated (writer trigger: 2+ non-trivial files).
 - [ ] T2 (S2-S6): frontend redesign, filter state in the URL, hook passing params, chips, badges, tests. Route: delegated (same writer, after T1).
 
 ## Log
 
 - L1 (user, 2026-11-09): "en auditoría mejorar esa parte con los diseños que ya tenemos visualmente lo más que se pueda, siguiendo un diseño UX centrado, no todo a los costados, filtrar por socios, filtrar por usuarios que realizaron, fecha y demás filtros, y más cosas que creas necesarias".
+- L2 (T1 built, 2026-11-09): `audit.validation.ts` (`parseAuditQuery`) validates the filters and throws the shared `ValidationError`, so a bad value answers 400 `validation_error` with `fieldErrors` (the existing pattern used by expenses; the spec text said `invalid_query`, the shared handler code was kept for consistency). Repeated params, an empty `actorId`, a non-numeric `member`, unknown `entityType` or `action`, impossible dates and `from` after `to` are all rejected. `audit.service.ts`: `list(query)` filters before labels are resolved (newest first, `from`/`to` inclusive in the club time zone through `toIsoDate`); new `actors()` returns the distinct actors of the whole log with their latest name and role, sorted by name; `GET /api/audit` answers `{ entries, failedWrites, actors }`. Member filter: the number is matched numerically (`7` equals `0007`) against the members source; it matches `member` and `face_profile` entries by member id and `payment` entries whose payment belongs to the member. The payments label port gained an optional `memberId` (the production wiring already passes full payments); nothing new is stored in the log, an unknown number or an unreadable source matches nothing. Verification: `cd backend && pnpm test` -> 81 files, 1281 tests passed (plus the database suite, 4 passed, 20 skipped without a database); `cd backend && pnpm typecheck` -> clean. Commit: see git log.
 
 ## Next step
 
-T1.
+T2.

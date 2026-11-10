@@ -68,11 +68,81 @@ describe('audit API', () => {
       const url = `http://127.0.0.1:${(other.address() as AddressInfo).port}`;
       const response = await fetch(`${url}/api/audit`, { headers: { cookie: await signIn(url, 'head_secretary') } });
       const text = await response.text();
-      expect(JSON.parse(text)).toEqual({ entries: [], failedWrites: { count: 1, lastFailedAt: '2026-11-01T15:00:00.000Z' } });
+      expect(JSON.parse(text)).toEqual({ entries: [], failedWrites: { count: 1, lastFailedAt: '2026-11-01T15:00:00.000Z' }, actors: [] });
       expect(text).not.toContain('secret disk path');
     } finally {
       await new Promise<void>((resolve) => other.close(() => resolve()));
     }
+  });
+
+  it('filters over HTTP, combines filters, and lists the actors of the whole log', async () => {
+    await context.service.record({ actorId: 'user-head', action: 'create', entityType: 'member', entityId: 'm1' });
+    await context.service.record({ actorId: 'user-secretary', action: 'annul', entityType: 'payment', entityId: 'p1' });
+    const read = async (query: string) => {
+      const response = await send('GET', `/api/audit${query}`, 'head_secretary');
+      expect(response.status).toBe(200);
+      return (await response.json()) as { entries: Array<{ entityId: string }>; actors: unknown };
+    };
+    expect((await read('?actorId=user-secretary')).entries.map((entry) => entry.entityId)).toEqual(['p1']);
+    expect((await read('?entityType=member&action=create')).entries.map((entry) => entry.entityId)).toEqual(['m1']);
+    expect((await read('?actorId=user-head&action=annul')).entries).toEqual([]);
+    expect((await read('?from=2026-11-01&to=2026-11-01')).entries).toHaveLength(2);
+    expect((await read('?from=2026-11-02')).entries).toEqual([]);
+    // The actors cover the whole log, even when the filters leave no entry.
+    expect((await read('?from=2026-11-02')).actors).toEqual([
+      { id: 'user-head', name: 'Ana Gómez', role: 'head_secretary' },
+      { id: 'user-secretary', name: 'Luis Pérez', role: 'secretary' },
+    ]);
+  });
+
+  it('filters by member through the payments, over HTTP', async () => {
+    const withLabels = await createTestContext({
+      labels: {
+        members: async () => [{ id: 'member-7', memberNumber: '0007' }],
+        disciplines: async () => [],
+        users: async () => [],
+        payments: async () => [{ id: 'pay-7', receiptNumber: 3, memberId: 'member-7' }, { id: 'pay-8', receiptNumber: 4, memberId: 'member-8' }],
+        cashCounts: async () => [],
+      },
+    });
+    cleanups.push(withLabels.cleanup);
+    await withLabels.service.record({ actorId: 'user-head', action: 'create', entityType: 'payment', entityId: 'pay-7' });
+    await withLabels.service.record({ actorId: 'user-head', action: 'create', entityType: 'payment', entityId: 'pay-8' });
+    const other = await listenOnFetchSafePort(createApp({ storePath: (await createUsersFile()).storePath, auditService: withLabels.service }));
+    try {
+      const url = `http://127.0.0.1:${(other.address() as AddressInfo).port}`;
+      const response = await fetch(`${url}/api/audit?member=0007`, { headers: { cookie: await signIn(url, 'head_secretary') } });
+      const body = (await response.json()) as { entries: Array<{ entityId: string; entityLabel: string }> };
+      expect(body.entries.map((entry) => [entry.entityId, entry.entityLabel])).toEqual([['pay-7', 'Pago N.º 3']]);
+    } finally {
+      await new Promise<void>((resolve) => other.close(() => resolve()));
+    }
+  });
+
+  it('answers 400 with field errors for an invalid filter, never ignoring it', async () => {
+    const cases: Array<[string, string]> = [
+      ['actorId=', 'actorId'],
+      ['member=abc', 'member'],
+      ['entityType=nope', 'entityType'],
+      ['action=nope', 'action'],
+      ['action=create&action=update', 'action'],
+      ['from=2026-13-01', 'from'],
+      ['to=yesterday', 'to'],
+      ['from=2026-11-05&to=2026-11-01', 'to'],
+    ];
+    for (const [query, field] of cases) {
+      const response = await send('GET', `/api/audit?${query}`, 'head_secretary');
+      expect(response.status, query).toBe(400);
+      const body = (await response.json()) as { error: string; fieldErrors: Record<string, string> };
+      expect(body.error).toBe('validation_error');
+      expect(Object.keys(body.fieldErrors), query).toEqual([field]);
+    }
+  });
+
+  it('keeps refusing filtered requests without a session or to other roles', async () => {
+    expect((await send('GET', '/api/audit?action=create')).status).toBe(401);
+    expect((await send('GET', '/api/audit?action=create', 'secretary')).status).toBe(403);
+    expect((await send('GET', '/api/audit?action=nope', 'teacher')).status).toBe(403);
   });
 
   it('has no write route: every other method is refused and nothing is stored', async () => {
