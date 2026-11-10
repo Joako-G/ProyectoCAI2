@@ -57,4 +57,29 @@ describe('GET /api/members/summary', () => {
       ids: { upToDate: [activeId], debtors: [], overdue: [] },
     });
   });
+
+  it('answers 500 without details when a source cannot be read, and keeps serving', async () => {
+    const users = await createUsersFile();
+    cleanups.push(users.cleanup);
+    let calls = 0;
+    const server: Server = await listenOnFetchSafePort(createApp({
+      storePath: users.storePath,
+      memberSummaryService: {
+        summary: async () => {
+          calls += 1;
+          throw new Error('payments store unreadable at C:/secret/path');
+        },
+      },
+    }));
+    cleanups.push(() => new Promise<void>((resolve) => server.close(() => resolve())));
+    const baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const cookie = await signIn(baseUrl, 'secretary');
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await fetch(`${baseUrl}/api/members/summary`, { headers: { cookie } });
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({ error: 'internal_error', message: 'Unexpected error' });
+    }
+    expect(calls).toBe(2);
+  });
 });
