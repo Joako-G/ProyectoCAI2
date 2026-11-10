@@ -1,9 +1,12 @@
+import { Pagination } from '../../../components/Pagination';
+import { usePagination } from '../../../hooks/usePagination';
 import type { EntriesTodayState } from '../hooks/useEntriesToday';
 import { entryTime, methodLabel, recordsLabel, resultChip, UNAVAILABLE_MESSAGE } from '../utils/entries-format';
 
 /** "Accesos de hoy" as in the approved "Ventanilla": every check of the day, newest first, with a colored result chip. Read-only. */
 export function EntriesToday({ state, onRetry }: { state: EntriesTodayState; onRetry: () => void }) {
   const { day, problem } = state;
+  const pager = usePagination(day?.entries ?? []);
 
   return (
     <section className="entries-card" aria-label="Accesos de hoy">
@@ -32,7 +35,7 @@ export function EntriesToday({ state, onRetry }: { state: EntriesTodayState; onR
             </tr>
           </thead>
           <tbody>
-            {day.entries.map((entry) => {
+            {pager.pageItems.map((entry) => {
               const chip = resultChip(entry.result);
               return (
                 <tr key={entry.id}>
@@ -47,6 +50,7 @@ export function EntriesToday({ state, onRetry }: { state: EntriesTodayState; onR
           </tbody>
         </table>
       ) : null}
+      <Pagination page={pager.page} pageCount={pager.pageCount} total={pager.total} onPageChange={pager.setPage} label="Paginación de accesos de hoy" />
     </section>
   );
 }
