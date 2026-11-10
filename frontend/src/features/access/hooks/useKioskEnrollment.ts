@@ -90,7 +90,12 @@ export function useKioskEnrollment({
     lastEventKey.current = event.key;
     const message = event.event;
     if (message.type === 'start') begin({ id: message.sessionId, firstName: message.firstName, expiresAt: message.expiresAt, total: message.captures });
-    else if (sessionRef.current?.id === message.sessionId) clear();
+    else if (sessionRef.current?.id === message.sessionId) {
+      // The server announces a completed session before it answers the save, so the confirmation is shown from here too.
+      const ended = sessionRef.current;
+      if (message.outcome === 'completed') setDone({ firstName: ended.firstName, total: ended.total });
+      clear();
+    }
   }, [event, begin, clear]);
 
   // A screen that (re)connects asks what is running, so it never misses a start nor stays in enrollment after an end it missed.

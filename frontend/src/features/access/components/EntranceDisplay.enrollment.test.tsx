@@ -92,6 +92,19 @@ describe('face enrollment on the public screen', () => {
     expect(fetchMock.mock.calls.filter(([url]) => url === '/api/faces/recognize')).toHaveLength(0);
   });
 
+  it('still confirms when the completed end event arrives before the save answers', async () => {
+    faceInFront();
+    tools.current.detector.describe.mockResolvedValue(FAR_AWAY);
+    complete = () => {
+      // The server publishes the end of the session before it answers the request that ended it.
+      FakeSource.latest().enroll({ type: 'end', sessionId: 's1', outcome: 'completed' });
+      return new Response(null, { status: 204 });
+    };
+    show();
+    FakeSource.latest().enroll(startEvent());
+    expect(await screen.findByText('Listo, tu rostro quedó registrado', undefined, { timeout: 3000 })).toBeInTheDocument();
+  });
+
   it('reports the progress, delivers only the mean descriptor after three captures, confirms, and goes back to recognition', async () => {
     faceInFront();
     tools.current.detector.describe.mockResolvedValue(FAR_AWAY);
