@@ -103,12 +103,13 @@ describe('EntranceDisplay', () => {
   });
 
   it('replaces a result with the next one and restarts the time', async () => {
-    show({ holdMs: 60 });
+    // Wide margins: each wait is well under the hold, and the two together are well over it, even on a loaded machine.
+    show({ holdMs: 600 });
     latest().greet(upToDate);
-    await new Promise((resolve) => setTimeout(resolve, 40));
+    await new Promise((resolve) => setTimeout(resolve, 350));
     latest().greet({ ...upToDate, firstName: 'Mateo', member: { ...lucia, firstName: 'Mateo', fullName: 'Mateo Quiroga' } });
     expect(screen.getByRole('heading', { name: 'Pasá, Mateo' })).toBeInTheDocument();
-    await new Promise((resolve) => setTimeout(resolve, 40));
+    await new Promise((resolve) => setTimeout(resolve, 350));
     expect(screen.getByRole('heading', { name: 'Pasá, Mateo' })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('heading', { name: 'Bienvenido al club' })).toBeInTheDocument());
   });
