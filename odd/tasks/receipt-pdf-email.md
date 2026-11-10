@@ -39,11 +39,14 @@ Requirements: RF-14 (Esencial: digital, numbered, printable receipt), RF-22 (Des
 - S5 (email UI): in the enrollment done screen, "Enviar por email a m***@gmail.com" (masked), with sending / sent / failed-with-retry states. Never blocks finishing the enrollment.
 - S6: tests: PDF route (headers, 404, 401/403 via route matrix, annulled mark present in the generated text), message builder (member, guardian, annulled refusal unchanged), email route with an injected fake transport (not configured, no email, success with attachment, transport failure), UI (download link, hint, email states).
 
+- S7 (no duplicate or hanging sends, from review R4-smtp-latency and R3-001; user said fix it on 2026-11-10): (a) the whole send is bounded to about 15 s on the server (shorter SMTP connection, greeting and socket timeouts) and the client aborts after about 20 s; (b) the server remembers, per payment, whether a welcome email is being sent, was sent (with time and masked address) or ended uncertain (a timeout or connection loss after the message may have been accepted); kept in memory, documented as lost on restart; (c) a second send while one is running answers 409 `mail_send_in_progress`; a send for a payment already sent answers 409 `mail_already_sent` unless the request says `resend: true`; (d) the welcome endpoint reports that state so a remounted screen shows "Enviado el dd/mm hh:mm a m***@..." instead of the send button, with a secondary "Reenviar" that asks for confirmation; (e) an uncertain outcome shows "No se pudo confirmar el envío. Puede que el email ya haya llegado." and resending needs the same confirmation. Tests for each case with the fake transport (including a transport that never answers) and fake timers where useful.
+
 ## Tasks
 
 - [x] T1 (S1, S2): PDF generator, route, crest asset, download buttons, tests. Route: delegated (writer trigger).
 - [x] T2 (S3): professional welcome message, tests. Route: delegated (same writer).
 - [x] T3 (S4, S5): email sending, config, route, UI, docs, tests. Route: delegated (same writer).
+- [ ] T4 (S7): bounded send time and no duplicate or hanging sends. Route: delegated (writer trigger: backend service, routes, mailer and frontend hook/component).
 
 ## Log
 
@@ -58,4 +61,4 @@ Requirements: RF-14 (Esencial: digital, numbered, printable receipt), RF-22 (Des
 
 ## Next step
 
-The user chooses the club mailbox and sets SMTP_* to try a real send. Next feature: the public face enrollment screen.
+T4. Then the user chooses the club mailbox and sets SMTP_* to try a real send.
