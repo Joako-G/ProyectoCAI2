@@ -23,11 +23,14 @@ export function useCameraEntrance({
   timing,
   onFace,
   onUnavailable,
+  paused = false,
 }: {
   camera: FaceCamera;
   timing: CameraTiming;
   onFace: (descriptor: number[]) => Promise<RecognizeOutcome>;
   onUnavailable: () => void;
+  /** True while something else uses the camera (a face enrollment): the loop stops looking, the stream stays open. */
+  paused?: boolean;
 }): CaptureGuideState {
   const handlers = useRef({ onFace, onUnavailable });
   handlers.current = { onFace, onUnavailable };
@@ -38,5 +41,5 @@ export function useCameraEntrance({
   }, []);
   const onEnd = useCallback(() => handlers.current.onUnavailable(), []);
 
-  return useCaptureGuide({ camera, active: camera.state.phase === 'ready', timing, onStable, onEnd });
+  return useCaptureGuide({ camera, active: camera.state.phase === 'ready' && !paused, timing, onStable, onEnd });
 }

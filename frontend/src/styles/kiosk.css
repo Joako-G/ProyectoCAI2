@@ -459,6 +459,55 @@
   animation: softIn 0.4s ease both;
 }
 
+.kiosk-view--enrolling {
+  gap: 18px;
+  animation: softIn 0.4s ease both;
+}
+
+/* The one thing the member must do now, in large type: the person reads it from a step away. */
+.kiosk-enroll__hint {
+  margin: 0;
+  min-height: 2.4em;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.kiosk-view--enrolling[data-guide='ready'] .kiosk-enroll__hint,
+.kiosk-view--enrolling[data-enrollment='done'] .kiosk-enroll__hint {
+  color: #7fdcae;
+}
+
+.kiosk-enroll__steps {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.kiosk-enroll__dots {
+  display: flex;
+  gap: 8px;
+}
+
+.kiosk-enroll__dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+}
+
+.kiosk-enroll__dot--done {
+  background: #7fdcae;
+  border-color: #7fdcae;
+}
+
+.kiosk-enroll__count {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .kiosk-view--result {
   gap: 24px;
   animation: softIn 0.45s ease both;

@@ -37,7 +37,7 @@ Today "Registrar cara" (`faces/components/FaceEnrollment.tsx` in the member reco
 ## Tasks
 
 - [x] T1 (S1, S2): backend enrollment session and display events. Route: delegated (writer trigger: 2+ non-trivial files).
-- [ ] T2 (S3): public screen enrollment mode. Route: delegated (same writer).
+- [x] T2 (S3): public screen enrollment mode. Route: delegated (same writer).
 - [ ] T3 (S4): secretary screen flow and fallback. Route: delegated (same writer).
 
 ## Log
@@ -48,6 +48,10 @@ Today "Registrar cara" (`faces/components/FaceEnrollment.tsx` in the member reco
   - Verification: `cd backend && pnpm typecheck`: clean. `cd backend && pnpm test`: 87 files, 1376 tests passed; database tests skipped (no `TEST_DATABASE_URL`).
   - Commit: see git log.
 
+- T2 done (route: delegated writer). The kiosk (`EntranceDisplay`) opens its stream with `?screen=public` and listens to `event: enrollment`. New `useKioskEnrollment` takes over the camera recognition already uses (no second stream): `useKioskRecognition`/`useCameraEntrance` gained `paused`, and the enrollment runs the shared `useCaptureGuide` with `addCapture` (3 consistent captures, mean descriptor). It reports hint and captures to `POST /:id/progress`, delivers only the descriptor to `/complete`, shows 4 s of confirmation, and returns to recognition on success, end event, failure (the secretary is told with status failed), camera error or the session time (local timer). A screen that connects late asks `GET /enrollments/active`. `KioskScreen` has an `enrolling` phase (large hint, "Captura n de 3", dots, first name); copy in `KIOSK_TEXT.enrolling`; API client `faces/services/enrollment-api.ts`.
+  - Verification: `cd frontend && pnpm typecheck`: clean. `cd frontend && pnpm test`: 92 files, 869 tests passed. `cd frontend && pnpm build`: built (chunk-size warning only). Real camera not exercised (see S5).
+  - Commit: see git log.
+
 ## Next step
 
-T2.
+T3.

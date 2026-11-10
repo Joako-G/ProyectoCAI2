@@ -5,6 +5,7 @@ import { defaultCheckSession, defaultCreateSource, useGreetingStream, type Greet
 import { useClock } from '../hooks/useClock';
 import { useEnrolledCount } from '../hooks/useEnrolledCount';
 import { useFitScale } from '../hooks/useFitScale';
+import { DEFAULT_DONE_MS, useKioskEnrollment } from '../hooks/useKioskEnrollment';
 import { useKioskRecognition } from '../hooks/useKioskRecognition';
 import type { AccessCheck } from '../types/access';
 import type { GreetingEvent } from '../types/greeting';
@@ -32,6 +33,8 @@ interface EntranceDisplayProps {
   timing?: Partial<CaptureTiming>;
   /** Overrides the session check done when the stream closes; used by tests. */
   checkSession?: () => Promise<boolean>;
+  /** How long the confirmation of a registered face stays; used by tests. */
+  enrollmentDoneMs?: number;
 }
 
 /**
@@ -48,8 +51,9 @@ export function EntranceDisplay({
   streamGraceMs = DEFAULT_STREAM_GRACE_MS,
   timing,
   checkSession = defaultCheckSession,
+  enrollmentDoneMs = DEFAULT_DONE_MS,
 }: EntranceDisplayProps) {
-  const { latest, connected, sessionExpired } = useGreetingStream({ createSource, reconnectMs, checkSession });
+  const { latest, enrollment: enrollmentMessage, connected, sessionExpired } = useGreetingStream({ createSource, reconnectMs, checkSession, publicScreen: true });
   const [shown, setShown] = useState<GreetingEvent | undefined>();
   const [awaiting, setAwaiting] = useState<AccessCheck | undefined>();
   const camera = useFaceCamera();
@@ -115,7 +119,10 @@ export function EntranceDisplay({
     return () => clearTimeout(timer);
   }, [awaiting, present, streamGraceMs]);
 
-  const { guide, identifying, stopped } = useKioskRecognition({ camera, timing: captureTiming, onAttempt: handleAttempt, onAnswer: handleAnswer });
+  // A face enrollment started by staff takes the same camera: recognition waits, and resumes when the enrollment ends.
+  const { enrollment, guide: enrollmentGuide } = useKioskEnrollment({ camera, timing: captureTiming, event: enrollmentMessage, connected, doneMs: enrollmentDoneMs });
+  const { guide: recognitionGuide, identifying, stopped } = useKioskRecognition({ camera, timing: captureTiming, onAttempt: handleAttempt, onAnswer: handleAnswer, paused: Boolean(enrollment) });
+  const guide = enrollment ? enrollmentGuide : recognitionGuide;
 
   const expired = sessionExpired || stopped === 'unauthorized';
   // With the session over there is nothing to look for: release the camera.
@@ -127,6 +134,7 @@ export function EntranceDisplay({
 
   let phase: KioskPhase = 'idle';
   if (expired) phase = 'expired';
+  else if (enrollment) phase = 'enrolling';
   else if (result) phase = 'result';
   else if (identifying || awaiting) phase = 'identifying';
   else if (stopped === 'unavailable') phase = 'unavailable';
@@ -142,6 +150,7 @@ export function EntranceDisplay({
   return (
     <KioskScreen
       phase={phase}
+      enrollment={enrollment}
       result={result}
       resultTime={shown ? entryTime(shown.at) : undefined}
       clock={clock}
