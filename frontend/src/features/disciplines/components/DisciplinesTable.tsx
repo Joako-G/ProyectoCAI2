@@ -36,7 +36,7 @@ export function DisciplinesTable({ disciplines, canWrite, onEdit, onDeactivate, 
             </td>
             <td data-label="Profesores">
               <div>
-                <span>{discipline.leadTeacher}</span>
+                {discipline.teachers.length === 0 ? <span className="disciplines-table__others">Sin profesores asignados</span> : <span>{discipline.leadTeacher}</span>}
                 {otherTeachers(discipline).length > 0 ? (
                   <span className="disciplines-table__others">Otros: {otherTeachers(discipline).join(', ')}</span>
                 ) : null}

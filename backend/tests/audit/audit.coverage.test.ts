@@ -79,7 +79,7 @@ let sequence = 0;
 const next = () => ++sequence;
 
 async function createDiscipline(api: Api): Promise<string> {
-  const { body } = await api.call('POST', '/api/disciplines', { name: `Disciplina ${next()}`, teachers: ['Marcos Ledesma'], leadTeacher: 'Marcos Ledesma' });
+  const { body } = await api.call('POST', '/api/disciplines', { name: `Disciplina ${next()}`, teacherIds: ['user-teacher'], leadTeacherId: 'user-teacher' });
   return body.id!;
 }
 
@@ -161,13 +161,13 @@ const scenarios: Record<string, (api: Api) => Promise<Prepared>> = {
     return { send: () => api.call('POST', `/api/members/${id}/reactivate`), expected: () => ({ action: 'reactivate', entityType: 'member', entityId: id, changedFields: [] }) };
   },
   'POST /api/disciplines': async (api) => ({
-    send: () => api.call('POST', '/api/disciplines', { name: `Disciplina ${next()}`, teachers: ['Carla Ibarra'], leadTeacher: 'Carla Ibarra' }),
+    send: () => api.call('POST', '/api/disciplines', { name: `Disciplina ${next()}`, teacherIds: ['user-teacher'], leadTeacherId: 'user-teacher' }),
     expected: (response) => ({ action: 'create', entityType: 'discipline', entityId: response.body.id!, changedFields: [] }),
   }),
   'PUT /api/disciplines/missing': async (api) => {
     const id = await createDiscipline(api);
     return {
-      send: () => api.call('PUT', `/api/disciplines/${id}`, { name: `Renombrada ${next()}`, teachers: ['Marcos Ledesma'], leadTeacher: 'Marcos Ledesma' }),
+      send: () => api.call('PUT', `/api/disciplines/${id}`, { name: `Renombrada ${next()}`, teacherIds: ['user-teacher'], leadTeacherId: 'user-teacher' }),
       expected: () => ({ action: 'update', entityType: 'discipline', entityId: id, changedFields: ['name'] }),
     };
   },

@@ -108,7 +108,7 @@ export function MemberFormScreen({ memberId, today, catalog, onSaved, onCancel }
   }
 
   return (
-    <section className="card member-form-card" aria-label={title}>
+    <section className="card member-form-card member-form-card--members" aria-label={title}>
       <FormHeading>{title}</FormHeading>
       <MemberForm
         mode={editing ? 'edit' : 'create'}

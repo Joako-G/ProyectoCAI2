@@ -1,5 +1,5 @@
 import { request } from '../../members/services/members-api';
-import type { DisciplineSettlement, ReportGranularity, RevenueReport } from '../types/report';
+import type { DisciplineIncome, DisciplineSettlement, ReportGranularity, RevenueReport } from '../types/report';
 
 export function fetchRevenue(granularity: ReportGranularity, date: string, signal?: AbortSignal): Promise<RevenueReport> {
   const params = new URLSearchParams({ granularity, date });
@@ -9,4 +9,9 @@ export function fetchRevenue(granularity: ReportGranularity, date: string, signa
 export function fetchDisciplineSettlement(period: string, disciplineId: string, signal?: AbortSignal): Promise<DisciplineSettlement> {
   const params = new URLSearchParams({ period, disciplineId });
   return request<DisciplineSettlement>(`/api/reports/discipline-settlement?${params}`, { signal });
+}
+
+export function fetchDisciplineIncome(from: string, to: string, signal?: AbortSignal): Promise<DisciplineIncome> {
+  const params = new URLSearchParams({ from, to });
+  return request<DisciplineIncome>(`/api/reports/discipline-income?${params}`, { signal });
 }

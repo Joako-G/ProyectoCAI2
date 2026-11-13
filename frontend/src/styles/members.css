@@ -1,0 +1,1103 @@
+/*
+ * Socios: the list (register bar, filters, table), the member record and the forms.
+ *
+ * One calm look: white cards with hairline borders and the single card radius, status colours only where they say
+ * a status, Libre Baskerville for names, IBM Plex Mono for figures (number, DNI, dates, phone). The register bar is
+ * the one bold element. Content is a centred column like Arqueo and Gastos.
+ *
+ * app.css styles every bare `form`, `form input`, `form label` and `form button` for the login, with selectors the
+ * shared classes cannot beat; the rules for anything inside a form therefore repeat a parent class on purpose.
+ */
+
+/* Layout: a centred column per screen */
+
+.members-screen,
+.member-record {
+  width: 100%;
+  margin-inline: auto;
+}
+
+.members-screen,
+.member-record {
+  max-width: 1180px;
+}
+
+.members-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.members-screen__head {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Register bar */
+
+.padron {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 24px 16px;
+}
+
+.padron__totals {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+.padron__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+
+.padron__filter {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+}
+
+.padron__filter:hover:not(:disabled) {
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.padron__filter[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface));
+}
+
+.padron__filter:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.padron__filter:disabled {
+  cursor: default;
+}
+
+.padron__value {
+  font: 600 16px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.padron__label {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+/* The two headline counts. */
+.padron__totals .padron__value {
+  font-size: 30px;
+}
+
+.padron__totals .padron__label {
+  font-size: 14px;
+}
+
+/* Legend swatches say which part of the bar a button stands for. */
+.padron__legend .padron__filter::before {
+  content: '';
+  flex: none;
+  width: 10px;
+  height: 10px;
+  align-self: center;
+  border-radius: 2px;
+  background: var(--swatch);
+}
+
+.padron__filter--upToDate {
+  --swatch: var(--color-success);
+}
+
+.padron__filter--debtors {
+  --swatch: var(--color-warning);
+}
+
+.padron__filter--overdue {
+  --swatch: var(--color-error);
+}
+
+.padron__bar {
+  display: flex;
+  gap: 2px;
+  height: 20px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.padron__segment {
+  flex-basis: 0;
+  min-width: 6px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.padron__segment--upToDate {
+  background: var(--color-success);
+}
+
+.padron__segment--debtors {
+  background: var(--color-warning);
+}
+
+.padron__segment--overdue {
+  background: var(--color-error);
+}
+
+/* With one group selected, the others step back. */
+.padron__segment[data-dimmed='true'] {
+  opacity: 0.3;
+}
+
+.padron__segment:hover {
+  opacity: 0.85;
+}
+
+.member-stats__error {
+  margin: 0;
+  font-size: 12.5px;
+  text-align: center;
+  color: var(--color-error);
+}
+
+.member-stats__retry {
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.member-stats__retry:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* List card: filters, result line, table */
+
+.members-screen .members-page__summary {
+  padding: 10px 20px;
+  background: none;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.members-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.members-filters__search {
+  display: flex;
+  /* The sign-in stylesheet stacks every form in a column. */
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.members-filters .members-filters__input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  height: 46px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-md);
+  background: #fff;
+  box-shadow: none;
+  color: var(--color-text);
+  font: 400 14px var(--font-sans);
+  transition: none;
+}
+
+.members-filters .members-filters__input::placeholder {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.members-filters .members-filters__input:focus {
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: none;
+}
+
+.members-filters .members-filters__input:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.members-filters .members-filters__submit {
+  display: block;
+  flex: none;
+  height: 46px;
+  padding: 0 20px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+  background: #f3f2ef;
+  color: var(--color-text);
+  font: 500 13px var(--font-sans);
+  transition: none;
+}
+
+.members-filters .members-filters__submit:hover:not(:disabled) {
+  background: #e9e7e2;
+  color: var(--color-text);
+  transform: none;
+}
+
+.members-filters .members-filters__submit:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.members-filters__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+
+/* The chosen status is marked, not filled: the register bar is the only strong colour on the screen. */
+.members-filters .segmented__option:has(input:checked) {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 9%, #fff);
+  color: var(--color-accent);
+}
+
+.members-filters__select {
+  min-width: 14rem;
+}
+
+/* Table */
+
+.members-table.members-register td,
+.members-table.members-register th {
+  vertical-align: middle;
+}
+
+.members-table.members-register .members-table__number,
+.members-table.members-register .members-table__mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.members-table.members-register .members-table__number {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.members-table.members-register .members-table__mono {
+  font-size: 12.5px;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.members-table.members-register .members-table__name {
+  font-size: 14px;
+}
+
+.members-table.members-register .members-table__meta {
+  font-size: 12px;
+}
+
+.members-table.members-register .members-table__disciplines {
+  font-size: 13px;
+}
+
+.members-table.members-register tbody tr:focus-within {
+  background: #f2f6fb;
+}
+
+.account-chip {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 4px;
+  font: 600 12px var(--font-sans);
+  white-space: nowrap;
+}
+
+.account-chip--upToDate {
+  background: #e3f1ea;
+  color: var(--color-success);
+}
+
+.account-chip--debtors {
+  background: #fbf3df;
+  color: var(--color-warning);
+}
+
+.account-chip--overdue {
+  background: #fbeceb;
+  color: var(--color-error);
+}
+
+.account-chip--inactive {
+  background: #ececec;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+@media screen and (min-width: 641px) {
+  .members-table.members-register td {
+    padding: 14px 12px;
+  }
+
+  .members-table.members-register td:last-child,
+  .members-table.members-register th:last-child {
+    padding-right: 20px;
+  }
+}
+
+@media screen and (max-width: 640px) {
+  /* An active member without counts has an empty Cuenta cell: no label for nothing. */
+  .members-table.members-register td:empty {
+    display: none;
+  }
+
+  .members-table.members-register tr {
+    padding: 8px 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .padron {
+    padding: 14px 14px 12px;
+  }
+
+  .padron__totals .padron__value {
+    font-size: 26px;
+  }
+
+  .members-filters {
+    padding: 14px;
+  }
+
+  .members-filters__row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .members-filters .segmented {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .members-filters .segmented__option {
+    padding-inline: 8px;
+    text-align: center;
+  }
+
+  .members-filters__select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .members-screen__head .button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .padron__segment {
+    transition: none;
+  }
+}
+
+/* Member record: the sheet on the left, the account and the face on the right */
+
+.member-record {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.member-record__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  grid-template-areas:
+    'back back'
+    'sheet side';
+  gap: 8px 20px;
+  align-items: start;
+}
+
+.member-record__grid--single {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'back'
+    'sheet';
+}
+
+.member-record__back {
+  grid-area: back;
+}
+
+.member-sheet {
+  grid-area: sheet;
+}
+
+.member-record__side {
+  grid-area: side;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.member-record__back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 6px 4px;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  font: 500 13px var(--font-sans);
+  cursor: pointer;
+}
+
+.member-record__back-button::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-bottom: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.member-record__back-button:hover {
+  color: var(--color-accent-hover);
+  text-decoration: underline;
+}
+
+.member-record__back-button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.member-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 28px;
+}
+
+.member-sheet__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.member-sheet__monogram {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-accent) 10%, #fff);
+  color: var(--color-accent);
+  font: 700 18px var(--font-serif);
+  letter-spacing: 0.5px;
+}
+
+.member-sheet__identity {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.member-sheet__name {
+  margin: 0;
+  font: 700 24px/1.2 var(--font-serif);
+  letter-spacing: -0.3px;
+  overflow-wrap: anywhere;
+}
+
+.member-sheet__name:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 4px;
+}
+
+.member-sheet__line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.member-sheet__number {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.member-sheet__actions {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 8.5rem;
+}
+
+/* Dar de baja stays red but quiet: an outline, so the record has no second loud button. */
+.member-sheet__actions .button--danger {
+  padding: 9px 14px;
+  border: 1px solid color-mix(in srgb, var(--color-error) 45%, transparent);
+  background: transparent;
+  color: var(--color-error);
+  font-weight: 500;
+}
+
+.member-sheet__actions .button--danger:hover {
+  background: #fbeceb;
+}
+
+.member-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 20px;
+  margin: 0;
+  padding-top: 22px;
+  border-top: 1px solid var(--color-border);
+}
+
+.member-facts--plain {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.member-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.member-fact dt {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.member-fact dd {
+  margin: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.member-fact--figure dd {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The tutor and the reason of a deactivation read as their own row. */
+.member-fact--wide {
+  grid-column: 1 / -1;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border);
+}
+
+.member-facts--plain .member-fact--wide {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.member-sheet__deactivation {
+  padding: 16px 18px;
+  background: #faf9f7;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.member-sheet__deactivation-title {
+  margin: 0 0 12px;
+  font: 600 14px var(--font-sans);
+}
+
+/* Cards of the right column (account, face): one heading style, messages stay inside the card. */
+
+.member-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 22px;
+}
+
+.face-enrollment.member-card {
+  margin-top: 0;
+}
+
+.member-card__title {
+  margin: 0;
+  font: 600 14px var(--font-sans);
+}
+
+.member-card__note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.member-card__note--error {
+  color: var(--color-error);
+}
+
+.member-account__standing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.member-card__action {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+  background: #f3f2ef;
+  color: var(--color-text);
+  font: 500 13px var(--font-sans);
+  text-decoration: none;
+}
+
+.member-card__action:hover {
+  background: #e9e7e2;
+  color: var(--color-text);
+}
+
+.member-card__action--primary {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.member-card__action--primary:hover {
+  background: var(--color-accent-hover);
+  color: #fff;
+}
+
+.member-card__action:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.member-card .face-enrollment__state {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.member-card .face-enrollment__capture,
+.member-card .face-enrollment__confirm {
+  padding: 14px;
+  background: #faf9f7;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.member-card .face-enrollment__consent {
+  font-size: 13px;
+}
+
+.member-card .member-detail__actions {
+  flex-wrap: wrap;
+}
+
+.member-card .form-alert {
+  font-size: 13px;
+}
+
+@media (max-width: 899px) {
+  .member-record__grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'back'
+      'sheet'
+      'side';
+  }
+
+  .member-record__grid--single {
+    grid-template-areas:
+      'back'
+      'sheet';
+  }
+}
+
+@media (max-width: 640px) {
+  .member-sheet {
+    gap: 20px;
+    padding: 20px;
+  }
+
+  .member-sheet__header {
+    flex-wrap: wrap;
+  }
+
+  .member-sheet__name {
+    font-size: 21px;
+  }
+
+  .member-sheet__actions {
+    flex: 1 1 100%;
+    flex-direction: row;
+  }
+
+  .member-sheet__actions .button {
+    flex: 1 1 0;
+  }
+
+  .member-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 360px) {
+  .member-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Forms (alta, edición): a centred column, desk fields, a stepper for the alta */
+
+.member-form-card--members {
+  width: 100%;
+  max-width: 760px;
+  margin-inline: auto;
+  gap: 22px;
+  padding: 28px 32px;
+}
+
+.member-form-card--members .member-form__title {
+  font-size: 22px;
+}
+
+.member-form-card--members .member-form__hint {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* Stepper */
+
+.stepper {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stepper__item {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.stepper__item:last-child {
+  flex: none;
+}
+
+/* The line to the next step. */
+.stepper__item:not(:last-child)::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  margin: 0 14px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.stepper__marker {
+  flex: none;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 50%;
+  background: var(--color-surface);
+  font: 600 12px var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.stepper__item[aria-current='step'] {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.stepper__item[aria-current='step'] .stepper__marker {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.stepper__item[data-done='true'] {
+  color: var(--color-text);
+}
+
+.stepper__item[data-done='true'] .stepper__marker {
+  border-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 10%, #fff);
+}
+
+/* A finished step shows a check drawn with borders instead of its number. */
+.stepper__item[data-done='true'] .stepper__number {
+  display: none;
+}
+
+.stepper__item[data-done='true'] .stepper__marker::after {
+  content: '';
+  width: 5px;
+  height: 10px;
+  margin-top: -2px;
+  border-right: 2px solid var(--color-accent);
+  border-bottom: 2px solid var(--color-accent);
+  transform: rotate(45deg);
+}
+
+/* Fields in the desk style: label above, 46 px, hairline border */
+
+.member-form--desk {
+  gap: 0;
+}
+
+.member-form--desk .member-form__section {
+  margin: 0;
+  padding: 22px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.member-form--desk .member-form__section:first-of-type {
+  border-top: 0;
+  padding-top: 4px;
+}
+
+.member-form--desk .member-form__legend {
+  padding: 0 0 14px;
+  font: 600 14px var(--font-sans);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--color-text);
+}
+
+.member-form--desk .form-alert {
+  margin-bottom: 18px;
+}
+
+.member-form--desk .member-form__grid {
+  gap: 16px 20px;
+}
+
+.member-form--desk .form-field {
+  gap: 6px;
+}
+
+.member-form--desk .form-field .form-field__label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.member-form--desk .form-field input,
+.member-form--desk .form-field select {
+  width: 100%;
+  height: 46px;
+  margin: 0;
+  padding: 0 14px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: var(--radius-md);
+  background: #fff;
+  box-shadow: none;
+  color: var(--color-text);
+  font: 400 14px var(--font-sans);
+  transition: none;
+}
+
+/* Figures that are read or copied: number, phone, date. */
+.member-form--desk .form-field input[inputmode='numeric'],
+.member-form--desk .form-field input[type='tel'],
+.member-form--desk .form-field input[type='date'] {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.member-form--desk .form-field input:focus,
+.member-form--desk .form-field select:focus {
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: none;
+}
+
+.member-form--desk .form-field input:focus-visible,
+.member-form--desk .form-field select:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.member-form--desk .form-field [aria-invalid='true'] {
+  border-color: var(--color-error);
+  background: #fff;
+}
+
+.member-form--desk .check-group__option {
+  background: #fff;
+  border-color: rgba(0, 0, 0, 0.15);
+}
+
+.member-form--desk .check-group__option:has(input:checked) {
+  background: color-mix(in srgb, var(--color-accent) 7%, #fff);
+}
+
+.member-form--desk .check-group__option:has(input:focus-visible) {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+/* Footer: the way out on the left, back and the main action on the right. */
+
+.member-form--desk .member-form__actions {
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding-top: 22px;
+  border-top: 1px solid var(--color-border);
+}
+
+.member-form--desk .member-form__actions .member-form__cancel {
+  margin-right: auto;
+}
+
+.member-form--desk .member-form__actions .button {
+  display: block;
+  height: auto;
+  margin: 0;
+  padding: 12px 22px;
+  border-radius: var(--radius-md);
+  font: 600 13px var(--font-sans);
+  transform: none;
+  transition: none;
+}
+
+.member-form--desk .member-form__actions .button--primary {
+  border: 0;
+  background: var(--color-accent);
+  color: #fff;
+}
+
+.member-form--desk .member-form__actions .button--primary:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  transform: none;
+}
+
+.member-form--desk .member-form__actions .button--secondary {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #f3f2ef;
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.member-form--desk .member-form__actions .button--secondary:hover:not(:disabled) {
+  background: #e9e7e2;
+  color: var(--color-text);
+  transform: none;
+}
+
+.member-form--desk .member-form__actions .button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.member-form--desk .member-form__actions .button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* The collection step lives in the same column: its table and method buttons breathe a little. */
+.member-form--desk .payments-preview {
+  margin-bottom: 4px;
+}
+
+.member-form--desk > .segmented {
+  margin: 16px 0 22px;
+}
+
+.member-form--desk > .member-form__hint,
+.member-form--desk > .form-alert,
+.member-form--desk > .members-page__notice {
+  margin-bottom: 16px;
+}
+
+@media (max-width: 640px) {
+  .member-form-card--members {
+    padding: 20px 18px;
+  }
+
+  .member-form--desk .member-form__actions {
+    flex-wrap: wrap;
+  }
+
+  /* Cancelar and Volver share a row; the main action takes the next one, full width. */
+  .member-form--desk .member-form__actions .button--primary {
+    flex: 1 1 100%;
+  }
+
+  .member-form--desk .member-form__actions .member-form__cancel {
+    margin-right: 0;
+  }
+
+  .member-form--desk .member-form__actions .button--secondary {
+    flex: 1 1 0;
+  }
+
+  /* Names of the steps already left or still ahead give way to the current one. */
+  .stepper__item:not([aria-current='step']) .stepper__name {
+    display: none;
+  }
+
+  .stepper__item:not(:last-child)::after {
+    margin: 0 8px;
+  }
+}
+
+@media print {
+  .padron,
+  .member-stats__error {
+    display: none;
+  }
+}

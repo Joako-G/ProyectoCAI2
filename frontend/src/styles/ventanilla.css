@@ -1,6 +1,6 @@
 /*
- * The Ingreso screen ("Ventanilla"), rebuilt from the approved mockup (GestionClub, view 01). The desk is two rows:
- * the door camera next to the last control, and the day's list next to the day's counters. Colors per result follow
+ * The Ingreso screen ("Ventanilla"), rebuilt from the approved mockup (GestionClub, view 01). The desk is two columns:
+ * the door camera with the day's counters on the left, and the last control with the day's list on the right. Colors per result follow
  * the mockup's palette; the wording always names the verdict, so color only reinforces it.
  */
 
@@ -20,36 +20,33 @@
 }
 
 .ventanilla {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-}
-
-.ventanilla__top {
   display: grid;
-  grid-template-columns: 400px 1fr;
+  grid-template-columns: 400px minmax(0, 1fr);
   gap: 22px;
   align-items: start;
 }
 
-.ventanilla__result {
+/* Camera and day counters stay together on the left; the control and the day's list fill the right. */
+.ventanilla__side,
+.ventanilla__main {
   display: flex;
   flex-direction: column;
   gap: 16px;
   min-width: 0;
 }
 
-.ventanilla__bottom {
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 22px;
-  align-items: start;
+.ventanilla__side {
+  position: sticky;
+  top: 16px;
 }
 
 @media (max-width: 1100px) {
-  .ventanilla__top,
-  .ventanilla__bottom {
+  .ventanilla {
     grid-template-columns: 1fr;
+  }
+
+  .ventanilla__side {
+    position: static;
   }
 }
 

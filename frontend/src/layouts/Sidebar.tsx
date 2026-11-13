@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
+import clubLogo from '../assets/club-cai.png';
 import { SessionPanel } from '../features/auth/components/SessionPanel';
 import type { AuthUser } from '../features/auth/types/auth';
 
@@ -48,8 +49,11 @@ export function Sidebar({ sections, current, layout = NAVIGATION, user, onLogout
       onClick={(event) => { if ((event.target as HTMLElement).closest('a, .sidebar__logout')) setOpen(false); }}
     >
       <div className="sidebar__brand">
-        <div className="sidebar__brand-name">Club Atlético Independiente</div>
-        <div className="sidebar__brand-tagline">Sistema de gestión</div>
+        <img className="sidebar__crest" src={clubLogo} alt="Escudo del Club Atlético Independiente" />
+        <div className="sidebar__brand-text">
+          <div className="sidebar__brand-name">Club Atlético Independiente</div>
+          <div className="sidebar__brand-tagline">Sistema de gestión</div>
+        </div>
       </div>
       {/* Only shown on small screens, where the sections collapse behind it. */}
       <button

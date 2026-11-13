@@ -36,3 +36,13 @@ export interface DisciplineSettlement {
   feeTotal: number;
   surchargeTotal: number;
 }
+
+/** Mirrors `DisciplineIncome` in backend/src/modules/reports/report.types.ts. */
+export interface DisciplineIncome {
+  from: string;
+  to: string;
+  /** Every month of the range, oldest first; each discipline's `byMonth` lines up with it. */
+  months: string[];
+  total: number;
+  disciplines: Array<{ id: string; name: string; total: number; fees: number; surcharges: number; byMonth: number[] }>;
+}

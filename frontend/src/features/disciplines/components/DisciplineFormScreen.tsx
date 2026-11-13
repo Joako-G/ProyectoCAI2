@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { describeError } from '../hooks/useDisciplinesList';
-import { ApiError, createDiscipline, updateDiscipline } from '../services/disciplines-api';
-import type { Discipline, DisciplineInput } from '../types/discipline';
+import { ApiError, createDiscipline, fetchTeacherOptions, updateDiscipline } from '../services/disciplines-api';
+import type { Discipline, DisciplineInput, TeacherOption } from '../types/discipline';
 import {
   disciplineToFormValues,
   emptyDisciplineForm,
@@ -48,6 +48,19 @@ export function DisciplineFormScreen({ discipline, onSaved, onCancel }: Discipli
   const editing = discipline !== null;
   const [saving, setSaving] = useState(false);
   const [failure, setFailure] = useState<SaveFailure>();
+  // The teacher accounts to pick from: `undefined` while they load, a message when they could not be read.
+  const [teachers, setTeachers] = useState<TeacherOption[] | { error: string }>();
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setTeachers(undefined);
+    fetchTeacherOptions(controller.signal).then(
+      (options) => { if (!controller.signal.aborted) setTeachers(options); },
+      (error: unknown) => { if (!controller.signal.aborted) setTeachers({ error: describeError(error) }); },
+    );
+    return () => controller.abort();
+  }, [attempt]);
 
   async function save(input: DisciplineInput) {
     setSaving(true);
@@ -66,15 +79,29 @@ export function DisciplineFormScreen({ discipline, onSaved, onCancel }: Discipli
   return (
     <section className="card member-form-card" aria-label={title}>
       <FormHeading>{title}</FormHeading>
-      <DisciplineForm
-        mode={editing ? 'edit' : 'create'}
-        initialValues={editing ? disciplineToFormValues(discipline) : emptyDisciplineForm()}
-        saving={saving}
-        fieldErrors={failure?.fieldErrors}
-        submitError={failure?.message}
-        onSubmit={save}
-        onCancel={onCancel}
-      />
+      {teachers === undefined ? <p className="members-page__notice" role="status">Cargando profesores…</p> : null}
+      {teachers !== undefined && !Array.isArray(teachers) ? (
+        <div className="members-page__notice members-page__notice--error" role="alert">
+          <p><strong>No se pudo cargar la lista de profesores.</strong> {teachers.error}</p>
+          <div className="member-form__actions">
+            <button type="button" className="button button--secondary" onClick={() => setAttempt((value) => value + 1)}>Reintentar</button>
+            <button type="button" className="button button--secondary" onClick={onCancel}>Cancelar</button>
+          </div>
+        </div>
+      ) : null}
+      {Array.isArray(teachers) ? (
+        <DisciplineForm
+          mode={editing ? 'edit' : 'create'}
+          initialValues={editing ? disciplineToFormValues(discipline) : emptyDisciplineForm()}
+          teacherOptions={teachers}
+          legacyTeachers={editing && discipline.teacherIds.length === 0 ? discipline.teachers : []}
+          saving={saving}
+          fieldErrors={failure?.fieldErrors}
+          submitError={failure?.message}
+          onSubmit={save}
+          onCancel={onCancel}
+        />
+      ) : null}
     </section>
   );
 }

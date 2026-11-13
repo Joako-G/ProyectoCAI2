@@ -27,8 +27,9 @@ describe('MemberDetail', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Lucía Ríos' })).toBeInTheDocument();
     expect(screen.getByText('Mayor · 36 años')).toBeInTheDocument();
     expect(screen.getByText('Activo')).toBeInTheDocument();
+    // The member number sits in the header with the name; the grid keeps the data to compare or copy.
+    expect(screen.getByText('N° 0001')).toBeInTheDocument();
     const facts = {
-      'N° de socio': '0001',
       DNI: '30123456',
       'Fecha de nacimiento': '15/03/1990',
       'Socio desde': '01/02/2015',

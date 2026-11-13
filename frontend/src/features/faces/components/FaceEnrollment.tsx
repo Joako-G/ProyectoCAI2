@@ -28,6 +28,8 @@ const ENDED_MESSAGE: Record<string, string> = {
   expired: 'Se agotó el tiempo del registro. Intente de nuevo.',
   cancelled: 'El registro se canceló.',
 };
+const FAILED_WITH_REASON = 'No se pudo registrar la cara en la pantalla pública:';
+const FAILED_ADVICE = 'Revise la cámara de esa pantalla o use "Registrar en esta pantalla".';
 const LOST_MESSAGE = 'Se perdió el seguimiento del registro. Verifique si la cara quedó registrada.';
 
 type Status ={ phase: 'loading' } | { phase: 'error'; message: string } | { phase: 'ready'; status: FaceStatus };
@@ -181,7 +183,9 @@ export function FaceEnrollment({
       void getFaceStatus(memberId).then((current) => setStatus({ phase: 'ready', status: current }), () => undefined);
       return;
     }
-    setMessage(ENDED_MESSAGE[final.status]);
+    // A failure carries the reason the public screen gave (for example, that its camera could not be used).
+    const reason = final.status === 'failed' ? final.message?.trim() : undefined;
+    setMessage(reason ? `${FAILED_WITH_REASON} ${reason.replace(/.$/, '')}. ${FAILED_ADVICE}` : ENDED_MESSAGE[final.status]);
   }
 
   function openCamera() {
@@ -239,8 +243,8 @@ export function FaceEnrollment({
   const enrolled = status.phase === 'ready' && status.status.enrolled;
 
   return (
-    <section className="card face-enrollment" aria-label="Reconocimiento facial">
-      <h3 className="face-enrollment__title">Reconocimiento facial</h3>
+    <section className="card face-enrollment member-card" aria-label="Reconocimiento facial">
+      <h3 className="face-enrollment__title member-card__title">Reconocimiento facial</h3>
 
       {status.phase === 'loading' ? <p role="status">Cargando…</p> : null}
       {status.phase === 'error' ? (

@@ -18,6 +18,7 @@ export const routes: Array<[string, string, readonly RoleName[]]> = [
   ['POST', '/api/members/missing/deactivate', both],
   ['POST', '/api/members/missing/reactivate', both],
   ['GET', '/api/disciplines', both],
+  ['GET', '/api/disciplines/teachers', both],
   ['GET', '/api/disciplines/missing', both],
   ['POST', '/api/disciplines', headOnly],
   ['PUT', '/api/disciplines/missing', headOnly],

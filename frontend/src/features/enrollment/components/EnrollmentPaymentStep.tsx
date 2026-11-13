@@ -52,7 +52,7 @@ export function EnrollmentPaymentStep({
   }, [disciplineIds]);
 
   return (
-    <div className="member-form">
+    <div className="member-form member-form--desk">
       <p className="member-form__hint">
         Cobrá {memberName} lo que se detalla y recién después presioná {savedMember ? 'Reintentar cobro' : 'Crear socio'}.
       </p>
@@ -104,8 +104,8 @@ export function EnrollmentPaymentStep({
       ) : null}
 
       <div className="member-form__actions">
-        <button type="button" className="button button--primary" disabled={!charge || !method || saving} onClick={() => charge && method && onConfirm(method, charge)}>
-          {saving ? 'Guardando…' : savedMember ? 'Reintentar cobro' : 'Crear socio'}
+        <button type="button" className="button button--secondary member-form__cancel" disabled={saving} onClick={onCancel}>
+          Cancelar
         </button>
         <button type="button" className="button button--secondary" disabled={saving || savedMember !== undefined} onClick={onBack}>
           Volver
@@ -115,8 +115,8 @@ export function EnrollmentPaymentStep({
             Ir al socio
           </button>
         ) : null}
-        <button type="button" className="button button--secondary" disabled={saving} onClick={onCancel}>
-          Cancelar
+        <button type="button" className="button button--primary" disabled={!charge || !method || saving} onClick={() => charge && method && onConfirm(method, charge)}>
+          {saving ? 'Guardando…' : savedMember ? 'Reintentar cobro' : 'Crear socio'}
         </button>
       </div>
     </div>

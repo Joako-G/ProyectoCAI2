@@ -4,6 +4,8 @@ import { PAYMENT_METHODS } from '../payments/payment.types.js';
 import { NotFoundError, ValidationError } from '../../shared/errors.js';
 import {
   REPORT_GRANULARITIES,
+  type DisciplineIncome,
+  type DisciplineIncomeQuery,
   type DisciplineSettlement,
   type DisciplineSettlementQuery,
   type IncomeEntry,
@@ -21,6 +23,7 @@ export interface ReportServiceDeps {
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/;
+const MAX_INCOME_MONTHS = 24;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function parseDate(value: unknown): Date {
@@ -101,6 +104,33 @@ function issuedRange(entries: readonly IncomeEntry[]): RevenueReport['issued'] {
 
 const byName = (a: string, b: string) => a.localeCompare(b, 'es');
 
+// `YYYY-MM` months from `from` to `to`, both included.
+function monthsBetween(from: string, to: string): string[] {
+  const months: string[] = [];
+  let year = Number(from.slice(0, 4));
+  let month = Number(from.slice(5, 7));
+  while (`${year}-${String(month).padStart(2, '0')}` <= to) {
+    months.push(`${year}-${String(month).padStart(2, '0')}`);
+    month += 1;
+    if (month > 12) {
+      month = 1;
+      year += 1;
+    }
+  }
+  return months;
+}
+
+function incomeRange({ from, to }: DisciplineIncomeQuery): string[] {
+  const errors: Record<string, string> = {};
+  if (typeof from !== 'string' || !PERIOD.test(from)) errors.from = 'Must be a valid month (YYYY-MM)';
+  if (typeof to !== 'string' || !PERIOD.test(to)) errors.to = 'Must be a valid month (YYYY-MM)';
+  if (Object.keys(errors).length > 0) throw new ValidationError(errors);
+  if (from > to) throw new ValidationError({ to: 'Must not be before the first month' });
+  const months = monthsBetween(from, to);
+  if (months.length > MAX_INCOME_MONTHS) throw new ValidationError({ to: `Must span at most ${MAX_INCOME_MONTHS} months` });
+  return months;
+}
+
 export function createReportService({ income, members, disciplines }: ReportServiceDeps) {
   return {
     // Valid income of a day, week or month by concept and payment method; annulled payments are listed apart.
@@ -108,6 +138,37 @@ export function createReportService({ income, members, disciplines }: ReportServ
       rangeFor(query);
       const memberById = new Map((await members.list()).map((member) => [member.id, member]));
       return revenueReport(await income.list(), query, memberById);
+    },
+
+    // What each discipline took in over a range of months. Unlike the settlement, which counts fees by the month
+    // they are for, this counts by the day the money was taken, like the revenue reports and the Arqueo.
+    async disciplineIncome(query: DisciplineIncomeQuery): Promise<DisciplineIncome> {
+      const months = incomeRange(query);
+      const entries = (await income.list()).filter(
+        (entry) =>
+          !entry.annulled &&
+          entry.disciplineId !== undefined &&
+          (entry.concept === 'activityFee' || entry.concept === 'activitySurcharge') &&
+          entry.date.slice(0, 7) >= query.from &&
+          entry.date.slice(0, 7) <= query.to,
+      );
+      const ids = [...new Set(entries.map((entry) => entry.disciplineId!))];
+      const names = new Map((await disciplines.findByIds(ids)).map((discipline) => [discipline.id, discipline.name]));
+
+      const rows = ids.map((id) => {
+        const own = entries.filter((entry) => entry.disciplineId === id);
+        return {
+          id,
+          // A discipline deleted since the payment keeps its money in the figures; its name is not guessed.
+          name: names.get(id) ?? 'Disciplina eliminada',
+          total: sum(own),
+          fees: sum(own.filter((entry) => entry.concept === 'activityFee')),
+          surcharges: sum(own.filter((entry) => entry.concept === 'activitySurcharge')),
+          byMonth: months.map((month) => sum(own.filter((entry) => entry.date.slice(0, 7) === month))),
+        };
+      });
+      rows.sort((a, b) => b.total - a.total || byName(a.name, b.name));
+      return { from: query.from, to: query.to, months, total: sum(entries), disciplines: rows };
     },
 
     // PROVISIONAL(S3c): "al día" is read as "paid that month's fee for this discipline", like the current

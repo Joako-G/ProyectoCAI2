@@ -248,3 +248,54 @@ describe('payment income source', () => {
     expect((await source.list()).every((line) => line.annulled)).toBe(true);
   });
 });
+
+describe('discipline income', () => {
+  const fee = (overrides: Partial<IncomeEntry> = {}) => entry({ concept: 'activityFee', disciplineId: 'basket', amount: 3000, ...overrides });
+
+  it('adds what each discipline took in per month, by the day the money was taken, biggest first', async () => {
+    const report = await serviceWith([
+      fee({ date: '2026-09-20', period: '2026-10' }),
+      fee({ date: '2026-10-02' }),
+      entry({ concept: 'activitySurcharge', disciplineId: 'basket', date: '2026-10-12', amount: 500 }),
+      fee({ disciplineId: 'judo', date: '2026-10-03', amount: 4000 }),
+    ]).disciplineIncome({ from: '2026-09', to: '2026-10' });
+
+    expect(report).toEqual({
+      from: '2026-09',
+      to: '2026-10',
+      months: ['2026-09', '2026-10'],
+      total: 10500,
+      disciplines: [
+        { id: 'basket', name: 'Básquet', total: 6500, fees: 6000, surcharges: 500, byMonth: [3000, 3500] },
+        { id: 'judo', name: 'Judo', total: 4000, fees: 4000, surcharges: 0, byMonth: [0, 4000] },
+      ],
+    });
+  });
+
+  it('leaves out annulled payments, other concepts, entries without a discipline and other months', async () => {
+    const report = await serviceWith([
+      fee({ annulled: true }),
+      entry({ concept: 'socialFee', amount: 1000 }),
+      entry({ concept: 'activityFee', amount: 700 }),
+      fee({ date: '2026-08-31' }),
+      fee({ date: '2026-11-01' }),
+    ]).disciplineIncome({ from: '2026-09', to: '2026-10' });
+
+    expect(report).toMatchObject({ total: 0, disciplines: [] });
+  });
+
+  it('keeps the money of a discipline that no longer exists, without guessing its name', async () => {
+    const report = await serviceWith([fee({ disciplineId: 'chess', amount: 900 })]).disciplineIncome({ from: '2026-10', to: '2026-10' });
+
+    expect(report.disciplines).toEqual([{ id: 'chess', name: 'Disciplina eliminada', total: 900, fees: 900, surcharges: 0, byMonth: [900] }]);
+  });
+
+  it('rejects a month that is not valid, a range that runs backwards and a range over 24 months', async () => {
+    const service = serviceWith([]);
+
+    await expect(service.disciplineIncome({ from: '2026-13', to: '2026-10' })).rejects.toBeInstanceOf(ValidationError);
+    await expect(service.disciplineIncome({ from: '2026-10', to: '2026-09' })).rejects.toBeInstanceOf(ValidationError);
+    await expect(service.disciplineIncome({ from: '2024-10', to: '2026-10' })).rejects.toBeInstanceOf(ValidationError);
+    await expect(service.disciplineIncome({ from: '2024-11', to: '2026-10' })).resolves.toMatchObject({ months: expect.any(Array) });
+  });
+});

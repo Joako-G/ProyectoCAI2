@@ -124,6 +124,21 @@ describe('EnrollmentScreen: steps', () => {
     expect(screen.getByRole('button', { name: 'Cancelar' })).toBeEnabled();
   });
 
+  it('shows the three steps and moves the current marker as the secretary advances', async () => {
+    stubApi();
+    const { user } = setup();
+    const items = () => Array.from(document.querySelectorAll('.stepper__item'));
+
+    expect(items().map((item) => item.textContent)).toEqual(['1Datos', '2Disciplinas', '3Cobro']);
+    expect(items()[0]).toHaveAttribute('aria-current', 'step');
+    expect(items()[0]).not.toHaveAttribute('data-done');
+
+    await reachDisciplines(user);
+    expect(items()[0]).toHaveAttribute('data-done', 'true');
+    expect(items()[1]).toHaveAttribute('aria-current', 'step');
+    expect(items()[2]).not.toHaveAttribute('aria-current');
+  });
+
   it('asks for at least one discipline before the payment step', async () => {
     stubApi();
     const { user } = setup();

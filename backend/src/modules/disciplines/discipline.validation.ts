@@ -40,5 +40,6 @@ export function validateDisciplineInput(raw: unknown): DisciplineInput {
   else if (!leadTeacher && !teachersError) errors.leadTeacher = 'Lead teacher must be one of the teachers';
 
   if (Object.keys(errors).length > 0) throw new ValidationError(errors);
-  return { name, teachers, leadTeacher };
+  const leadTeacherId = text(input.leadTeacherId);
+  return { name, teachers, leadTeacher, ...(leadTeacherId ? { leadTeacherId } : {}) };
 }

@@ -200,6 +200,14 @@ describe('MembersPage', () => {
     await waitFor(() => expect(requestedUrls().at(-1)).toBe('/api/members?search=rios&status=active'));
   });
 
+  it('hides Alta de socio when the user cannot create members', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse([lucia]));
+    render(<MembersPage today={TODAY} canCreate={false} />);
+    await screen.findByText('Lucía Ríos');
+
+    expect(screen.queryByRole('button', { name: 'Alta de socio' })).not.toBeInTheDocument();
+  });
+
   it('forwards the Alta de socio action', async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse([lucia]));
     const onCreate = vi.fn();

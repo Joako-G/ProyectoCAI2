@@ -147,7 +147,8 @@ export function createFaceEnrollmentService({ members, faces, display, now = () 
     progress(id: string, input: EnrollmentProgressInput): EnrollmentSessionView {
       const session = findActive(id);
       if (input.status === 'failed') {
-        finish(session, 'failed', input.message ?? 'The public screen could not capture the face');
+        // The reason is the public screen's own words (Spanish); the secretary reads it as is.
+        finish(session, 'failed', input.message);
         return viewOf(session);
       }
       session.status = 'capturing';
@@ -165,7 +166,7 @@ export function createFaceEnrollmentService({ members, faces, display, now = () 
         await faces.enroll(session.memberId, { descriptor, consentedAt: session.consentedAt }, session.openedBy);
       } catch (error) {
         session.saving = false;
-        finish(session, 'failed', 'The face could not be saved');
+        finish(session, 'failed');
         throw error;
       }
       session.saving = false;
