@@ -8,13 +8,19 @@ import { MemberDetailScreen } from './MemberDetailScreen';
 afterEach(() => vi.unstubAllGlobals());
 
 const ACCOUNT_URL = '/api/payments/members/member-1/account';
+const HISTORY_URL = '/api/payments/members/member-1';
 
 function account(standing: string, unpaidPeriodCount: number) {
   return { memberId: 'member-1', asOf: '2026-10-05', standing, unpaidPeriodCount, owed: [], enrollmentAvailable: false };
 }
 
 function stubApi(member: Member, accountResponse: () => Response | Promise<Response>) {
-  const fetchMock = vi.fn(async (url: string) => (url === ACCOUNT_URL ? accountResponse() : jsonResponse(member)));
+  const fetchMock = vi.fn(async (url: string) => {
+    if (url === ACCOUNT_URL) return accountResponse();
+    // The payment history under the sheet has its own tests; here it is just an empty one.
+    if (url === HISTORY_URL) return jsonResponse([]);
+    return jsonResponse(member);
+  });
   vi.stubGlobal('fetch', fetchMock);
   return fetchMock;
 }
