@@ -8,6 +8,7 @@ import type { Member } from '../types/member';
 import { MemberAccountCard } from './MemberAccountCard';
 import { MemberDetail } from './MemberDetail';
 import { DeactivateDialog, ReactivateDialog } from './MemberDialogs';
+import { MemberPaymentHistory } from './MemberPaymentHistory';
 
 interface MemberDetailScreenProps {
   id: string;
@@ -131,6 +132,7 @@ export function MemberDetailScreen({ id, today, catalog, canWrite, canManageFace
           </div>
         ) : null}
       </div>
+      {canReadPayments ? <MemberPaymentHistory memberId={member.id} disciplines={catalogDisciplines(catalog)} /> : null}
       {dialog === 'deactivate' ? (
         <DeactivateDialog
           memberName={memberName}
