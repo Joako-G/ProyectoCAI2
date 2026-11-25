@@ -76,6 +76,16 @@ Receipt numbers are correlative integers allocated in the same write as the paym
 
 PostgreSQL, migrations, Docker, and biometric access remain separate decisions; do not use real club/member records or credentials for demonstrations.
 
+## Member payment history
+
+Added in commit `c9079ea` (`feat(members): show payment history under the member record`).
+
+- The member record shows a read-only "Historial de pagos" section below the member sheet, only for users with `payments:read`.
+- Columns: receipt number, date, detail lines, total, method, state (`Vigente` or `Anulado`) and a PDF receipt link. Newest payment first; the receipt number breaks same-day ties.
+- Annulled payments stay listed with their reason (RNF-08), and an inactive member keeps its history (RF-05, RF-06).
+- It reuses the payments feature: `fetchHistory` (`GET /api/payments/members/:memberId`), `ReceiptPdfLink`, `lineLabel`, `methodLabel` and `describeReadError`. A failed read shows one short line and never blocks the record.
+- Code: `frontend/src/features/members/components/MemberPaymentHistory.tsx` and `frontend/src/features/members/hooks/useMemberPaymentHistory.ts`. Tests: `MemberDetailScreen.payments.test.tsx` in the same components folder.
+
 ## Engram portability and safety
 
 `.engram/config.json` names this project `club-socios`. The shareable source is this reviewed handoff, not a native Engram export. Each contributor can manually save this file into their own local Engram database by following [the PowerShell instructions](../.engram/README.md); cloning does not synchronize local Engram memories. Do not import parent-project history or commit native exports containing local account or filesystem metadata. Importing this handoff changes a contributor's local Engram database, not the Git repository.
