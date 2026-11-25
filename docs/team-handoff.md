@@ -1,6 +1,6 @@
 # Team handoff: club membership system
 
-This is the shared, version-controlled project context for collaborators and coding assistants. The repository now contains working authentication, user administration, member administration, and discipline features; reserved folders do not imply that payment or membership behavior is already implemented.
+This is the shared, version-controlled project context for collaborators and coding assistants. The repository contains working features beyond the original authentication and administration screens, payments included; see the boundaries below. A folder alone does not imply that its behavior is implemented.
 
 ## Quick path
 
@@ -12,10 +12,10 @@ This is the shared, version-controlled project context for collaborators and cod
 
 | Area | Current state and next boundary |
 | --- | --- |
-| Frontend | React + TypeScript + Vite. Existing feature areas include `auth`, `users`, `members`, and `disciplines`; `payments` and `memberships` are reserved for future work. Put feature code under `frontend/src/features/<feature>/`; use shared top-level folders only for genuinely cross-feature code. |
-| Backend | Express + TypeScript. Existing modules include `auth`, `users`, `members`, and `disciplines`; `payments` and `memberships` are reserved for future work. New domain behavior belongs under `backend/src/modules/<feature>/`; follow the actual route/service/repository pattern without adding controller layers automatically. |
-| Authentication and routing | Server-side sessions are implemented. Every backend route except `/auth` and `/health` now requires a session and a role allowed by `backend/src/modules/auth/permissions.ts` (401 without a session, 403 for a disallowed role). Roles: `secretary` (Secretaria), `head_secretary` (Jefa de secretaría, the administrator) and `teacher` (Docente; sees only the section "Mis disciplinas" with the current and past students of the disciplines the head secretary assigns to their account in the user form, via `GET /api/roster`, with name, member number and dates only). Old stored roles map `admin` → `head_secretary` and `member` → `secretary`. Frontend role-based navigation is still project work. |
-| Persistence and tests | Demo data uses JSON persistence and the session store is in memory; neither is production-grade storage. Frontend and backend have package test scripts; root provides build and typecheck, not a root test script. Use the exact commands in the coding guide. |
+| Frontend | React + TypeScript + Vite. Existing feature areas: `access`, `audit`, `auth`, `backup`, `cashcount`, `disciplines`, `enrollment`, `expenses`, `faces`, `members`, `notices`, `payments`, `pricing`, `reports`, `roster`, and `users`; `memberships` is still an empty placeholder. Put feature code under `frontend/src/features/<feature>/`; use shared top-level folders only for genuinely cross-feature code. |
+| Backend | Express + TypeScript. Existing modules: `access`, `audit`, `auth`, `backup`, `cashcount`, `disciplines`, `expenses`, `faces`, `members`, `memberships` (read-only routes), `notices`, `payments`, `reports`, `roster`, and `users`. New domain behavior belongs under `backend/src/modules/<feature>/`; follow the actual route/service/repository pattern without adding controller layers automatically. |
+| Authentication and routing | Server-side sessions are implemented. Every backend route except `/auth` and `/health` now requires a session and a role allowed by `backend/src/modules/auth/permissions.ts` (401 without a session, 403 for a disallowed role). Roles: `secretary` (Secretaria), `head_secretary` (Jefa de secretaría, the administrator) and `teacher` (Docente; sees only the section "Mis disciplinas" with the current and past students of the disciplines the head secretary assigns to their account in the user form, via `GET /api/roster`, with name, member number and dates only). Old stored roles map `admin` → `head_secretary` and `member` → `secretary`. The frontend has capability-based routes and navigation (`frontend/src/layouts/sections.ts` and `frontend/src/App.tsx`). |
+| Persistence and tests | Demo data uses JSON persistence and the session store is in memory; neither is production-grade storage. PostgreSQL is optional and holds only face profiles and the entrance log (see [`database.md`](database.md)). Frontend and backend have package test scripts; root provides build and typecheck, not a root test script. Use the exact commands in the coding guide. |
 | Delivery | Keep work reviewable and agree on API contracts before wiring a new frontend flow to the backend. |
 
 ## Enrollment and payment rules agreed so far
@@ -62,11 +62,11 @@ These rules come from project-owner answers and are not yet reflected in the app
 
 ## Next project work
 
-The user identified frontend routing and authentication-based route protection as unfinished. Complete those before expanding into payments. Then implement payments as a vertical flow using the rules above, checking the approved requirements first. Role-based authorization is distinct from merely requiring a signed-in session.
+Frontend routing, route protection, payments (the `/cobros` section) and the pricing configuration (the `/precios` section) are implemented. Check the approved requirements before extending them. Role-based authorization is distinct from merely requiring a signed-in session.
 
-Tariffs, late-surcharge tiers, the new-member proration (cutoff day and percentage), discounts, promotions, and price increases must not be hardcoded. Plan an administrator-only configuration section that edits them, with an effective date on each tariff so past and overdue periods keep the price in force at the time. Configuration depends on role-based authorization being in place first.
+Tariffs, late-surcharge tiers, the new-member proration (cutoff day and percentage), discounts, promotions, and price increases must not be hardcoded. Each tariff has an effective date, so past and overdue periods keep the price in force at the time.
 
-Implemented backend side: `/api/pricing` (read: secretary and head secretary; writes: head secretary only), stored in `backend/data/pricing-config.json` (or `PRICING_CONFIG_FILE`; a missing file means the default prices). Tariffs of past months cannot be edited or deleted; a price rise is a new tariff with a later `effectiveFrom`. Discounts and promotions are not configurable yet.
+Pricing backend: `/api/pricing` (read: secretary and head secretary; writes: head secretary only), stored in `backend/data/pricing-config.json` (or `PRICING_CONFIG_FILE`; a missing file means the default prices). Tariffs of past months cannot be edited or deleted; a price rise is a new tariff with a later `effectiveFrom`. Discounts and promotions are not configurable yet.
 
 Payments are stored append-only in `backend/data/payments.json` (or `PAYMENTS_FILE`); a payment snapshots its charge lines, and an annulment is a recorded reason, actor and date on the payment, never a deletion.
 Receipt numbers are correlative integers allocated in the same write as the payment, never reused (also not after an annulment). The service is wired in `server.ts` and served under `/api/payments` (secretary and head secretary; only the head secretary annuls). The signed-in user is always the actor; amounts and `registration.enrollmentDate` in a body are ignored (a first-time registration is charged on the day it is made):
@@ -74,7 +74,17 @@ Receipt numbers are correlative integers allocated in the same write as the paym
 - `POST /preview` `{ memberId, concepts, registration? }` prices without writing; `POST /` adds `method` and a client-generated `requestId` (8–100 characters, reused on every retry of the same cobro) and returns 201 with the stored payment; repeating a `requestId` for the same member and concepts returns the existing payment instead of charging again, and reusing it for a different payment gives 409; `POST /:id/annul` `{ reason }` (head secretary).
 - Find a member by DNI with `GET /api/members?search=<dni>`; payments has no search of its own.
 
-PostgreSQL, migrations, Docker, and biometric access remain separate decisions; do not use real club/member records or credentials for demonstrations.
+Moving the remaining JSON modules to PostgreSQL remains a separate decision; do not use real club/member records or credentials for demonstrations.
+
+## Member payment history
+
+Added in commit `c9079ea` (`feat(members): show payment history under the member record`).
+
+- The member record shows a read-only "Historial de pagos" section below the member sheet, only for users with `payments:read`.
+- Columns: receipt number, date, detail lines, total, method, state (`Vigente` or `Anulado`) and a PDF receipt link. Newest payment first; the receipt number breaks same-day ties.
+- Annulled payments stay listed with their reason (RNF-08), and an inactive member keeps its history (RF-05, RF-06).
+- It reuses the payments feature: `fetchHistory` (`GET /api/payments/members/:memberId`), `ReceiptPdfLink`, `lineLabel`, `methodLabel` and `describeReadError`. A failed read shows one short line and never blocks the record.
+- Code: `frontend/src/features/members/components/MemberPaymentHistory.tsx` and `frontend/src/features/members/hooks/useMemberPaymentHistory.ts`. Tests: `MemberDetailScreen.payments.test.tsx` in the same components folder.
 
 ## Engram portability and safety
 
