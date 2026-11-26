@@ -31,8 +31,9 @@ These are current project-owner clarifications for the demo flow. The spreadshee
 | Added activity (existing member) | An existing member who adds an activity mid-month pays the full activity fee (`$20,000`). No second social fee and no proration. |
 | Late surcharge | Apply per activity being paid, based on its payment date: days 1–10 `$0`; days 11–15 `+$3,000`; days 16–20 `+$5,000`; day 21 onward `+$7,000` (day 31 included; the last tier has no upper bound). Add the applicable surcharge to each late activity; do not apply just one surcharge when multiple activities are late. Surcharges never accumulate across months: only the one for the current payment date applies, also when paying an overdue month. A new member's enrollment month is never surcharged, because it had no earlier due date; the following months are surcharged like any member's. |
 | Carnet | The first carnet is free. A replacement costs `$3,000`. |
-| Overdue months | Each overdue month is charged at the tariff that was in force for that month, so tariffs need an effective date. |
-| Deregistration | More than 3 unpaid months means deregistered. Re-registering requires paying everything again as a first-time member, enrollment included. |
+| Overdue months | **Changed 2026-11-26, not implemented yet:** each overdue month is charged at the tariff in force on the **payment date** (the "monto actualizado" of the [club agreement](club-member-agreement.md)), not the tariff of the owed month. Tariff effective dates are still used for the current month and for price rises. The code today still prices by the owed month (`backend/src/modules/payments/pricing.ts`). |
+| Deregistration | **Changed 2026-11-26, not implemented yet:** **2** unpaid months means deregistered (was "more than 3"), to match the club agreement. The threshold becomes an editable parameter in the pricing configuration instead of the constant in `backend/src/modules/payments/standing.ts`. Re-registering requires paying everything again as a first-time member, enrollment included. |
+| Month without activity | **Added 2026-11-26, not implemented yet:** the secretary can mark a month as "sin actividad" for a member's discipline when the member did not attend; that month then owes only the social fee, not the activity fee. Any secretary may mark it (not only the head secretary), and only during that month, never afterwards. The system never infers absence on its own, because the entrance log is not a reliable record of attendance. |
 | Partial payments | Not accepted (confirmed by the club owners on 2026-10-26, overriding RF-12 of the requirements PDF). Each concept is paid in full; there is no credit. A paid/unpaid state per concept is enough. |
 | Advance payment | Paying months ahead is only a club custom (allowed up to the month before a price rise), not a system rule. |
 | Member account states | The working states are up to date (no debt), debtor, and deregistered. Track unpaid concepts and periods so balances remain accurate even when the member pays components in a flexible order. |
@@ -85,6 +86,61 @@ Added in commit `c9079ea` (`feat(members): show payment history under the member
 - Annulled payments stay listed with their reason (RNF-08), and an inactive member keeps its history (RF-05, RF-06).
 - It reuses the payments feature: `fetchHistory` (`GET /api/payments/members/:memberId`), `ReceiptPdfLink`, `lineLabel`, `methodLabel` and `describeReadError`. A failed read shows one short line and never blocks the record.
 - Code: `frontend/src/features/members/components/MemberPaymentHistory.tsx` and `frontend/src/features/members/hooks/useMemberPaymentHistory.ts`. Tests: `MemberDetailScreen.payments.test.tsx` in the same components folder.
+
+## Project-owner answers of 2026-11-25
+
+Answers to the requirements gap review. They are owner clarifications, not yet reflected in the approved PDFs; confirm them there when the PDFs are next revised. Nothing below is implemented unless it says so.
+
+### Decided: to build
+
+| Topic | Owner answer |
+| --- | --- |
+| RF-09 trial class | Add a "clase de prueba" charge. All of its money goes to the teacher. Design agreed 2026-11-26: |
+| | **Not a member.** A trial class never creates a member record. It is its own record: DNI, first name, last name, discipline, date, amount, teacher, receipt number and the user who charged it. |
+| | **Per-discipline settings.** The discipline form gets two fields, edited by the head secretary together with the teacher in charge: the trial class price (around `$10,000` today; the owner said "10") and how many trial classes a person may take in that discipline (2 today, editable per discipline). |
+| | **Charging.** In Cobros, "Clase de prueba": enter the DNI, choose the discipline; the system counts that DNI's trial classes in that discipline and refuses one over the limit; the price comes from the discipline; a numbered receipt is issued. No surcharge and no social fee. |
+| | **History.** A "Clases de prueba" list searchable by DNI and discipline. When the same DNI later becomes a member, the member record shows the trial classes taken. |
+| | **Settlement.** Trial classes appear on their own line in the teacher settlement, 100% to the teacher. |
+| | **Out of scope.** Whether the person is fit (apto) is the teacher's decision and is not recorded. |
+| RF-26 automatic status | Add a scheduled process that marks members as debtor (moroso) when they owe, so the status does not depend on a screen reading it. |
+| RF-21 due-soon notice | Add a section to send a WhatsApp message to a member whose fee is about to fall due ("próximo vencimiento"). Mass WhatsApp sending is left for the club to decide. |
+| RF-16 rentals | Now in scope (overrides "Opcional" and the earlier "out of phase"). Record rental charges per tenant and month, in a section for charging tenants. |
+| Rental transfers | In Cobros, add a form to record money received by bank transfer for rentals. |
+| RNF-09 consent | Record consent when a member is registered, not only at face enrollment. Two forms: a virtual consent accepted in the system, and the paper consent the club already uses. Needs a database migration. Draft text: [`member-consent-draft.md`](member-consent-draft.md). The club's own paper form is [`club-member-agreement.md`](club-member-agreement.md): it holds club rules and a liability waiver but not the Ley 25.326 information, so the data clause from the draft is added to it. |
+| RF-28 Excel import | Required, as a read-only historical lookup, for the club's own use. |
+| RNF-04 storage | Migrate every module from JSON to PostgreSQL. |
+| Padrón | Build a padrón of former and active students (alumnos y exalumnos), and a padrón of members with more than 6 months of activity. Both can be viewed on screen and downloaded as PDF. Fields: at least DNI, first name, last name and discipline, plus the usual data of a padrón (exact list not defined). "More than 6 months" means either 6 months active owing nothing and with nothing pending, or attending the club for more than 6 months. |
+| Cash count history | The cash count (cierre de caja) history does not show the latest close and its time; it must. |
+| Member payment history | Required. Done: see [Member payment history](#member-payment-history) (`c9079ea`). |
+
+### Decided: rules
+
+| Topic | Owner answer |
+| --- | --- |
+| RF-25 roles | Keep the current roles. Tesorería is not linked to the system for now; the head secretary does most of the administration. |
+| RF-12 partial payments | Not accepted; confirmed again. Do not build. |
+| Late surcharges | Every surcharge goes to the club, never to the teacher. Check the teacher settlement against this. |
+| RF-19 "al día" | Per discipline: members who are active, have their fees paid, and owe nothing. The list comes with the amount collected, for the teachers' settlement. |
+| "Vence" | The fee fell due (the due date passed without payment). |
+| Old debt on re-registration | Decided 2026-11-26. Deregistration does not cancel the fees already owed. The debt is frozen at deregistration: the unpaid months up to that date stay on the account, and no new monthly fees accrue while the member is deregistered. Owed months are priced at the tariff in force on the payment date; surcharges follow the existing rule (by payment date, never accumulated). To re-register, the member must **first pay the old debt**, then pay as a first-time member (enrollment included). |
+| Carnet at reception | The club agreement requires showing the member carnet at reception. That check stays manual at reception; the system does not ask for the carnet. |
+| RF-13 payment method | The club has a Mercado Pago Point for QR. Transfers cannot be matched automatically because they arrive in a Banco Macro account. |
+
+### Backup (RNF-03)
+
+| Parameter | Owner answer |
+| --- | --- |
+| Destination | The same disk for now. Suggest to the club board (comisión) buying an inexpensive disk used only for backups. |
+| Retention | Keep the current rule: the newest copy of each of the last 30 days that have copies, plus always the 5 most recent. |
+| Who copies and restores | Only the head secretary, when she decides. The automatic daily copy stays. |
+| Encryption | Not for now. |
+| Schedule | The copy runs only while the backend runs on the secretary's PC; if the PC is off, no copy is made that day. |
+
+### Still open
+
+- Padrón: the full field list, and whether the student padrón and the members padrón are separate lists.
+- Mass WhatsApp sending: for the club to decide.
+- Reported issue to reproduce: creating a teacher account for a discipline such as basketball shows it already linked to that discipline. By design, a teacher's disciplines are the ones ticked under "Disciplinas que dicta" in the user form, or the teachers chosen in the discipline form; the empty user form preselects none. Reproduce before treating it as a bug.
 
 ## Engram portability and safety
 
