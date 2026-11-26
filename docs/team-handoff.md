@@ -142,6 +142,34 @@ Answers to the requirements gap review. They are owner clarifications, not yet r
 - Mass WhatsApp sending: for the club to decide.
 - Reported issue to reproduce: creating a teacher account for a discipline such as basketball shows it already linked to that discipline. By design, a teacher's disciplines are the ones ticked under "Disciplinas que dicta" in the user form, or the teachers chosen in the discipline form; the empty user form preselects none. Reproduce before treating it as a bug.
 
+## Work split (agreed 2026-11-26)
+
+Each person owns different modules, so the two branches do not edit the same files. The rules for every item are in [Project-owner answers of 2026-11-25](#project-owner-answers-of-2026-11-25).
+
+### Manu (branch `manu`): money and charging, mainly `payments`
+
+1. Debt rules: owed fees at the tariff in force on the payment date; deregistration after 2 unpaid months as an editable parameter; old debt paid before re-registering.
+2. "Mes sin actividad": manual mark by any secretary, only during the month.
+3. RF-26: scheduled process that stores the debtor status.
+4. RF-09 trial class: the two discipline-form fields, the charge in Cobros, and the history.
+5. RF-16 rentals: charges per tenant and month, plus the transfer form in Cobros.
+6. Cash count: the history shows the latest close and its time.
+
+### Joaquín (branch `JoakoG`): members, reports and notices
+
+1. Padrones: students and former students, and members with more than 6 months; on screen and as PDF.
+2. RNF-09 consent at member registration (virtual and paper), with its database migration.
+3. RF-21: section to send the due-soon WhatsApp notice.
+4. Teacher settlement: surcharges stay with the club and the RF-19 "al día" definition is applied; add the trial class line (100% to the teacher) once Manu's trial class records exist.
+5. RF-28: historical Excel import, read-only lookup.
+6. Reproduce the reported issue of a new teacher already linked to a discipline.
+
+### Coordination
+
+- Trial class to settlement: agree the shape of the trial class record before either side starts.
+- Due-soon notice: it reads the debt status that Manu's item 1 changes; land that first or agree the fields it reads.
+- PostgreSQL migration: not in parallel with feature work. Each person migrates the modules they own after finishing their features, following the pattern already used for face profiles and the entrance log ([`database.md`](database.md)).
+
 ## Engram portability and safety
 
 `.engram/config.json` names this project `club-socios`. The shareable source is this reviewed handoff, not a native Engram export. Each contributor can manually save this file into their own local Engram database by following [the PowerShell instructions](../.engram/README.md); cloning does not synchronize local Engram memories. Do not import parent-project history or commit native exports containing local account or filesystem metadata. Importing this handoff changes a contributor's local Engram database, not the Git repository.
