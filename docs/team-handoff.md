@@ -95,7 +95,13 @@ Answers to the requirements gap review. They are owner clarifications, not yet r
 
 | Topic | Owner answer |
 | --- | --- |
-| RF-09 trial class | Add a "clase de prueba" charge concept. All of its money goes to the teacher. Each teacher sets the price of their discipline's trial class (around `$10,000` today; the owner said "10"). A person may take at most **2** trial classes; after them the teacher decides whether the person is fit (apto) to join. |
+| RF-09 trial class | Add a "clase de prueba" charge. All of its money goes to the teacher. Design agreed 2026-11-26: |
+| | **Not a member.** A trial class never creates a member record. It is its own record: DNI, first name, last name, discipline, date, amount, teacher, receipt number and the user who charged it. |
+| | **Per-discipline settings.** The discipline form gets two fields, edited by the head secretary together with the teacher in charge: the trial class price (around `$10,000` today; the owner said "10") and how many trial classes a person may take in that discipline (2 today, editable per discipline). |
+| | **Charging.** In Cobros, "Clase de prueba": enter the DNI, choose the discipline; the system counts that DNI's trial classes in that discipline and refuses one over the limit; the price comes from the discipline; a numbered receipt is issued. No surcharge and no social fee. |
+| | **History.** A "Clases de prueba" list searchable by DNI and discipline. When the same DNI later becomes a member, the member record shows the trial classes taken. |
+| | **Settlement.** Trial classes appear on their own line in the teacher settlement, 100% to the teacher. |
+| | **Out of scope.** Whether the person is fit (apto) is the teacher's decision and is not recorded. |
 | RF-26 automatic status | Add a scheduled process that marks members as debtor (moroso) when they owe, so the status does not depend on a screen reading it. |
 | RF-21 due-soon notice | Add a section to send a WhatsApp message to a member whose fee is about to fall due ("próximo vencimiento"). Mass WhatsApp sending is left for the club to decide. |
 | RF-16 rentals | Now in scope (overrides "Opcional" and the earlier "out of phase"). Record rental charges per tenant and month, in a section for charging tenants. |
@@ -134,7 +140,6 @@ Answers to the requirements gap review. They are owner clarifications, not yet r
 
 - Padrón: the full field list, and whether the student padrón and the members padrón are separate lists.
 - Mass WhatsApp sending: for the club to decide.
-- Trial class: whether the system records the teacher's "apto" decision, and how a trial-class taker who is not yet a member is identified (by DNI, like a member, is the working assumption).
 - Reported issue to reproduce: creating a teacher account for a discipline such as basketball shows it already linked to that discipline. By design, a teacher's disciplines are the ones ticked under "Disciplinas que dicta" in the user form, or the teachers chosen in the discipline form; the empty user form preselects none. Reproduce before treating it as a bug.
 
 ## Engram portability and safety
